@@ -1,0 +1,304 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ───────────────────────── Design tokens ───────────────────────── */
+:root {
+  --bg: #f5f5f7;
+  --bg-elevated: #fbfbfd;
+  --surface: #ffffff;
+  --surface-2: #f2f2f7;
+  --surface-3: #e8e8ed;
+  --label: #1d1d1f;
+  --label-2: #6e6e73;
+  --label-3: #aeaeb2;
+  --separator: rgba(60, 60, 67, 0.12);
+
+  --accent: #0a7cff;
+  --accent-2: #5e5ce6;
+  --accent-soft: rgba(10, 124, 255, 0.12);
+
+  --urgent: #ff3b30;
+  --urgent-soft: rgba(255, 59, 48, 0.12);
+  --monitor: #ff9500;
+  --monitor-soft: rgba(255, 149, 0, 0.14);
+  --stable: #34c759;
+  --stable-soft: rgba(52, 199, 89, 0.14);
+  --emergency-a: #ff2d55;
+  --emergency-b: #ff9500;
+
+  /* Liquid glass */
+  --glass-bg: rgba(255, 255, 255, 0.58);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 1px 1px rgba(0, 0, 0, 0.04), 0 10px 30px -6px rgba(0, 0, 0, 0.14);
+
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 32px -8px rgba(0, 0, 0, 0.1);
+  --card-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.05), 0 24px 48px -12px rgba(0, 0, 0, 0.18);
+}
+
+.dark {
+  --bg: #000000;
+  --bg-elevated: #0b0b0d;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --label: #f5f5f7;
+  --label-2: #98989d;
+  --label-3: #636366;
+  --separator: rgba(84, 84, 88, 0.55);
+
+  --accent: #0a84ff;
+  --accent-2: #7d7aff;
+  --accent-soft: rgba(10, 132, 255, 0.2);
+
+  --urgent: #ff453a;
+  --urgent-soft: rgba(255, 69, 58, 0.2);
+  --monitor: #ff9f0a;
+  --monitor-soft: rgba(255, 159, 10, 0.2);
+  --stable: #30d158;
+  --stable-soft: rgba(48, 209, 88, 0.2);
+
+  --glass-bg: rgba(38, 38, 42, 0.55);
+  --glass-bg-strong: rgba(38, 38, 42, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-highlight: rgba(255, 255, 255, 0.22);
+  --glass-shadow: 0 1px 1px rgba(0, 0, 0, 0.3), 0 12px 36px -6px rgba(0, 0, 0, 0.6);
+
+  --card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --card-shadow-hover: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 24px 48px -12px rgba(0, 0, 0, 0.8);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-label: var(--label);
+  --color-label-2: var(--label-2);
+  --color-label-3: var(--label-3);
+  --color-separator: var(--separator);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-urgent: var(--urgent);
+  --color-urgent-soft: var(--urgent-soft);
+  --color-monitor: var(--monitor);
+  --color-monitor-soft: var(--monitor-soft);
+  --color-stable: var(--stable);
+  --color-stable-soft: var(--stable-soft);
+  --color-emergency: var(--emergency-a);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", var(--font-inter), system-ui,
+    sans-serif;
+  --font-arabic: "SF Arabic", var(--font-plex-arabic), var(--font-inter), system-ui, sans-serif;
+
+  --radius-squircle: 22px;
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ───────────────────────── Base ───────────────────────── */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+body {
+  background: var(--bg);
+  color: var(--label);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+}
+
+html[dir="rtl"] body {
+  font-family: var(--font-arabic);
+  letter-spacing: 0;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ───────────────────────── Liquid Glass ───────────────────────── */
+@utility glass {
+  position: relative;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-highlight),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.08),
+    var(--glass-shadow);
+}
+
+@utility glass-strong {
+  position: relative;
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  backdrop-filter: blur(32px) saturate(190%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-highlight),
+    var(--glass-shadow);
+}
+
+/* Specular sheen that sits on top of a glass element */
+@utility glass-sheen {
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      155deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.08) 28%,
+      rgba(255, 255, 255, 0) 55%,
+      rgba(255, 255, 255, 0.12) 100%
+    );
+    mix-blend-mode: soft-light;
+  }
+}
+
+@utility card {
+  background: var(--surface);
+  box-shadow: var(--card-shadow);
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Gradient headline text */
+@utility text-gradient {
+  background: linear-gradient(100deg, #0a7cff 0%, #5e5ce6 45%, #ff2d55 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility text-gradient-fire {
+  background: linear-gradient(100deg, #ff2d55 0%, #ff6a3d 50%, #ffb340 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ───────────────────────── Animations ───────────────────────── */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes zone-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pulse-ring {
+  animation: pulse-ring 1.8s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--surface-3) 40%,
+    var(--surface-2) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, var(--label-2) 0%, var(--label) 40%, var(--label-2) 80%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2s linear infinite;
+}
+
+/* ───────────────────────── Map ───────────────────────── */
+.maplibregl-ctrl-attrib {
+  background: transparent !important;
+  font-size: 10px !important;
+  opacity: 0.6;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--label-2) !important;
+}
+.maplibregl-canvas {
+  outline: none;
+}
+.maplibregl-marker {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

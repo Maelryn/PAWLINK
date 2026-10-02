@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0.9" y2="1"><stop offset="0" stop-color="#3aa0ff"/><stop offset="0.55" stop-color="#3b6cf6"/><stop offset="1" stop-color="#6a4cf0"/></linearGradient>
+<radialGradient id="gl" cx="0.82" cy="0.95" r="0.7"><stop offset="0" stop-color="#ff5b8a" stop-opacity="0.85"/><stop offset="1" stop-color="#ff5b8a" stop-opacity="0"/></radialGradient>
+<radialGradient id="hl" cx="0.3" cy="0.05" r="0.75"><stop offset="0" stop-color="#fff" stop-opacity="0.55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<linearGradient id="mk" x1="0.1" y1="0" x2="0.9" y2="1"><stop offset="0" stop-color="#2f8cff"/><stop offset="0.55" stop-color="#7d7aff"/><stop offset="1" stop-color="#ff375f"/></linearGradient></defs>
+<rect width="120" height="120" rx="27" fill="url(#bg)"/><rect width="120" height="120" rx="27" fill="url(#gl)"/><rect width="120" height="120" rx="27" fill="url(#hl)"/>
+<g transform="translate(17 15) scale(0.86)" fill="#fff"><path fill-rule="evenodd" d="M50 90C43.6 82 31.5 72.2 31.5 60.5A18.5 18.5 0 1 1 68.5 60.5C68.5 72.2 56.4 82 50 90ZM43 60.5a7 7 0 1 0 14 0a7 7 0 1 0-14 0Z"/>
+<ellipse cx="23.5" cy="41" rx="7.4" ry="9.4" transform="rotate(-26 23.5 41)"/><ellipse cx="39" cy="25.5" rx="8" ry="10.4" transform="rotate(-9 39 25.5)"/>
+<ellipse cx="61" cy="25.5" rx="8" ry="10.4" transform="rotate(9 61 25.5)"/><ellipse cx="76.5" cy="41" rx="7.4" ry="9.4" transform="rotate(26 76.5 41)"/></g></svg>

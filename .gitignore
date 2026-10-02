@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env*
+!.env.example
+.claude/settings.local.json
+.DS_Store
+
+# local tooling
+.claude/
+AGENTS.md
+CLAUDE.md
