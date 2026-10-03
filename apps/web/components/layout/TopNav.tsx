@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
-import { Check, Globe, Heart, LayoutGrid, LogOut, Map, Moon, Plus, Shield, Stethoscope, Sun, SunMoon, User as UserIcon } from "lucide-react";
+import { Bell, Check, Globe, Heart, LayoutGrid, LogOut, Map, Moon, Plus, Shield, Sparkles, Stethoscope, Sun, SunMoon, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -9,6 +9,7 @@ import { AppIcon } from "@/components/brand/Logo";
 import { ButtonLink } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/primitives";
 import { signOut, useSession } from "@/lib/auth";
+import { useStore } from "@/lib/store";
 import { DICTS, LOCALES, useI18n } from "@/lib/i18n";
 import { useTheme, type ThemeMode } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -57,7 +58,7 @@ export function TopNav({ floating = false }: { floating?: boolean }) {
     { href: "/map", label: t.nav.map },
     { href: "/adopt", label: t.nav.adopt },
     { href: "/services", label: t.nav.services },
-    ...(user ? [{ href: "/dashboard", label: t.nav.dashboard }] : []),
+    ...(user ? [{ href: "/account", label: t.nav.dashboard }] : []),
     ...(user?.role === "admin" ? [{ href: "/admin", label: t.nav.admin }] : []),
   ];
 
@@ -101,6 +102,7 @@ export function TopNav({ floating = false }: { floating?: boolean }) {
               <Plus className="h-4 w-4" strokeWidth={2.6} />
               {t.nav.report}
             </ButtonLink>
+            <NotificationBell />
             <AccountMenu />
           </div>
         </nav>
@@ -163,6 +165,23 @@ function LanguageMenu() {
   );
 }
 
+function NotificationBell() {
+  const { t } = useI18n();
+  const user = useSession();
+  const unread = useStore((s) => s.notifications.filter((n) => n.userId === user?.id && !n.read).length);
+  if (!user) return null;
+  return (
+    <Link href="/account?tab=notifications" aria-label={t.notif.title} className={cn(iconBtn, "relative w-10 px-0")}>
+      <Bell className="h-[18px] w-[18px]" />
+      {unread > 0 && (
+        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute end-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-urgent px-1 text-[10px] font-bold text-white">
+          {unread}
+        </motion.span>
+      )}
+    </Link>
+  );
+}
+
 function AccountMenu() {
   const { t } = useI18n();
   const user = useSession();
@@ -186,9 +205,14 @@ function AccountMenu() {
           <div className="truncate text-[15px] font-semibold">{user.name}</div>
           <div className="text-[12.5px] text-label-2">{t.dashboard.roles[user.role]}</div>
         </div>
-        <Link href="/dashboard" onClick={() => setOpen(false)} className={item}>
+        <Link href="/account" onClick={() => setOpen(false)} className={item}>
           <LayoutGrid className="h-4 w-4 text-label-2" /> {t.account.mySpace}
         </Link>
+        {user.serviceId && (
+          <Link href="/pro" onClick={() => setOpen(false)} className={item}>
+            <Sparkles className="h-4 w-4 text-label-2" /> PawLink Pro
+          </Link>
+        )}
         {user.role === "admin" && (
           <Link href="/admin" onClick={() => setOpen(false)} className={item}>
             <Shield className="h-4 w-4 text-label-2" /> {t.nav.admin}
@@ -212,7 +236,7 @@ function MobileTabBar() {
     { href: "/adopt", label: t.nav.adopt, icon: Heart },
     { href: "/report", label: t.nav.report, icon: Plus, primary: true },
     { href: "/services", label: t.nav.services, icon: Stethoscope },
-    user ? { href: user.role === "admin" && pathname.startsWith("/admin") ? "/admin" : "/dashboard", label: t.account.mySpace, icon: UserIcon } : { href: "/login", label: t.nav.signIn, icon: UserIcon },
+    user ? { href: user.role === "admin" && pathname.startsWith("/admin") ? "/admin" : "/account", label: t.account.mySpace, icon: UserIcon } : { href: "/login", label: t.nav.signIn, icon: UserIcon },
   ];
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[55] flex justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom))] md:hidden">

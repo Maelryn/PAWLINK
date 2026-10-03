@@ -145,7 +145,7 @@ export function AICard({ ai, compact, reveal, className }: { ai: AIAnalysis; com
               <div className="mb-2 text-[13px] font-semibold text-label-2">{t.ai.services}</div>
               <div className="divide-y divide-separator overflow-hidden rounded-[18px] bg-surface-2">
                 {ai.suggestedServices.map((s) => (
-                  <Link key={s.serviceId} href={`/services?id=${s.serviceId}`} className="flex items-center gap-3 px-3.5 py-3 transition-colors hover:bg-surface-3">
+                  <Link key={s.serviceId} href={`/services/${s.serviceId}`} className="flex items-center gap-3 px-3.5 py-3 transition-colors hover:bg-surface-3">
                     <Emoji3D src={SERVICE_EMOJI[s.type]} size={28} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[14px] font-semibold">{s.name}</div>

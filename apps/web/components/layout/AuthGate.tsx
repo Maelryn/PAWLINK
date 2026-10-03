@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { useSession } from "@/lib/auth";
 
 /** Browsing is open to everyone; these pages are actions and need an account. (The API enforces it too.) */
-const PROTECTED = ["/report", "/dashboard", "/admin", "/adopt/new"];
+const PROTECTED = ["/report", "/account", "/dashboard", "/admin", "/adopt/new"];
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const user = useSession();

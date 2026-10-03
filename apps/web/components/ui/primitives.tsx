@@ -136,8 +136,13 @@ export function Segmented<T extends string>({
 }
 
 /* ───────────── Avatar ───────────── */
-export function Avatar({ name, size = 32, className, ring }: { name: string; size?: number; className?: string; ring?: boolean }) {
+export function Avatar({ name, size = 32, className, ring, photo }: { name: string; size?: number; className?: string; ring?: boolean; photo?: string }) {
   const h = hashHue(name);
+  if (photo)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={photo} alt={name} title={name} className={cn("shrink-0 rounded-full object-cover", ring && "ring-2 ring-surface", className)} style={{ width: size, height: size }} />
+    );
   return (
     <span
       className={cn("inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white", ring && "ring-2 ring-surface", className)}

@@ -9,7 +9,7 @@ const ago = (minutes: number) => new Date(NOW - minutes * 60_000).toISOString();
 export const USERS: User[] = [
   { id: "u1", name: "Yasmine Belkacem", avatar: "", role: "reporter", email: "yasmine@pawlink.dz", phoneVerified: true },
   { id: "u2", name: "Amine Haddad", avatar: "", role: "volunteer", email: "amine@pawlink.dz", phoneVerified: true, helpTypes: ["transport", "search"], rating: 4.9, location: { lat: 36.66, lng: 4.12 } },
-  { id: "u3", name: "Dr. Meriem Taleb", avatar: "", role: "vet", email: "dr.taleb@pawlink.dz", phoneVerified: true, licenseVerified: true, helpTypes: ["medical"], rating: 5, location: { lat: 36.6352, lng: 4.1951 } },
+  { id: "u3", name: "Dr. Meriem Taleb", avatar: "", role: "vet", email: "dr.taleb@pawlink.dz", phoneVerified: true, licenseVerified: true, helpTypes: ["medical"], rating: 5, location: { lat: 36.6352, lng: 4.1951 }, serviceId: "s2", city: "Larbaâ Nath Irathen", phone: "+213 26 00 00 02", pro: { plan: "pro", since: "2026-09-01T00:00:00.000Z", until: "2026-12-01T00:00:00.000Z" } },
   { id: "u4", name: "Sofiane Meziane", avatar: "", role: "volunteer", email: "sofiane@pawlink.dz", phoneVerified: true, helpTypes: ["foster", "food"], rating: 4.8, location: { lat: 36.6431, lng: 4.1712 } },
   { id: "u5", name: "Lydia Ait Ali", avatar: "", role: "volunteer", email: "lydia@pawlink.dz", phoneVerified: true, helpTypes: ["transport", "food"], rating: 4.7, location: { lat: 36.6588, lng: 4.2552 } },
   { id: "u6", name: "Dr. Rachid Amrani", avatar: "", role: "vet", email: "dr.amrani@pawlink.dz", phoneVerified: true, licenseVerified: true, helpTypes: ["medical"], rating: 4.9, location: { lat: 36.7445, lng: 3.0362 } },
@@ -395,6 +395,24 @@ export const SERVICES: Service[] = [
   { id: "s13", type: "store", name: "Animalerie Didouche", location: { lat: 36.7651, lng: 3.0491, address: "Didouche Mourad, Alger" }, openNow: true, rating: 4.4, reviewCount: 210, tags: ["Croquettes", "Accessoires"] },
   { id: "s14", type: "store", name: "Aliments Bétail Draâ Ben Khedda", location: { lat: 36.7342, lng: 3.9612, address: "Draâ Ben Khedda" }, openNow: true, rating: 4.6, reviewCount: 37, tags: ["Foin", "Grain"] },
 ];
+
+// Listing details, verification and Pro (featured) status
+const DESCRIPTIONS: Record<string, string> = {
+  vet: "Consultations, vaccins, chirurgie et urgences. Chiens, chats et animaux de ferme.",
+  shelter: "Accueil, soins et adoption d'animaux abandonnés ou sauvés.",
+  transport: "Transport d'animaux blessés ou à adopter, avec cage et bétaillère.",
+  boarding: "Garde de chiens et chats pendant vos absences, jardin et promenades.",
+  training: "Éducation canine, comportement et socialisation.",
+  store: "Nourriture, accessoires et produits d'hygiène pour animaux.",
+};
+SERVICES.forEach((s) => {
+  s.status = "approved";
+  s.verified = ["s1", "s2", "s3", "s5", "s6", "s7", "s9"].includes(s.id);
+  s.pro = ["s1", "s2", "s9", "s13"].includes(s.id);
+  s.description = DESCRIPTIONS[s.type];
+  s.hours = s.tags?.includes("24/7") ? "24h/24 · 7j/7" : "Sam–Jeu · 08:30–18:00";
+});
+SERVICES.find((s) => s.id === "s2")!.ownerId = "u3";
 
 export const REVIEWS: Review[] = [
   { id: "r1", serviceId: "s1", author: lite("u7"), rating: 5, text: "Ils ont soigné mon chien brûlé en pleine nuit pendant les feux. Équipe incroyable.", createdAt: ago(3000) },

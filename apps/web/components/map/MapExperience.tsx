@@ -13,7 +13,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Avatar, CasePhoto, Chip, Emoji3D, Segmented, Stars, TimeAgo, TriageBadge } from "@/components/ui/primitives";
 import { useCaseAI } from "@/lib/ai/useCaseAI";
 import { useI18n } from "@/lib/i18n";
-import { EMERGENCY_ZONES, SERVICES } from "@/lib/mock/data";
+import { EMERGENCY_ZONES } from "@/lib/mock/data";
 import { LIVESTOCK, SERVICE_EMOJI, SPECIES_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, store, useStore } from "@/lib/store";
 import { gmaps } from "@/lib/trust";
@@ -87,6 +87,7 @@ export function MapExperience() {
   }, [allCases, emergency, triage, category, query, ref]);
 
   const selected = allCases.find((c) => c.id === selectedId) ?? null;
+  const SERVICES = useStore((s) => s.services).filter((s) => s.status === "approved");
   const service = SERVICES.find((s) => s.id === serviceId) ?? null;
 
   /* ── camera helpers ── */
@@ -427,7 +428,7 @@ export function MapExperience() {
                   <Phone className="h-4 w-4" /> {t.common.call}
                 </ButtonLink>
               )}
-              <ButtonLink href={`/services?id=${service.id}`} size="sm" variant="tinted" className="flex-1">
+              <ButtonLink href={`/services/${service.id}`} size="sm" variant="tinted" className="flex-1">
                 {t.map.details}
               </ButtonLink>
             </div>

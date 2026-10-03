@@ -39,6 +39,17 @@ export interface User extends UserLite {
   helpTypes?: HelpType[];
   location?: GeoPoint;
   rating?: number;
+  phone?: string;
+  city?: string;
+  bio?: string;
+  /** Profile photo (data URL until Cloudinary is plugged in). */
+  photo?: string;
+  available?: boolean;
+  /** Business account: the service listing it manages. */
+  serviceId?: string;
+  /** PawLink Pro subscription (income). */
+  pro?: { plan: "pro"; since: string; until: string };
+  createdAt?: string;
 }
 
 export type TrustLevel = "verified" | "unverified" | "suspicious";
@@ -123,6 +134,51 @@ export interface Service {
   reviewCount: number;
   photo?: string;
   tags?: string[];
+  description?: string;
+  hours?: string;
+  ownerId?: string;
+  /** Checked by an admin (license / registration). */
+  verified?: boolean;
+  /** Pro subscribers: featured first + online appointments. */
+  pro?: boolean;
+  status?: "pending" | "approved" | "rejected";
+}
+
+export interface Booking {
+  id: string;
+  serviceId: string;
+  from: UserLite;
+  date: string;
+  time: string;
+  animal: string;
+  reason: string;
+  status: "sent" | "confirmed" | "declined";
+  createdAt: string;
+}
+
+export type NotificationKind =
+  | "adoptRequest"
+  | "adoptAccepted"
+  | "adoptDeclined"
+  | "listingApproved"
+  | "listingRejected"
+  | "booking"
+  | "bookingConfirmed"
+  | "bookingDeclined"
+  | "help"
+  | "review"
+  | "serviceApproved"
+  | "proActive";
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  kind: NotificationKind;
+  /** Name of the person / animal / place mentioned in the message. */
+  subject: string;
+  href: string;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface Review {
@@ -132,6 +188,8 @@ export interface Review {
   rating: 1 | 2 | 3 | 4 | 5;
   text: string;
   createdAt: string;
+  /** Answer from the business (Pro feature). */
+  reply?: string;
 }
 
 export interface AdoptionProfile {

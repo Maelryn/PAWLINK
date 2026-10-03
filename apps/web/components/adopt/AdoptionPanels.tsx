@@ -119,3 +119,28 @@ export function AdoptionQueue() {
     </section>
   );
 }
+
+/** Admin: new businesses waiting for license / registration check. */
+export function ServiceQueue() {
+  const { t } = useI18n();
+  const pending = useStore((s) => s.services).filter((s) => s.status === "pending");
+  return (
+    <section className="card mb-5 overflow-hidden rounded-[28px]">
+      <div className="flex items-center justify-between p-5">
+        <h2 className="text-[19px] font-bold">{t.biz.pendingTitle} · {t.nav.services}</h2>
+        <span className="rounded-full bg-monitor-soft px-3 py-1 text-[13px] font-semibold text-monitor">{pending.length}</span>
+      </div>
+      {pending.length === 0 && <div className="px-5 pb-5 text-[14px] text-label-2">{t.market.none}</div>}
+      {pending.map((s) => (
+        <div key={s.id} className="flex flex-wrap items-center gap-3 border-t border-separator px-5 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold">{s.name} · {t.common.service[s.type]}</div>
+            <div className="truncate text-[12.5px] text-label-2">{s.location.address} · {s.phone}</div>
+          </div>
+          <button type="button" onClick={() => store.moderateService(s.id, true)} className="flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13px] font-semibold text-stable"><Check className="h-4 w-4" /> {t.admin.approve}</button>
+          <button type="button" onClick={() => store.moderateService(s.id, false)} className="flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-label-2"><X className="h-4 w-4" /> {t.market.decline}</button>
+        </div>
+      ))}
+    </section>
+  );
+}

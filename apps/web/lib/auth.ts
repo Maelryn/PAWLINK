@@ -1,91 +1,81 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { DEMO_PASSWORD, USERS } from "./mock/data";
-import type { Role, User } from "./types";
+import { DEMO_PASSWORD } from "./mock/data";
+import { store, useStore } from "./store";
+import type { Role, Service, ServiceType, User } from "./types";
 
-/* Mock auth for the demo. With the NestJS API this becomes:
-   POST /auth/login → JWT (role inside), refresh token in an httpOnly cookie.
+/* Mock auth for the demo, on top of the client store. With the NestJS API this becomes:
+   POST /auth/register → SMS code → POST /auth/verify-phone → JWT (role inside) + refresh cookie.
    Roles are enforced by the backend; the UI only hides what a role can't use.
    Admin accounts are never created from the sign-up form, only by seed/CLI. */
 
-const SESSION_KEY = "pawlink.session";
-const USERS_KEY = "pawlink.users";
+export type SignUpRole = "reporter" | "volunteer" | "vet" | "pro";
 
-const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
-
-function registered(): User[] {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) ?? "[]") as User[];
-  } catch {
-    return [];
-  }
-}
-
-function allUsers() {
-  return [...USERS, ...registered()];
-}
-
-let cachedId: string | null | undefined;
-let cachedUser: User | null = null;
-
-function readSession(): User | null {
-  let id: string | null = null;
-  try {
-    id = localStorage.getItem(SESSION_KEY);
-  } catch {}
-  if (id !== cachedId) {
-    cachedId = id;
-    cachedUser = id ? (allUsers().find((u) => u.id === id) ?? null) : null;
-  }
-  return cachedUser;
-}
-
-function subscribe(l: () => void) {
-  listeners.add(l);
-  window.addEventListener("storage", l);
-  return () => {
-    listeners.delete(l);
-    window.removeEventListener("storage", l);
-  };
-}
-
-/** Current user, or null when signed out. `undefined` during server render / hydration. */
+/** Current user, null when signed out, undefined until saved data is loaded (avoids redirect flashes). */
 export function useSession(): User | null | undefined {
-  return useSyncExternalStore(subscribe, readSession, () => undefined);
+  return useStore((s) => (!s.hydrated ? undefined : (s.users.find((u) => u.id === s.sessionId) ?? null)));
 }
 
 export function signIn(email: string, password: string): User | "invalid" {
-  const u = allUsers().find((x) => x.email?.toLowerCase() === email.trim().toLowerCase());
-  if (!u || password !== DEMO_PASSWORD) return "invalid";
-  localStorage.setItem(SESSION_KEY, u.id);
-  emit();
+  const u = store.get().users.find((x) => x.email?.toLowerCase() === email.trim().toLowerCase());
+  // demo: seeded accounts share DEMO_PASSWORD; accounts created here store their own (never do this for real)
+  const ok = u && (password === DEMO_PASSWORD || password === (u as User & { pw?: string }).pw);
+  if (!u || !ok) return "invalid";
+  store.setSession(u.id);
   return u;
 }
 
-export function signUp(name: string, email: string, role: Exclude<Role, "admin">): User | "exists" {
-  if (allUsers().some((x) => x.email?.toLowerCase() === email.trim().toLowerCase())) return "exists";
-  const u: User = {
-    id: `r${Date.now()}`,
-    name: name.trim(),
+export function signUp(input: {
+  name: string;
+  email: string;
+  password: string;
+  phone: string;
+  city: string;
+  role: SignUpRole;
+  business?: { name: string; type: ServiceType };
+}): User | "exists" {
+  const { users } = store.get();
+  if (users.some((x) => x.email?.toLowerCase() === input.email.trim().toLowerCase())) return "exists";
+  const id = `r${Date.now().toString(36)}`;
+  const role: Role = input.role === "volunteer" ? "volunteer" : "reporter"; // vets/pros get their role after verification
+  let serviceId: string | undefined;
+  if (input.role === "vet" || input.role === "pro") {
+    serviceId = `s${Date.now().toString(36)}`;
+    const s: Service = {
+      id: serviceId,
+      type: input.role === "vet" ? "vet" : (input.business?.type ?? "store"),
+      name: input.business?.name || input.name,
+      location: { lat: 36.7538, lng: 3.0588, address: input.city },
+      phone: input.phone,
+      rating: 0,
+      reviewCount: 0,
+      ownerId: id,
+    };
+    store.addService(s);
+  }
+  const u = {
+    id,
+    name: input.name.trim(),
     avatar: "",
-    email: email.trim(),
-    // vets stay "reporter" until their license is checked by an admin
-    role: role === "vet" ? "reporter" : role,
+    email: input.email.trim(),
+    pw: input.password,
+    role,
+    phone: input.phone,
+    city: input.city,
     phoneVerified: true,
     licenseVerified: false,
-    helpTypes: role === "volunteer" ? ["transport"] : undefined,
-  };
-  localStorage.setItem(USERS_KEY, JSON.stringify([...registered(), u]));
-  localStorage.setItem(SESSION_KEY, u.id);
-  emit();
+    available: input.role === "volunteer",
+    helpTypes: input.role === "volunteer" ? (["transport"] as User["helpTypes"]) : undefined,
+    serviceId,
+    createdAt: new Date().toISOString(),
+  } as User;
+  store.addUser(u);
+  store.setSession(id);
   return u;
 }
 
 export function signOut() {
-  localStorage.removeItem(SESSION_KEY);
-  emit();
+  store.setSession(null);
 }
 
 export function can(user: User | null | undefined, area: "report" | "help" | "dashboard" | "admin") {

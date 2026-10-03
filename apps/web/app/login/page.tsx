@@ -8,12 +8,15 @@ import { AppIcon } from "@/components/brand/Logo";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button } from "@/components/ui/Button";
 import { Emoji3D, Segmented } from "@/components/ui/primitives";
-import { signIn, signUp } from "@/lib/auth";
+import { signIn, signUp, type SignUpRole } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { DEMO_PASSWORD, USERS } from "@/lib/mock/data";
+import { SERVICE_EMOJI } from "@/lib/species";
+import type { ServiceType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const input = "h-12 w-full rounded-[16px] bg-surface-2 px-4 text-[15px] outline-none ring-accent/40 placeholder:text-label-2 focus:ring-2";
+const BIZ_TYPES: ServiceType[] = ["shelter", "transport", "boarding", "training", "store"];
 
 export default function LoginPage() {
   return (
@@ -26,40 +29,55 @@ export default function LoginPage() {
 function Login() {
   const { t } = useI18n();
   const router = useRouter();
-  const next = useSearchParams().get("next") ?? "/map";
-  const [mode, setMode] = useState<"in" | "up">("in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<"reporter" | "volunteer" | "vet">("reporter");
+  const params = useSearchParams();
+  const next = params.get("next") ?? "/account";
+  const [mode, setMode] = useState<"in" | "up">(params.get("mode") === "up" ? "up" : "in");
+  const [f, setF] = useState({ email: "", password: "", name: "", phone: "", city: "", bizName: "" });
+  const [role, setRole] = useState<SignUpRole>("reporter");
+  const [bizType, setBizType] = useState<ServiceType>("shelter");
   const [otpStep, setOtpStep] = useState(false);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
-
-  const done = (n: string) => {
-    toast.success(t.account.welcome(n));
-    router.push(next);
-  };
+  const up = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (mode === "in") {
-      const r = signIn(email, password);
+      const r = signIn(f.email, f.password);
       if (r === "invalid") return setError(t.account.invalid);
-      return done(r.name);
+      toast.success(t.account.welcome(r.name));
+      return router.push(next);
     }
-    if (!otpStep) return setOtpStep(true); // real app: POST /auth/otp → SMS
-    const r = signUp(name, email, role);
-    if (r === "exists") return setError(t.account.exists);
-    done(r.name);
+    if (!otpStep) return setOtpStep(true); // real app: POST /auth/register → SMS code
+    const r = signUp({
+      name: f.name,
+      email: f.email,
+      password: f.password,
+      phone: f.phone,
+      city: f.city,
+      role,
+      business: role === "pro" || role === "vet" ? { name: f.bizName || f.name, type: role === "vet" ? "vet" : bizType } : undefined,
+    });
+    if (r === "exists") {
+      setOtpStep(false);
+      return setError(t.account.exists);
+    }
+    toast.success(t.account.welcome(r.name));
+    router.push(role === "pro" || role === "vet" ? "/account?tab=pro" : next);
   };
+
+  const roles: [SignUpRole, string, string][] = [
+    ["reporter", "/3d/camera.png", t.account.roles.reporter],
+    ["volunteer", "/3d/hearthands.png", t.account.roles.volunteer],
+    ["vet", "/3d/stethoscope.png", t.account.roles.vet],
+    ["pro", "/3d/home.png", t.biz.signupAs],
+  ];
 
   return (
     <div className="min-h-[100svh] pb-32">
       <TopNav />
-      <div className="mx-auto flex max-w-[440px] flex-col items-center px-4 pt-28">
+      <div className="mx-auto flex max-w-[460px] flex-col items-center px-4 pt-28">
         <AppIcon className="h-16 w-16" glow />
         <h1 className="mt-5 text-center text-[30px] font-bold tracking-[-0.03em]">{t.auth.title}</h1>
         <p className="mt-1 text-center text-[15px] text-label-2">{t.account.needLoginBody}</p>
@@ -85,40 +103,51 @@ function Login() {
               <motion.div key="otp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-3 text-center">
                 <Emoji3D src="/3d/phone.png" size={56} className="mx-auto" />
                 <p className="text-[14px] text-label-2">{t.account.phoneNote}</p>
-                <div className="text-[15px] font-semibold" dir="ltr">{phone}</div>
+                <div className="text-[15px] font-semibold" dir="ltr">{f.phone}</div>
                 <input autoFocus inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="• • • • • •" className={cn(input, "text-center text-[22px] tracking-[0.5em]")} dir="ltr" />
               </motion.div>
             ) : (
               <motion.div key={mode} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-                {mode === "up" && <input required value={name} onChange={(e) => setName(e.target.value)} placeholder={t.account.name} className={input} />}
-                <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.account.email} className={input} dir="ltr" />
-                {mode === "up" ? (
-                  <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+213 5XX XX XX XX" className={input} dir="ltr" />
-                ) : (
-                  <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t.account.password} className={input} />
-                )}
                 {mode === "up" && (
                   <>
-                    <div className="pt-1 text-[13px] font-semibold text-label-2">{t.account.role}</div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {([
-                        ["reporter", "/3d/camera.png"],
-                        ["volunteer", "/3d/hearthands.png"],
-                        ["vet", "/3d/stethoscope.png"],
-                      ] as const).map(([r, e]) => (
+                    <div className="grid grid-cols-2 gap-2">
+                      {roles.map(([r, e, label]) => (
                         <button
                           key={r}
                           type="button"
                           onClick={() => setRole(r)}
-                          className={cn("flex flex-col items-center gap-1 rounded-[18px] p-2.5 text-[12px] font-semibold transition-colors", role === r ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}
+                          className={cn("flex items-center gap-2 rounded-[18px] p-2.5 text-start text-[12.5px] font-semibold leading-tight transition-colors", role === r ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}
                         >
-                          <Emoji3D src={e} size={32} />
-                          {t.account.roles[r]}
+                          <Emoji3D src={e} size={30} className="shrink-0" />
+                          {label}
                         </button>
                       ))}
                     </div>
-                    {role === "vet" && <p className="text-[12.5px] text-label-2">{t.account.vetNote}</p>}
+                    {(role === "vet" || role === "pro") && (
+                      <>
+                        <input required value={f.bizName} onChange={(e) => up("bizName", e.target.value)} placeholder={t.biz.bizName} className={input} />
+                        {role === "pro" && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {BIZ_TYPES.map((ty) => (
+                              <button key={ty} type="button" onClick={() => setBizType(ty)} className={cn("flex items-center gap-1.5 rounded-full py-1 pe-3 ps-1 text-[12.5px] font-semibold", bizType === ty ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}>
+                                <Emoji3D src={SERVICE_EMOJI[ty]} size={22} /> {t.common.service[ty]}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-[12.5px] text-label-2">{role === "vet" ? t.account.vetNote : t.biz.pending}</p>
+                      </>
+                    )}
+                    <input required value={f.name} onChange={(e) => up("name", e.target.value)} placeholder={t.account.name} className={input} autoComplete="name" />
                   </>
+                )}
+                <input required type="email" value={f.email} onChange={(e) => up("email", e.target.value)} placeholder={t.account.email} className={input} dir="ltr" autoComplete="email" />
+                <input required type="password" minLength={mode === "up" ? 8 : 1} value={f.password} onChange={(e) => up("password", e.target.value)} placeholder={t.account.password} className={input} autoComplete={mode === "up" ? "new-password" : "current-password"} />
+                {mode === "up" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <input required type="tel" value={f.phone} onChange={(e) => up("phone", e.target.value)} placeholder="+213 5XX XX XX XX" className={input} dir="ltr" autoComplete="tel" />
+                    <input required value={f.city} onChange={(e) => up("city", e.target.value)} placeholder={t.acct.city} className={input} />
+                  </div>
                 )}
               </motion.div>
             )}
@@ -141,8 +170,7 @@ function Login() {
                 type="button"
                 onClick={() => {
                   setMode("in");
-                  setEmail(u.email!);
-                  setPassword(DEMO_PASSWORD);
+                  setF((x) => ({ ...x, email: u.email!, password: DEMO_PASSWORD }));
                 }}
                 className="rounded-full bg-surface-2 px-3 py-1.5 text-[12.5px] font-medium"
               >

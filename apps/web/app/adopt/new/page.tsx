@@ -79,7 +79,7 @@ export default function NewAdoptionPage() {
       createdAt: now,
     });
     toast.success(t.market.submitted);
-    router.push("/dashboard");
+    router.push("/account?tab=adoption");
   };
 
   return (

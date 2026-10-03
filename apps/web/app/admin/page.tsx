@@ -16,7 +16,7 @@ import { EMERGENCY_ZONES, USERS } from "@/lib/mock/data";
 import { SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
 import { TrustBadge } from "@/components/cases/Trust";
-import { AdoptionQueue } from "@/components/adopt/AdoptionPanels";
+import { AdoptionQueue, ServiceQueue } from "@/components/adopt/AdoptionPanels";
 import type { Triage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +77,7 @@ function AdminPage() {
                 {tab === "overview" && <Overview />}
                 {tab === "cases" && (
                   <>
+                    <ServiceQueue />
                     <AdoptionQueue />
                     <Moderation />
                   </>

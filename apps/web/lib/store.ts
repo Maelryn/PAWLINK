@@ -1,29 +1,83 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { ADOPTIONS, CASES, REVIEWS } from "./mock/data";
-import type { AdoptionProfile, AdoptionRequest, Case, HelpType, Review, User } from "./types";
+import { ADOPTIONS, CASES, REVIEWS, SERVICES, USERS } from "./mock/data";
+import type {
+  AdoptionProfile,
+  AdoptionRequest,
+  AppNotification,
+  Booking,
+  Case,
+  HelpType,
+  NotificationKind,
+  Review,
+  Service,
+  User,
+} from "./types";
 
-/* Tiny client store for the demo (mock mode). When the NestJS API is live, these
-   actions become API calls + realtime events and the components don't change. */
+/* Client "database" for the demo. Everything is saved in localStorage so the app behaves like a
+   real one (reload-safe). When the NestJS + Supabase API is live, each action below becomes one
+   API call (the endpoint is noted next to it) and the screens don't change. */
 
-interface State {
+export interface DB {
+  users: User[];
+  sessionId: string | null;
   cases: Case[];
   reviews: Review[];
   adoptions: AdoptionProfile[];
   requests: AdoptionRequest[];
+  services: Service[];
+  bookings: Booking[];
+  notifications: AppNotification[];
+}
+
+interface State extends DB {
+  /** false during server render / before localStorage is read */
+  hydrated: boolean;
   /** id of the case that was just created; the map uses it to play the "drop" animation */
   lastCreatedId: string | null;
 }
 
-let state: State = { cases: CASES, reviews: REVIEWS, adoptions: ADOPTIONS, requests: [], lastCreatedId: null };
+const KEY = "pawlink.db.v2";
+const seed = (): DB => ({
+  users: USERS,
+  sessionId: null,
+  cases: CASES,
+  reviews: REVIEWS,
+  adoptions: ADOPTIONS,
+  requests: [],
+  services: SERVICES,
+  bookings: [],
+  notifications: [],
+});
+
+let state: State = { ...seed(), hydrated: false, lastCreatedId: null };
 
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
+function persist() {
+  try {
+    const db: DB = { users: state.users, sessionId: state.sessionId, cases: state.cases, reviews: state.reviews, adoptions: state.adoptions, requests: state.requests, services: state.services, bookings: state.bookings, notifications: state.notifications };
+    localStorage.setItem(KEY, JSON.stringify(db));
+  } catch {
+    // quota exceeded (big photos): keep working in memory
+  }
+}
+
 function set(patch: Partial<State>) {
   state = { ...state, ...patch };
+  persist();
   emit();
+}
+
+const now = () => new Date().toISOString();
+const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const lite = (u: User) => ({ id: u.id, name: u.name, avatar: u.avatar });
+
+function notify(userId: string | undefined, kind: NotificationKind, subject: string, href: string) {
+  if (!userId) return [];
+  return [{ id: uid("n"), userId, kind, subject, href, read: false, createdAt: now() }];
 }
 
 function updateCase(id: string, fn: (c: Case) => Case) {
@@ -37,20 +91,52 @@ export const store = {
   },
   get: () => state,
 
+  /** Reads the saved database once on the client (called by <Providers>). */
+  hydrate() {
+    if (state.hydrated) return;
+    let saved: Partial<DB> = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+    } catch {}
+    state = { ...state, ...saved, hydrated: true };
+    emit();
+  },
+
+  resetDemo() {
+    localStorage.removeItem(KEY);
+    state = { ...seed(), hydrated: true, lastCreatedId: null, sessionId: state.sessionId };
+    persist();
+    emit();
+  },
+
+  /* ── account ── POST /auth/login · /auth/register · PATCH /me */
+  setSession(id: string | null) {
+    set({ sessionId: id });
+  },
+  addUser(u: User) {
+    set({ users: [...state.users, u] });
+  },
+  updateUser(id: string, patch: Partial<User>) {
+    set({ users: state.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) });
+  },
+  deleteAccount(id: string) {
+    set({ users: state.users.filter((u) => u.id !== id), sessionId: null });
+  },
+
+  /* ── cases ── POST /cases · POST /cases/:id/help · /confirm · /flag */
   addCase(c: Case) {
     set({ cases: [c, ...state.cases], lastCreatedId: c.moderation === "pending" ? null : c.id });
   },
-
   offerHelp(caseId: string, helpType: HelpType, me: User) {
-    updateCase(caseId, (c) => ({
-      ...c,
-      status: c.status === "open" ? "in_progress" : c.status,
-      helpers: [...c.helpers.filter((h) => h.user.id !== me.id), { user: { id: me.id, name: me.name, avatar: me.avatar }, helpType }],
-      updatedAt: new Date().toISOString(),
+    const c = state.cases.find((x) => x.id === caseId);
+    updateCase(caseId, (x) => ({
+      ...x,
+      status: x.status === "open" ? "in_progress" : x.status,
+      helpers: [...x.helpers.filter((h) => h.user.id !== me.id), { user: lite(me), helpType }],
+      updatedAt: now(),
     }));
+    if (c && c.reporter.id !== me.id) set({ notifications: [...notify(c.reporter.id, "help", me.name, `/cases/${caseId}`), ...state.notifications] });
   },
-
-  /** "I see it too": a nearby user confirms the report is real. */
   confirm(caseId: string) {
     updateCase(caseId, (c) => {
       if (!c.trust) return c;
@@ -58,50 +144,109 @@ export const store = {
       return { ...c, trust: { ...c.trust, confirmations, score: Math.min(1, c.trust.score + 0.08), level: c.trust.level === "unverified" && confirmations >= 2 ? "verified" : c.trust.level } };
     });
   },
-
   flag(caseId: string) {
     updateCase(caseId, (c) => {
       if (!c.trust) return c;
       const flags = c.trust.flags + 1;
-      // 3 flags from the community send a case back to moderation
       return { ...c, trust: { ...c.trust, flags }, moderation: flags >= 3 ? "pending" : c.moderation };
     });
   },
-
   moderate(caseId: string, decision: "approved" | "hidden") {
     updateCase(caseId, (c) => ({ ...c, moderation: decision }));
   },
-
-  addReview(r: Review) {
-    set({ reviews: [r, ...state.reviews] });
-  },
-
-  /** Reports created by a user in the last hour (rate limit). */
   recentReportsBy(userId: string) {
     const hourAgo = Date.now() - 3_600_000;
     return state.cases.filter((c) => c.reporter.id === userId && new Date(c.createdAt).getTime() > hourAgo).length;
   },
+  clearLastCreated() {
+    state = { ...state, lastCreatedId: null };
+    emit();
+  },
 
-  /** New listings always start as "pending" until an admin approves them. */
+  /* ── adoption marketplace ── POST /adoptions · PATCH /admin/adoptions/:id · /requests */
   addAdoption(a: AdoptionProfile) {
     set({ adoptions: [{ ...a, status: "pending" }, ...state.adoptions] });
   },
-
+  updateAdoption(id: string, patch: Partial<AdoptionProfile>) {
+    set({ adoptions: state.adoptions.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
+  },
+  removeAdoption(id: string) {
+    set({ adoptions: state.adoptions.filter((a) => a.id !== id), requests: state.requests.filter((r) => r.adoptionId !== id) });
+  },
   moderateAdoption(id: string, status: "approved" | "rejected") {
-    set({ adoptions: state.adoptions.map((a) => (a.id === id ? { ...a, status } : a)) });
+    const a = state.adoptions.find((x) => x.id === id);
+    set({
+      adoptions: state.adoptions.map((x) => (x.id === id ? { ...x, status } : x)),
+      notifications: [...notify(a?.ownerId, status === "approved" ? "listingApproved" : "listingRejected", a?.name ?? "", `/adopt/${id}`), ...state.notifications],
+    });
   },
-
   sendRequest(r: AdoptionRequest) {
-    set({ requests: [r, ...state.requests.filter((x) => !(x.adoptionId === r.adoptionId && x.from.id === r.from.id))] });
+    const a = state.adoptions.find((x) => x.id === r.adoptionId);
+    set({
+      requests: [r, ...state.requests.filter((x) => !(x.adoptionId === r.adoptionId && x.from.id === r.from.id))],
+      notifications: [...notify(a?.ownerId, "adoptRequest", r.from.name, "/account?tab=requests"), ...state.notifications],
+    });
   },
-
-  /** Owner answers. Accepting shares both phone numbers; the others stay private. */
+  /** Owner answers. Accepting shares the owner's phone; the others stay private. */
   answerRequest(id: string, status: "accepted" | "declined") {
-    set({ requests: state.requests.map((r) => (r.id === id ? { ...r, status } : r)) });
+    const r = state.requests.find((x) => x.id === id);
+    const a = state.adoptions.find((x) => x.id === r?.adoptionId);
+    set({
+      requests: state.requests.map((x) => (x.id === id ? { ...x, status } : x)),
+      notifications: [...notify(r?.from.id, status === "accepted" ? "adoptAccepted" : "adoptDeclined", a?.name ?? "", `/adopt/${a?.id}`), ...state.notifications],
+    });
   },
 
-  clearLastCreated() {
-    set({ lastCreatedId: null });
+  /* ── services, reviews, bookings, pro ── */
+  addService(s: Service) {
+    set({ services: [...state.services, { ...s, status: "pending", verified: false }] });
+  },
+  updateService(id: string, patch: Partial<Service>) {
+    set({ services: state.services.map((s) => (s.id === id ? { ...s, ...patch } : s)) });
+  },
+  moderateService(id: string, approve: boolean) {
+    const s = state.services.find((x) => x.id === id);
+    set({
+      services: state.services.map((x) => (x.id === id ? { ...x, status: approve ? "approved" : "rejected", verified: approve } : x)),
+      notifications: approve ? [...notify(s?.ownerId, "serviceApproved", s?.name ?? "", `/services/${id}`), ...state.notifications] : state.notifications,
+    });
+  },
+  /** One review per user per service; the rating average is recomputed. POST /services/:id/reviews */
+  addReview(r: Review) {
+    const reviews = [r, ...state.reviews.filter((x) => !(x.serviceId === r.serviceId && x.author.id === r.author.id))];
+    const s = state.services.find((x) => x.id === r.serviceId);
+    set({ reviews, notifications: [...notify(s?.ownerId, "review", r.author.name, `/services/${r.serviceId}`), ...state.notifications] });
+  },
+  replyReview(id: string, reply: string) {
+    set({ reviews: state.reviews.map((r) => (r.id === id ? { ...r, reply } : r)) });
+  },
+  book(b: Booking) {
+    const s = state.services.find((x) => x.id === b.serviceId);
+    set({ bookings: [b, ...state.bookings], notifications: [...notify(s?.ownerId, "booking", b.from.name, "/account?tab=pro"), ...state.notifications] });
+  },
+  answerBooking(id: string, status: "confirmed" | "declined") {
+    const b = state.bookings.find((x) => x.id === id);
+    const s = state.services.find((x) => x.id === b?.serviceId);
+    set({
+      bookings: state.bookings.map((x) => (x.id === id ? { ...x, status } : x)),
+      notifications: [...notify(b?.from.id, status === "confirmed" ? "bookingConfirmed" : "bookingDeclined", s?.name ?? "", `/services/${s?.id}`), ...state.notifications],
+    });
+  },
+  /** Demo payment: activates Pro for 30 days. Real: Chargily (CIB / Edahabia) webhook → PATCH /me/pro */
+  activatePro(userId: string) {
+    const u = state.users.find((x) => x.id === userId);
+    const since = now();
+    const until = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    set({
+      users: state.users.map((x) => (x.id === userId ? { ...x, pro: { plan: "pro", since, until } } : x)),
+      services: state.services.map((s) => (s.id === u?.serviceId ? { ...s, pro: true } : s)),
+      notifications: [...notify(userId, "proActive", "PawLink Pro", "/account?tab=pro"), ...state.notifications],
+    });
+  },
+
+  /* ── notifications ── */
+  markAllRead(userId: string) {
+    set({ notifications: state.notifications.map((n) => (n.userId === userId ? { ...n, read: true } : n)) });
   },
 };
 
@@ -115,3 +260,12 @@ export function useStore<T>(selector: (s: State) => T): T {
 
 /** Cases visible to the public: moderation-pending and hidden reports stay out of the map. */
 export const isPublic = (c: Case) => c.moderation !== "pending" && c.moderation !== "hidden";
+
+/** Average rating + count computed from the reviews actually stored. */
+export function ratingOf(s: Service, reviews: Review[]) {
+  const mine = reviews.filter((r) => r.serviceId === s.id);
+  // seed services carry a historical average; new reviews are blended in
+  const total = s.rating * s.reviewCount + mine.reduce((a, r) => a + r.rating, 0);
+  const count = s.reviewCount + mine.length;
+  return { rating: count ? Math.round((total / count) * 10) / 10 : 0, count };
+}

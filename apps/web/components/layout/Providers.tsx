@@ -4,6 +4,8 @@ import { Toaster } from "sonner";
 import { I18nProvider, useI18n } from "@/lib/i18n";
 import { ThemeSync, useTheme } from "@/lib/theme";
 import { AuthGate } from "./AuthGate";
+import { useEffect } from "react";
+import { store } from "@/lib/store";
 
 function ThemedToaster() {
   const { resolved } = useTheme();
@@ -30,6 +32,7 @@ function ThemedToaster() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => store.hydrate(), []);
   return (
     <I18nProvider>
       <ThemeSync />
