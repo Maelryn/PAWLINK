@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Mascot } from "@/components/brand/Mascot";
 import { ArrowLeft, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -34,7 +33,7 @@ export default function CasePage() {
       <>
         <TopNav />
         <div className="flex min-h-[80svh] flex-col items-center justify-center gap-4 text-label-2">
-          <Mascot size={90} />
+          <Emoji3D src="/3d/owl.png" size={90} />
           {t.case.notFound}
           <ButtonLink href="/map">{t.nav.openApp}</ButtonLink>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useInView, useScroll, useSpring, useTransform } from "motion/react";
-import { ArrowRight, Check, Sparkles, Camera, MapPin, PawPrint, Heart, Stethoscope, Flame, HandHeart, BadgeCheck, Truck, House, Bone, Search, BedDouble, HandCoins } from "lucide-react";
+import { ArrowRight, Check, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -9,14 +9,13 @@ import { AppIcon, Wordmark } from "@/components/brand/Logo";
 import { MapView } from "@/components/map";
 import { CountUp, FloatingEmoji, Reveal, TiltCard, useMouseParallax } from "@/components/motion";
 import { ButtonLink } from "@/components/ui/Button";
-import { Emoji3D } from "@/components/ui/primitives";
+import { Avatar, Emoji3D, TriageBadge } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
 import { EMERGENCY_ZONES, STATS } from "@/lib/mock/data";
-import { TRIAGE_COLOR } from "@/lib/species";
+import { HELP_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import { useStore } from "@/lib/store";
 import type { HelpType, Triage } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { PETS, PetSticker } from "@/components/ui/PetSticker";
 
 const ZONE = EMERGENCY_ZONES[0];
 const SIG = [109, 101, 104, 100, 105].map((c) => c.toString(2).padStart(8, "0").replace(/0/g, "\u200b").replace(/1/g, "\u200c")).join("\u200d");
@@ -35,7 +34,16 @@ export function MapReveal() {
   const scale = useTransform(smooth, [0, 1], [0.82, 1]);
   const y = useTransform(smooth, [0, 1], [80, 0]);
 
-
+  const toasts = [
+    { icon: "/3d/truck.png", text: t.landing.toast1 },
+    { icon: "/3d/warning.png", text: t.landing.toast2 },
+    { icon: "/3d/stethoscope.png", text: t.landing.toast3 },
+  ];
+  const [toastIdx, setToastIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setToastIdx((i) => (i + 1) % toasts.length), 3200);
+    return () => clearInterval(id);
+  }, [toasts.length]);
 
   return (
     <section className="relative px-4 py-24 sm:py-36">
@@ -60,9 +68,62 @@ export function MapReveal() {
               cases={cases.filter((c) => c.emergencyZoneId)}
               zone={ZONE}
               interactive={false}
-              initialView={{ longitude: ZONE.center.lng + 0.01, latitude: ZONE.center.lat - 0.005, zoom: 9.7, pitch: 45, bearing: -12 }}
+              initialView={{ longitude: ZONE.center.lng + 0.01, latitude: ZONE.center.lat - 0.005, zoom: 11, pitch: 50, bearing: -16 }}
             />}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[rgba(255,90,30,0.10)] via-transparent to-transparent mix-blend-multiply" />
+            {/* glass overlays */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[rgba(255,90,30,0.12)] via-transparent to-transparent mix-blend-multiply" />
+            <div className="absolute start-4 top-4 sm:start-6 sm:top-6">
+              <div className="glass-strong flex items-center gap-3 rounded-[22px] px-3.5 py-2.5">
+                <Emoji3D src="/3d/fire.png" size={34} />
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-urgent">{t.map.zoneActive}</div>
+                  <div className="text-[14px] font-semibold">{ZONE.region}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute end-4 top-4 hidden w-[300px] sm:block sm:end-6 sm:top-6">
+              <AnimatePresence mode="popLayout">
+                <motion.div
+                  key={toastIdx}
+                  initial={{ y: -30, opacity: 0, scale: 0.9 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                  className="glass-strong flex items-center gap-3 rounded-[22px] p-3"
+                >
+                  <Emoji3D src={toasts[toastIdx].icon} size={36} />
+                  <div className="text-[14px] font-semibold leading-snug">{toasts[toastIdx].text}</div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.5, type: "spring", stiffness: 140, damping: 18 }}
+              className="absolute bottom-6 start-6 hidden w-[340px] sm:block"
+            >
+              <div className="glass-strong rounded-[26px] p-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#0a7cff] via-[#5e5ce6] to-[#ff2d55] text-white">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-[13px] font-semibold">{t.landing.mockCards.aiTitle}</span>
+                  <TriageBadge triage="urgent" size="sm" className="ms-auto" />
+                </div>
+                <p className="mt-2 text-[14px] leading-snug">{t.landing.mockCards.aiSummary}</p>
+                <div className="mt-3 flex items-center gap-2 text-[12.5px] text-label-2">
+                  <Emoji3D src="/3d/stethoscope.png" size={20} /> {t.landing.mockCards.nearestVet} · 0,6 km
+                  <span className="ms-auto flex -space-x-1.5 rtl:space-x-reverse">
+                    <Avatar name="Amine Haddad" size={22} ring />
+                    <Avatar name="Lydia Ait Ali" size={22} ring />
+                    <Avatar name="Mehdi Ouali" size={22} ring />
+                  </span>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         </div>
       </div>
@@ -176,7 +237,7 @@ function HelpOrbit() {
               animate={{ rotate: -360 }}
               transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
             >
-              {(() => { const I = HELP_ICON[h]; return <I className="h-6 w-6 text-stable" strokeWidth={2} />; })()}
+              <Emoji3D src={HELP_EMOJI[h]} size={34} />
             </motion.div>
           );
         })}
@@ -188,7 +249,7 @@ function HelpOrbit() {
 export function Bento() {
   const { t } = useI18n();
   const L = t.landing;
-  const livestock = [PETS.sheep, PETS.goat, PETS.cow, PETS.horse];
+  const livestock = ["camel", "sheep", "cow", "goat", "horse", "donkey", "chicken"];
   return (
     <section className="px-4 pb-24 sm:pb-36">
       <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-3">
@@ -220,10 +281,10 @@ export function Bento() {
           <CardText kicker={L.s1.kicker} title={L.s1.title} body={L.s1.body} color="var(--accent)" />
           <div className="relative mt-8 flex items-end justify-center gap-3">
             {[
-              { Icon: Camera, n: 1 },
-              { Icon: MapPin, n: 2 },
-              { Icon: PawPrint, n: 3 },
-              { Icon: Sparkles, n: 4 },
+              { src: "/3d/camera.png", n: 1 },
+              { src: "/3d/pin.png", n: 2 },
+              { src: "/3d/dog.png", n: 3 },
+              { src: "/3d/sparkles.png", n: 4 },
             ].map((s, i) => (
               <motion.div
                 key={s.n}
@@ -233,8 +294,8 @@ export function Bento() {
                 transition={{ delay: 0.2 + i * 0.12, type: "spring", stiffness: 200, damping: 16 }}
                 className="flex flex-col items-center gap-2"
               >
-                <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-white text-accent shadow-[0_6px_16px_-8px_rgba(10,124,255,0.5)] dark:bg-surface-2">
-                  <s.Icon className="h-7 w-7" strokeWidth={2} />
+                <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-surface-2">
+                  <Emoji3D src={s.src} size={40} />
                 </div>
                 <span className="text-[12px] font-semibold text-label-2">{s.n}</span>
               </motion.div>
@@ -325,14 +386,14 @@ export function Bento() {
             <div className="flex flex-wrap items-end justify-center gap-3 sm:gap-5">
               {livestock.map((s, i) => (
                 <motion.div
-                  key={s.src}
+                  key={s}
                   initial={{ y: 40, opacity: 0, scale: 0.6 }}
                   whileInView={{ y: 0, opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.08, type: "spring", stiffness: 220, damping: 13 }}
                 >
                   <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2.4 + i * 0.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 }}>
-                    <PetSticker src={s.src} bg="#ffffff" size={i % 2 ? 96 : 116} />
+                    <Emoji3D src={`/3d/${s}.png`} size={i % 2 ? 64 : 80} className="drop-shadow-[0_14px_14px_rgba(0,0,0,0.15)]" />
                   </motion.div>
                 </motion.div>
               ))}
@@ -398,7 +459,7 @@ export function FinalCTA() {
           </Reveal>
           <Reveal delay={0.3} className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <ButtonLink href="/report" size="lg" variant="white">
-              <Camera className="h-5 w-5" /> {t.landing.ctaReport}
+              <Emoji3D src="/3d/camera.png" size={24} /> {t.landing.ctaReport}
             </ButtonLink>
             <ButtonLink href="/map" size="lg" className="bg-white/15 text-white shadow-none ring-1 ring-white/30 backdrop-blur-xl hover:bg-white/25">
               {t.landing.ctaMap} <ArrowRight className="h-5 w-5 rtl:rotate-180" />
@@ -427,8 +488,6 @@ export function Footer() {
 }
 
 /* ───────────────────── Quick actions: colorful app-style tiles (replaces fake stats) ───────────────────── */
-const ACTION_ICONS = [Camera, Heart, Stethoscope, Flame, HandHeart, BadgeCheck];
-const HELP_ICON: Record<HelpType, typeof Camera> = { transport: Truck, foster: House, food: Bone, medical: Stethoscope, search: Search, boarding: BedDouble, funds: HandCoins };
 const ACTION_TINTS = [
   ["#e4efff", "#cfe1ff", "#0a7cff"],
   ["#ffe6ee", "#ffd0de", "#ff2d55"],
@@ -457,9 +516,7 @@ export function QuickActions() {
                   style={{ background: `linear-gradient(160deg, ${c1}, ${c2})` }}
                 >
                   <motion.span whileHover={{ rotate: -8, scale: 1.1 }} className="block w-fit">
-                    <span className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-white shadow-[0_8px_18px_-10px_rgba(0,0,0,0.35)] dark:bg-white/10" style={{ color: ink }}>
-                      {(() => { const I = ACTION_ICONS[i % ACTION_ICONS.length]; return <I className="h-7 w-7" strokeWidth={2} />; })()}
-                    </span>
+                    <Emoji3D src={a.emoji} size={56} className="drop-shadow-[0_10px_14px_rgba(0,0,0,0.15)]" />
                   </motion.span>
                   <span className="mt-6 block">
                     <span className="block font-display text-[18px] font-extrabold" style={{ color: ink }}>{a.title}</span>

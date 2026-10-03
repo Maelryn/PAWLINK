@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Mascot } from "@/components/brand/Mascot";
 import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, Home, MapPin, Settings, User as UserIcon, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -238,7 +237,7 @@ function MyReports({ me }: { me: User }) {
   if (!mine.length)
     return (
       <section className={cn(card, "flex flex-col items-center gap-3 py-12 text-center")}>
-        <Mascot size={72} />
+        <Emoji3D src="/3d/owl.png" size={72} />
         <p className="text-label-2">{t.acct.noReports}</p>
         <ButtonLink href="/report">{t.acct.reportCta}</ButtonLink>
       </section>

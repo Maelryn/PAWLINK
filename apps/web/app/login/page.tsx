@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
 import { AppIcon } from "@/components/brand/Logo";
-import { Mascot } from "@/components/brand/Mascot";
-import { PETS, PetSticker } from "@/components/ui/PetSticker";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button } from "@/components/ui/Button";
 import { Emoji3D, Segmented } from "@/components/ui/primitives";
@@ -208,7 +206,7 @@ function Login() {
 }
 
 /* ───────── Welcome: stickers orbiting the app icon (first screen, like a real iOS onboarding) ───────── */
-const ORBIT = [PETS.beagle, PETS.tabby, PETS.sheep, PETS.frenchie, PETS.kitten, PETS.goat, PETS.jack];
+const ORBIT = ["/3d/dog.png", "/3d/pin.png", "/3d/cat.png", "/3d/stethoscope.png", "/3d/sheep.png", "/3d/heart.png", "/3d/camel.png"];
 
 function Welcome({ onEmail, onPhone }: { onEmail: () => void; onPhone: () => void }) {
   const { t } = useI18n();
@@ -221,26 +219,23 @@ function Welcome({ onEmail, onPhone }: { onEmail: () => void; onPhone: () => voi
           <div className="absolute inset-[22%] rounded-full border-2 border-dashed border-white/60 dark:border-white/10" />
           <div className="absolute inset-[32%] rounded-full bg-white/40 blur-2xl dark:bg-white/5" />
           <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 180, damping: 14 }} className="absolute inset-0 flex items-center justify-center">
-            <div className="relative">
-              <AppIcon className="h-24 w-24 sm:h-28 sm:w-28" glow />
-              <div className="absolute -top-[68px] left-1/2 -translate-x-[22%]">
-                <Mascot size={88} peek delay={0.5} />
-              </div>
-            </div>
+            <AppIcon className="h-24 w-24 sm:h-28 sm:w-28" glow />
           </motion.div>
           <motion.div className="absolute inset-0" animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: "linear" }}>
-            {ORBIT.map((p, i) => {
+            {ORBIT.map((src, i) => {
               const a = (i / ORBIT.length) * Math.PI * 2 - Math.PI / 2;
               return (
                 <motion.div
-                  key={p.src}
+                  key={src}
                   className="absolute"
                   style={{ left: `calc(50% + ${Math.round(Math.cos(a) * 47)}% - 30px)`, top: `calc(50% + ${Math.round(Math.sin(a) * 47)}% - 30px)` }}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1, rotate: -360 }}
                   transition={{ scale: { type: "spring", delay: 0.2 + i * 0.07 }, rotate: { duration: 60, repeat: Infinity, ease: "linear" } }}
                 >
-                  <PetSticker src={p.src} bg={p.bg} size={60} />
+                  <div className="flex h-[60px] w-[60px] items-center justify-center rounded-[20px] bg-white shadow-[0_10px_24px_-8px_rgba(60,40,120,0.35)] ring-4 ring-white dark:bg-white/10 dark:ring-white/10">
+                    <Emoji3D src={src} size={40} />
+                  </div>
                 </motion.div>
               );
             })}

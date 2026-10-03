@@ -8,7 +8,7 @@ import { TopNav } from "@/components/layout/TopNav";
 
 import { useI18n } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
-import { PETS, PetSticker } from "@/components/ui/PetSticker";
+import { Emoji3D } from "@/components/ui/primitives";
 import { LIVESTOCK } from "@/lib/species";
 import type { Species } from "@/lib/types";
 import type { Dict } from "@/lib/i18n/en";
@@ -19,10 +19,10 @@ import { Heart, PawPrint, Plus } from "lucide-react";
 type Cat = "all" | "dog" | "cat" | "livestock" | "other";
 const CATS: { id: Cat; label: (t: Dict) => string; pet?: { src: string; bg: string } }[] = [
   { id: "all", label: (t) => t.adopt.filterAll },
-  { id: "dog", label: (t) => t.common.species.dog, pet: PETS.beagle },
-  { id: "cat", label: (t) => t.common.species.cat, pet: PETS.tabby },
-  { id: "livestock", label: (t) => t.common.livestock, pet: PETS.sheep },
-  { id: "other", label: (t) => t.common.species.other, pet: PETS.kitten },
+  { id: "dog", label: (t) => t.common.species.dog, pet: { src: "/3d/dog.png", bg: "#cfe5ff" } },
+  { id: "cat", label: (t) => t.common.species.cat, pet: { src: "/3d/cat.png", bg: "#ffd8e4" } },
+  { id: "livestock", label: (t) => t.common.livestock, pet: { src: "/3d/sheep.png", bg: "#cdeedd" } },
+  { id: "other", label: (t) => t.common.species.other, pet: { src: "/3d/rabbit.png", bg: "#e3dcff" } },
 ];
 const matches = (c: Cat, s: Species) =>
   c === "all" || (c === "livestock" ? LIVESTOCK.includes(s) : c === "other" ? !LIVESTOCK.includes(s) && s !== "dog" && s !== "cat" : s === c);
@@ -52,7 +52,7 @@ export default function AdoptPage() {
               <button key={c.id} type="button" onClick={() => setFilter(c.id)} className="flex w-[72px] shrink-0 flex-col items-center gap-1.5">
                 <span className={cn("rounded-full transition-shadow", on && "ring-[3px] ring-accent ring-offset-2 ring-offset-bg")}>
                   {c.pet ? (
-                    <PetSticker src={c.pet.src} bg={c.pet.bg} size={62} ring={false} scale={1.25} />
+                    <span className="flex h-[62px] w-[62px] items-center justify-center rounded-full" style={{ background: c.pet.bg }}><Emoji3D src={c.pet.src} size={38} /></span>
                   ) : (
                     <span className="flex h-[62px] w-[62px] items-center justify-center rounded-full bg-surface-2"><PawPrint className="h-6 w-6" /></span>
                   )}

@@ -4,7 +4,6 @@ import { animate, motion, useInView, useMotionValue, useReducedMotion, useSpring
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { PetSticker } from "@/components/ui/PetSticker";
 
 export const spring = { type: "spring", stiffness: 380, damping: 30 } as const;
 export const softSpring = { type: "spring", stiffness: 120, damping: 20 } as const;
@@ -90,10 +89,7 @@ export function FloatingEmoji({
   rotate = 0,
   mouse,
   className,
-  bg,
 }: {
-  /** background color: renders the photo as a pop-out pet sticker */
-  bg?: string;
   src: string;
   size: number;
   x: string;
@@ -123,20 +119,16 @@ export function FloatingEmoji({
         animate={reduce ? undefined : { y: [0, -12, 0], rotate: [0, rotate > 0 ? 3 : -3, 0] }}
         transition={{ duration: 5 + delay * 2, repeat: Infinity, ease: "easeInOut", delay }}
       >
-        {bg ? (
-          <PetSticker src={src} bg={bg} size={size} />
-        ) : (
-          <Image
-            src={src}
-            alt=""
-            width={size}
-            height={size}
-            draggable={false}
-            priority
-            className="select-none drop-shadow-[0_24px_30px_rgba(0,0,0,0.18)]"
-            style={{ width: size, height: size }}
-          />
-        )}
+        <Image
+          src={src}
+          alt=""
+          width={size}
+          height={size}
+          draggable={false}
+          priority
+          className="select-none drop-shadow-[0_24px_30px_rgba(0,0,0,0.18)]"
+          style={{ width: size, height: size }}
+        />
       </motion.div>
     </motion.div>
   );

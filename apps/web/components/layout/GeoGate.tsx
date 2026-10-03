@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
-import { Mascot } from "@/components/brand/Mascot";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button } from "@/components/ui/Button";
 import { Emoji3D } from "@/components/ui/primitives";
@@ -57,7 +56,7 @@ export function GeoGate({ children, bare }: { children: React.ReactNode; bare?: 
     <div className="min-h-[100svh]">
       {!bare && <TopNav />}
       <div className="mx-auto flex min-h-[80svh] max-w-[440px] flex-col items-center justify-center px-6 pt-20 text-center">
-        {status === "outside" ? <Emoji3D src="/3d/globe.png" size={96} /> : <Mascot size={110} />}
+        <Emoji3D src={status === "outside" ? "/3d/globe.png" : "/3d/pin.png"} size={96} className={status === "checking" ? "animate-bounce" : ""} />
         {status === "checking" ? (
           <p className="mt-6 text-[17px] font-semibold text-label-2">{t.geo.checking}</p>
         ) : (

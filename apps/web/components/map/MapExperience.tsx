@@ -1,7 +1,6 @@
 "use client";
 
 import { AnimatePresence, motion, useDragControls, type PanInfo } from "motion/react";
-import { Mascot } from "@/components/brand/Mascot";
 import { ArrowLeft, ChevronRight, Globe2, Layers, Navigation, Phone, Search, X, Camera, Flame, HandHeart, PawPrint, Tractor } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -562,7 +561,7 @@ function TriageChips({ value, onChange }: { value: "all" | Triage; onChange: (v:
 function Empty({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center gap-3 py-14 text-center text-[14px] text-label-2">
-      <Mascot size={64} />
+      <Emoji3D src="/3d/owl.png" size={64} />
       {label}
     </div>
   );
