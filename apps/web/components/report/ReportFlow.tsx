@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Camera, Check, ImagePlus, LocateFixed, MapPin, Minus, Plus, X } from "lucide-react";
+import { ArrowLeft, Camera, Check, ImagePlus, LocateFixed, MapPin, Minus, Plus, X, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -187,7 +187,7 @@ export function ReportFlow() {
                   </Button>
                 ) : (
                   <Button size="lg" className="flex-1" disabled={!canNext} onClick={submit}>
-                    <Emoji3D src="/3d/sparkles.png" size={22} /> {t.report.submit}
+                    <Sparkles className="h-[18px] w-[18px]" /> {t.report.submit}
                   </Button>
                 )}
               </div>
@@ -675,7 +675,7 @@ function Result({ ai, c, onPublish, onReset }: { ai: AIAnalysis; c: Case; onPubl
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6 }} className="relative mt-6 flex flex-col gap-3 sm:flex-row">
         <Button size="lg" className="flex-1" disabled={pending} onClick={() => onPublish("map")}>
-          <Emoji3D src="/3d/pin.png" size={22} /> {t.report.viewOnMap}
+          <MapPin className="h-[18px] w-[18px]" /> {t.report.viewOnMap}
         </Button>
         <Button size="lg" variant="glass" className="flex-1" onClick={() => onPublish("case")}>
           {t.report.viewCase}

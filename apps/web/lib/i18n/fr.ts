@@ -59,7 +59,7 @@ const fr: Dict = {
     title1: "Vous l'avez vu.",
     title2: "On s'en occupe.",
     subtitle:
-      "Signalez un animal en détresse en quelques secondes. L'IA de PawLink trie chaque cas, la carte s'illumine, et les bénévoles, vétérinaires et refuges les plus proches interviennent.",
+      "Un chien blessé sur la route, des chèvres prises dans la fumée, un chaton seul dans un parking. Prenez une photo : les vétérinaires et bénévoles autour de vous sont prévenus en quelques secondes.",
     ctaReport: "Signaler un animal",
     ctaMap: "Ouvrir la carte en direct",
     liveNow: "En direct",
@@ -123,7 +123,7 @@ const fr: Dict = {
   },
   report: {
     title: "Signaler un animal",
-    subtitle: "Un chien blessé sur la route, des chèvres prises dans la fumée, un chaton seul dans un parking. Prenez une photo : les vétérinaires et bénévoles autour de vous sont prévenus en quelques secondes.",
+    subtitle: "Une photo, votre position, quelques mots. Chaque détail aide les secours.",
     steps: ["Photo", "Lieu", "Animal", "Situation"],
     photoTitle: "Ajoutez une photo",
     photoBody: "Une photo nette aide l'IA et les secouristes à comprendre la situation.",

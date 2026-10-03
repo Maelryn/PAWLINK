@@ -74,7 +74,7 @@ export default function ServicesPage() {
         </div>
 
         {/* categories as round icon tiles */}
-        <div className="-mx-4 mt-4 flex gap-4 overflow-x-auto px-4 pb-1 no-scrollbar">
+        <div className="-mx-4 mt-3 flex gap-4 overflow-x-auto px-4 py-2 no-scrollbar">
           {(["all", ...TYPES] as const).map((ty) => {
             const on = type === ty;
             return (

@@ -39,9 +39,7 @@ export function Wordmark({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2 font-semibold tracking-[-0.03em]", className)} dir="ltr">
       <AppIcon className="h-[1.6em] w-[1.6em]" />
-      <span>
-        Paw<span className="text-accent">Link</span>
-      </span>
+      <span className="bg-gradient-to-r from-[#1f8bff] via-[#3d6bff] to-[#7b4dff] bg-clip-text font-display font-black text-transparent">pawlink</span>
     </span>
   );
 }

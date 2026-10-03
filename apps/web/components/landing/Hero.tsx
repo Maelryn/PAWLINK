@@ -1,32 +1,27 @@
 "use client";
 
 import { motion, useScroll, useSpring, useTransform } from "motion/react";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown, Camera } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { MARK_PATH, TOES } from "@/components/brand/Logo";
 import { FloatingEmoji, SplitWords, useMouseParallax } from "@/components/motion";
 import { ButtonLink } from "@/components/ui/Button";
-import { Emoji3D } from "@/components/ui/primitives";
+import { Mascot } from "@/components/brand/Mascot";
+import { PETS } from "@/components/ui/PetSticker";
 import { useI18n } from "@/lib/i18n";
 import { EMERGENCY_ZONES } from "@/lib/mock/data";
 import { useStore } from "@/lib/store";
 
 const CAST = [
   // src, size, x, y, depth, blur, rotate
-  { src: "/3d/dog.png", s: 150, x: "14%", y: "9%", d: 1.2, b: 0, r: -8 },
-  { src: "/3d/cat.png", s: 132, x: "72%", y: "7%", d: 1.1, b: 0, r: 8 },
-  { src: "/3d/sheep.png", s: 118, x: "5%", y: "47%", d: 0.9, b: 0, r: -6 },
-  { src: "/3d/camel.png", s: 128, x: "82%", y: "42%", d: 1, b: 0, r: 6 },
-  { src: "/3d/goat.png", s: 96, x: "13%", y: "70%", d: 0.8, b: 0.5, r: 10 },
-  { src: "/3d/horse.png", s: 112, x: "78%", y: "68%", d: 0.9, b: 0, r: -8 },
-  { src: "/3d/owl.png", s: 64, x: "41%", y: "4%", d: 0.5, b: 1.2, r: 0 },
-  { src: "/3d/chick.png", s: 58, x: "88%", y: "90%", d: 0.5, b: 1.5, r: 0 },
-  { src: "/3d/heart.png", s: 54, x: "31%", y: "33%", d: 0.6, b: 0.8, r: -12 },
-  { src: "/3d/stethoscope.png", s: 58, x: "64%", y: "28%", d: 0.6, b: 0.8, r: 12 },
-  { src: "/3d/fire.png", s: 240, x: "-7%", y: "16%", d: 0.25, b: 16, r: 0 },
-  { src: "/3d/cow.png", s: 220, x: "91%", y: "-6%", d: 0.25, b: 14, r: 0 },
-  { src: "/3d/home.png", s: 200, x: "92%", y: "74%", d: 0.25, b: 16, r: 0 },
+  // real pets popping out of pastel circles (photos cut out with background removal)
+  { ...PETS.beagle, s: 150, x: "12%", y: "8%", d: 1.2, b: 0, r: -6 },
+  { ...PETS.tabby, s: 136, x: "73%", y: "6%", d: 1.1, b: 0, r: 6 },
+  { ...PETS.sheep, s: 118, x: "4%", y: "46%", d: 0.9, b: 0, r: -4 },
+  { ...PETS.frenchie, s: 124, x: "83%", y: "41%", d: 1, b: 0, r: 5 },
+  { ...PETS.goat, s: 100, x: "13%", y: "71%", d: 0.8, b: 0, r: 6 },
+  { ...PETS.kitten, s: 108, x: "79%", y: "69%", d: 0.9, b: 0, r: -6 },
 ];
 
 function useCompact() {
@@ -93,7 +88,7 @@ export function Hero() {
   const urgent = cases.filter((c) => c.emergencyZoneId && c.triage === "urgent").length;
 
   return (
-    <section ref={ref} {...handlers} className="relative isolate min-h-[100svh] overflow-hidden pb-24 pt-28 sm:pt-32">
+    <section ref={ref} {...handlers} className="relative isolate min-h-[100svh] overflow-hidden pb-24 pt-40 sm:pt-44">
       {/* ambient color fields */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         {/* soft color fields: plain radial gradients (no blur filter = no repaint cost) */}
@@ -106,6 +101,7 @@ export function Hero() {
           <FloatingEmoji
             key={c.src + i}
             src={c.src}
+            bg={c.bg}
             size={Math.round(c.s * k)}
             x={c.x}
             y={c.y}
@@ -114,14 +110,20 @@ export function Hero() {
             rotate={c.r}
             delay={i * 0.07}
             mouse={mouse}
-            className={i >= 6 && k < 0.6 && c.b < 10 ? "hidden" : undefined}
+            className={k < 0.6 && i >= 2 ? "hidden" : undefined}
           />
         ))}
       </motion.div>
 
       <motion.div style={{ scale, opacity: fade }} className="relative z-20 mx-auto flex max-w-[980px] flex-col items-center px-5 text-center">
         <motion.div initial={{ opacity: 0, scale: 0.6, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 120, damping: 16, delay: 0.1 }}>
-          <GlassTile />
+          <div className="relative">
+            <GlassTile />
+            {/* Miel the cat sits on the tile's edge */}
+            <div className="absolute -end-7 -top-[78px] sm:-end-9 sm:-top-[96px]">
+              <Mascot size={k < 0.6 ? 96 : 118} peek delay={0.6} />
+            </div>
+          </div>
         </motion.div>
 
         <motion.div
@@ -136,7 +138,7 @@ export function Hero() {
         <h1 className="mt-3 text-[46px] font-semibold leading-[1.02] tracking-[-0.045em] sm:text-[76px] lg:text-[92px]">
           <SplitWords text={t.landing.title1} delay={0.55} />
           <br />
-          <SplitWords text={t.landing.title2} delay={0.75} className="text-gradient" />
+          <SplitWords text={t.landing.title2} delay={0.75} wordClassName="text-gradient pb-[0.08em]" />
         </h1>
 
         <motion.p
@@ -155,7 +157,7 @@ export function Hero() {
           className="mt-9 flex flex-col items-center gap-3 sm:flex-row"
         >
           <ButtonLink href="/report" size="lg">
-            <Emoji3D src="/3d/camera.png" size={24} />
+            <Camera className="h-5 w-5" />
             {t.landing.ctaReport}
           </ButtonLink>
           <ButtonLink href="/map" size="lg" variant="glass">

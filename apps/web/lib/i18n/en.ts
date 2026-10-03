@@ -57,7 +57,7 @@ const en = {
     title1: "You saw it.",
     title2: "We'll handle it.",
     subtitle:
-      "Report an animal in need in seconds. PawLink's AI sorts every case, the map lights up, and the nearest volunteers, vets and shelters step in.",
+      "An injured dog on the road, goats caught in smoke, a kitten alone in a car park. Take a photo: the vets and volunteers around you are alerted in seconds.",
     ctaReport: "Report an animal",
     ctaMap: "Open the live map",
     liveNow: "Live now",
@@ -121,7 +121,7 @@ const en = {
   },
   report: {
     title: "Report an animal",
-    subtitle: "An injured dog on the road, goats caught in smoke, a kitten alone in a car park. Take a photo: the vets and volunteers around you are alerted in seconds.",
+    subtitle: "A photo, your location, a few words. Every detail helps the rescuers.",
     steps: ["Photo", "Location", "Animal", "Situation"],
     photoTitle: "Add a photo",
     photoBody: "A clear photo helps the AI and rescuers understand the situation.",

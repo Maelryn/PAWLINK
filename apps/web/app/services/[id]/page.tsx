@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { Mascot } from "@/components/brand/Mascot";
 import { ArrowLeft, BadgeCheck, Clock, Navigation, Phone } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -32,7 +33,7 @@ export default function ServicePage() {
       <>
         <TopNav />
         <div className="flex min-h-[80svh] flex-col items-center justify-center gap-4 text-label-2">
-          <Emoji3D src="/3d/owl.png" size={90} /> {t.svc.notFound}
+          <Mascot size={90} /> {t.svc.notFound}
           <ButtonLink href="/services">{t.nav.services}</ButtonLink>
         </div>
       </>

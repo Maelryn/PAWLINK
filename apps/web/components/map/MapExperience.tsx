@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, useDragControls, type PanInfo } from "motion/react";
-import { ArrowLeft, ChevronRight, Globe2, Layers, Navigation, Phone, Search, X } from "lucide-react";
+import { Mascot } from "@/components/brand/Mascot";
+import { ArrowLeft, ChevronRight, Globe2, Layers, Navigation, Phone, Search, X, Camera, Flame, HandHeart, PawPrint, Tractor } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -14,12 +15,13 @@ import { Avatar, CasePhoto, Chip, Emoji3D, Segmented, Stars, TimeAgo, TriageBadg
 import { useCaseAI } from "@/lib/ai/useCaseAI";
 import { useI18n } from "@/lib/i18n";
 import { EMERGENCY_ZONES } from "@/lib/mock/data";
-import { LIVESTOCK, SERVICE_EMOJI, SPECIES_EMOJI, TRIAGE_HEX, TRIAGE_ORDER } from "@/lib/species";
+import { LIVESTOCK, SERVICE_EMOJI, SPECIES_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, store, useStore } from "@/lib/store";
 import { gmaps } from "@/lib/trust";
 import { TrustBadge } from "@/components/cases/Trust";
 import type { Case, GeoPoint, Triage } from "@/lib/types";
 import { cn, distanceKm, minutesSince } from "@/lib/utils";
+import { setTabBarHidden } from "@/lib/ui";
 import { ALGERIA_VIEW, MapView } from "./index";
 
 const ZONE = EMERGENCY_ZONES[0];
@@ -120,7 +122,7 @@ export function MapExperience() {
         m.off("moveend", orbit);
       };
     } else {
-      m.flyTo({ ...{ center: [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] as [number, number] }, zoom: desktop ? 5.9 : 4.9, pitch: is3d ? 50 : 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 2000, essential: true });
+      m.flyTo({ ...{ center: (desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [3.3, 35.9]) as [number, number] }, zoom: desktop ? 5.9 : 5.4, pitch: is3d ? 50 : 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 2000, essential: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emergency, ready]);
@@ -297,7 +299,7 @@ export function MapExperience() {
           aria-label={t.map.allAlgeria}
           onClick={() => {
             setEmergency(false);
-            mapRef.current?.flyTo({ center: [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude], zoom: desktop ? 5.9 : 4.9, pitch: 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 1800 });
+            mapRef.current?.flyTo({ center: desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [3.3, 35.9], zoom: desktop ? 5.9 : 5.4, pitch: 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 1800 });
           }}
           className="glass glass-sheen flex h-12 w-12 items-center justify-center rounded-full"
         >
@@ -347,8 +349,8 @@ export function MapExperience() {
                     onChange={setCategory}
                     options={[
                       { value: "all", label: t.common.all },
-                      { value: "companion", label: <><Emoji3D src="/3d/cat.png" size={16} />{t.common.companion}</> },
-                      { value: "livestock", label: <><Emoji3D src="/3d/cow.png" size={16} />{t.common.livestock}</> },
+                      { value: "companion", label: <><PawPrint className="h-3.5 w-3.5" />{t.common.companion}</> },
+                      { value: "livestock", label: <><Tractor className="h-3.5 w-3.5" />{t.common.livestock}</> },
                     ]}
                   />
                 </div>
@@ -373,9 +375,9 @@ export function MapExperience() {
       {/* Mobile: chips on top, carousel at the bottom, sheet for details */}
       {!desktop && (
         <>
-          <div className="absolute inset-x-0 top-[76px] z-10 flex gap-2 overflow-x-auto px-3 pe-20 no-scrollbar">
+          <div className="absolute inset-x-0 top-[72px] z-20 flex gap-2 overflow-x-auto px-3 py-1 pe-20 no-scrollbar">
             <Chip active={emergency} color="#ff3b30" onClick={() => setEmergency((v) => !v)}>
-              <Emoji3D src="/3d/fire.png" size={18} /> {t.map.emergency}
+              <Flame className="h-4 w-4" /> {t.map.emergency}
             </Chip>
             <TriageChips value={triage} onChange={setTriage} />
           </div>
@@ -436,7 +438,7 @@ export function MapExperience() {
       {desktop && !service && (
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.6 }} className="absolute bottom-6 end-4 z-20">
           <Button size="lg" variant={emergency ? "danger" : "filled"} onClick={() => router.push("/report")}>
-            <Emoji3D src="/3d/camera.png" size={24} /> {t.map.reportHere}
+            <Camera className="h-5 w-5" /> {t.map.reportHere}
           </Button>
         </motion.div>
       )}
@@ -560,7 +562,7 @@ function TriageChips({ value, onChange }: { value: "all" | Triage; onChange: (v:
 function Empty({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center gap-3 py-14 text-center text-[14px] text-label-2">
-      <Emoji3D src="/3d/owl.png" size={64} />
+      <Mascot size={64} />
       {label}
     </div>
   );
@@ -647,7 +649,7 @@ function CaseQuickView({
         ) : (
           <motion.div key="cta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-4 flex gap-2">
             <Button size="lg" className="flex-1" variant={c.triage === "urgent" ? "danger" : "filled"} onClick={() => setHelpOpen(true)}>
-              <Emoji3D src="/3d/hearthands.png" size={24} /> {t.map.helpCta}
+              <HandHeart className="h-5 w-5" /> {t.map.helpCta}
             </Button>
             <ButtonLink href={`/cases/${c.id}`} size="lg" variant="tinted" className="px-5">
               <ChevronRight className="h-5 w-5 rtl:rotate-180" />
@@ -664,77 +666,96 @@ function CaseQuickView({
   );
 }
 
+/** Apple-Maps-style list: compact bar above the tab bar → full-width sheet (tab bar slides away). */
 function MobileListSheet({ items, onOpen }: { items: { c: Case; d: number }[]; onOpen: (c: Case) => void }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const urgent = items.filter((x) => x.c.triage === "urgent").length;
+  useEffect(() => {
+    setTabBarHidden(open);
+    return () => setTabBarHidden(false);
+  }, [open]);
   return (
-    <motion.div
-      initial={{ y: 200 }}
-      animate={{ y: 0, height: open ? "62svh" : 116 }}
-      exit={{ y: 200 }}
-      transition={{ type: "spring", stiffness: 300, damping: 34 }}
-      drag="y"
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={0.15}
-      onDragEnd={(_, info: PanInfo) => {
-        if (info.offset.y < -40) setOpen(true);
-        if (info.offset.y > 40) setOpen(false);
-      }}
-      className="glass-strong absolute inset-x-2 bottom-[86px] z-30 flex flex-col overflow-hidden rounded-[28px]"
-    >
-      <button type="button" onClick={() => setOpen((o) => !o)} className="shrink-0 touch-none px-4 pb-2 pt-2.5 text-start">
-        <span className="mx-auto mb-2 block h-1.5 w-10 rounded-full bg-label-3/60" />
-        <span className="flex items-center justify-between">
-          <span className="font-display text-[19px] font-extrabold">{t.map.nearby}</span>
-          <span className="flex items-center gap-2 text-[13px] font-semibold">
-            {urgent > 0 && <span className="rounded-full bg-urgent-soft px-2 py-0.5 text-urgent">{urgent} {t.map.zoneStats.urgent}</span>}
-            <span className="text-label-2">{t.map.results(items.length)}</span>
+    <>
+      <AnimatePresence>
+        {open && <motion.div key="dim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} className="absolute inset-0 z-[25] bg-black/20" />}
+      </AnimatePresence>
+      <motion.div
+        layout
+        initial={{ y: 160 }}
+        animate={{ y: 0 }}
+        exit={{ y: 160 }}
+        transition={{ type: "spring", stiffness: 340, damping: 34 }}
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.12}
+        onDragEnd={(_, info: PanInfo) => {
+          if (info.offset.y < -40 || info.velocity.y < -400) setOpen(true);
+          if (info.offset.y > 50 || info.velocity.y > 400) setOpen(false);
+        }}
+        className={cn(
+          "absolute z-30 flex flex-col overflow-hidden bg-surface shadow-[0_-8px_30px_-12px_rgba(0,0,0,0.25)]",
+          open ? "inset-x-0 bottom-0 h-[78svh] rounded-t-[30px]" : "inset-x-3 bottom-[88px] h-[60px] rounded-[22px]",
+        )}
+      >
+        <button type="button" onClick={() => setOpen((o) => !o)} className="flex shrink-0 touch-none flex-col items-center px-4 pt-2 text-start">
+          <span className="block h-1.5 w-9 rounded-full bg-label-3/50" />
+          <span className="mt-1.5 flex w-full items-center justify-between gap-2">
+            <span className="truncate font-display text-[17px] font-extrabold">{t.map.nearby}</span>
+            <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold">
+              {urgent > 0 && <span className="rounded-full bg-urgent-soft px-2 py-0.5 text-urgent">{urgent}</span>}
+              <span className="text-label-2">{t.map.results(items.length)}</span>
+              <ChevronRight className={cn("h-4 w-4 text-label-3 transition-transform", open ? "rotate-90" : "-rotate-90")} />
+            </span>
           </span>
-        </span>
-      </button>
-      {!open && items[0] && (
-        <div className="flex gap-2 overflow-x-auto px-3 pb-3 no-scrollbar">
-          {items.slice(0, 8).map(({ c }) => (
-            <button key={c.id} type="button" onClick={() => onOpen(c)} className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[14px]" style={{ boxShadow: `0 0 0 2px ${TRIAGE_HEX[c.triage]}` }}>
-              <CasePhoto photo={c.photos[0]} emoji={SPECIES_EMOJI[c.species]} emojiSize={28} sizes="48px" className="h-full w-full" />
-            </button>
-          ))}
-        </div>
-      )}
-      {open && (
-        <div onPointerDownCapture={(e) => e.stopPropagation()} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-3 no-scrollbar">
-          {items.map(({ c, d }) => (
-            <CaseRow key={c.id} c={c} distance={d} onClick={() => onOpen(c)} />
-          ))}
-        </div>
-      )}
-    </motion.div>
+        </button>
+        {open && (
+          <div onPointerDownCapture={(e) => e.stopPropagation()} className="mt-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-[max(16px,env(safe-area-inset-bottom))] no-scrollbar">
+            {items.map(({ c, d }) => (
+              <CaseRow key={c.id} c={c} distance={d} onClick={() => { setOpen(false); onOpen(c); }} />
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </>
   );
 }
 
+/** Detail sheet with detents: half → drag up for full → drag down back to half → drag down again to close. */
 function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const [full, setFull] = useState(false);
   const controls = useDragControls();
+  useEffect(() => {
+    setTabBarHidden(true);
+    return () => setTabBarHidden(false);
+  }, []);
   return (
     <motion.div
       initial={{ y: "100%" }}
-      animate={{ y: 0 }}
+      animate={{ y: 0, height: full ? "92svh" : "54svh" }}
       exit={{ y: "100%" }}
-      transition={{ type: "spring", stiffness: 300, damping: 34 }}
+      transition={{ type: "spring", stiffness: 320, damping: 34 }}
       drag="y"
       dragListener={false}
       dragControls={controls}
       dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0, bottom: 0.6 }}
+      dragElastic={{ top: 0.15, bottom: 0.7 }}
       onDragEnd={(_, info: PanInfo) => {
-        if (info.offset.y > 120 || info.velocity.y > 600) onClose();
+        const down = info.offset.y > 70 || info.velocity.y > 500;
+        const up = info.offset.y < -50 || info.velocity.y < -500;
+        if (up) setFull(true);
+        else if (down) {
+          if (full) setFull(false);
+          else onClose();
+        }
       }}
-      className="glass-strong absolute inset-x-0 bottom-0 z-[60] flex max-h-[68svh] flex-col rounded-t-[34px]"
+      className="absolute inset-x-0 bottom-0 z-[60] flex flex-col rounded-t-[30px] bg-surface shadow-[0_-10px_40px_-12px_rgba(0,0,0,0.35)]"
     >
-      <div onPointerDown={(e) => controls.start(e)} className="flex shrink-0 cursor-grab touch-none justify-center pb-2 pt-3">
+      <div onPointerDown={(e) => controls.start(e)} onClick={() => setFull((f) => !f)} className="flex shrink-0 cursor-grab touch-none justify-center pb-1 pt-2.5">
         <span className="h-1.5 w-10 rounded-full bg-label-3/60" />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-8 no-scrollbar">{children}</div>
     </motion.div>
   );
 }
+

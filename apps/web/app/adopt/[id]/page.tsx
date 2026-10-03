@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { ArrowLeft, Check, Syringe } from "lucide-react";
+import { ArrowLeft, Check, Syringe, Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -225,7 +225,7 @@ export default function AdoptionProfilePage() {
               <motion.div key="cta" className="flex items-center gap-3 ps-4">
                 <span className="flex-1 truncate text-[15px] font-semibold">{a.name} · {a.shelter.name}</span>
                 <Button onClick={() => (me ? setOpen(true) : router.push(`/login?next=/adopt/${a.id}`))}>
-                  <Emoji3D src="/3d/heart.png" size={20} /> {t.adopt.cta}
+                  <Heart className="h-[18px] w-[18px] fill-current" /> {t.adopt.cta}
                 </Button>
               </motion.div>
             )}

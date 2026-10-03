@@ -147,6 +147,10 @@ export function MapView({
         attributionControl={{ compact: true }}
         dragRotate={interactive}
         maxPitch={70}
+        // Algeria only (+ a little sea): no more world map
+        maxBounds={[-10.5, 17.5, 13.5, 38.8]}
+        minZoom={4.2}
+        renderWorldCopies={false}
         onLoad={() => {
           setLoaded(true);
           syncView();

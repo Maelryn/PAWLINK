@@ -6,10 +6,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AppIcon } from "@/components/brand/Logo";
+
+/** Lowercase rounded wordmark, same as the brand lockup. */
+function Wordmark() {
+  return <span className="bg-gradient-to-r from-[#1f8bff] via-[#3d6bff] to-[#7b4dff] bg-clip-text font-display text-[22px] font-black leading-none tracking-[-0.03em] text-transparent">pawlink</span>;
+}
 import { ButtonLink } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/primitives";
 import { signOut, useSession } from "@/lib/auth";
 import { useStore } from "@/lib/store";
+import { useTabBarHidden } from "@/lib/ui";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +59,7 @@ export function TopNav({ floating = false }: { floating?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   useMotionValueEvent(scrollY, "change", (v) => setScrolled(v > 12));
 
+  const onLanding = pathname === "/";
   const links = [
     { href: "/map", label: t.nav.map },
     { href: "/adopt", label: t.nav.adopt },
@@ -72,14 +79,14 @@ export function TopNav({ floating = false }: { floating?: boolean }) {
         <nav
           className={cn(
             "pointer-events-auto flex h-14 w-full max-w-[1100px] items-center gap-1 rounded-full pe-2 ps-3 transition-all duration-500",
-            scrolled || floating ? "glass glass-sheen" : "border border-transparent bg-transparent",
+            // phones: no bar on app pages, just floating round buttons (iOS style)
+            onLanding || scrolled || floating ? "md:glass md:glass-sheen" : "md:border md:border-transparent",
+            onLanding && scrolled && "glass glass-sheen",
           )}
         >
-          <Link href="/" className="flex items-center gap-2 pe-2" dir="ltr">
+          <Link href="/" className={cn("items-center gap-2 pe-2", onLanding ? "flex" : "hidden md:flex")} dir="ltr">
             <AppIcon className="h-8 w-8" />
-            <span className="text-[18px] font-semibold tracking-[-0.03em]">
-              Paw<span className="text-accent">Link</span>
-            </span>
+            <Wordmark />
           </Link>
 
           <div className="mx-auto hidden items-center gap-1 md:flex">
@@ -95,7 +102,7 @@ export function TopNav({ floating = false }: { floating?: boolean }) {
           </div>
 
           <div className="ms-auto flex items-center gap-0.5 md:ms-0">
-            <Link href="/settings" aria-label={t.acct.tabs.settings} className={cn(iconBtn, "w-10 px-0")}>
+            <Link href="/settings" aria-label={t.acct.tabs.settings} className={cn(iconBtn, "w-10 px-0 max-md:bg-surface max-md:shadow-[0_2px_10px_rgba(0,0,0,0.08)]")}>
               <Settings className="h-[18px] w-[18px]" />
             </Link>
             <ButtonLink href="/report" size="sm" className="ms-1 hidden sm:inline-flex">
@@ -118,7 +125,7 @@ function NotificationBell() {
   const unread = useStore((s) => s.notifications.filter((n) => n.userId === user?.id && !n.read).length);
   if (!user) return null;
   return (
-    <Link href="/account?tab=notifications" aria-label={t.notif.title} className={cn(iconBtn, "relative w-10 px-0")}>
+    <Link href="/account?tab=notifications" aria-label={t.notif.title} className={cn(iconBtn, "relative w-10 px-0 max-md:ms-1.5 max-md:bg-surface max-md:shadow-[0_2px_10px_rgba(0,0,0,0.08)]")}>
       <Bell className="h-[18px] w-[18px]" />
       {unread > 0 && (
         <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute end-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-urgent px-1 text-[10px] font-bold text-white">
@@ -176,6 +183,7 @@ function AccountMenu() {
 /** iOS-style floating tab bar on phones. Always visible (pages pad their bottom by 96px). */
 function MobileTabBar() {
   const { t } = useI18n();
+  const hidden = useTabBarHidden();
   const pathname = usePathname();
   const user = useSession();
   const tabs = [
@@ -186,7 +194,11 @@ function MobileTabBar() {
     user ? { href: user.role === "admin" && pathname.startsWith("/admin") ? "/admin" : "/account", label: t.account.mySpace, icon: UserIcon } : { href: "/login", label: t.nav.signIn, icon: UserIcon },
   ];
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[55] flex justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom))] md:hidden">
+    <motion.div
+      animate={{ y: hidden ? 120 : 0, opacity: hidden ? 0 : 1 }}
+      transition={{ type: "spring", stiffness: 380, damping: 36 }}
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[55] flex justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom))] md:hidden"
+    >
       <nav className="glass-strong pointer-events-auto flex h-[64px] w-full max-w-[420px] items-center justify-around rounded-full px-2">
         {tabs.map((tab) => {
           const active = pathname.startsWith(tab.href);
@@ -205,6 +217,6 @@ function MobileTabBar() {
           );
         })}
       </nav>
-    </div>
+    </motion.div>
   );
 }

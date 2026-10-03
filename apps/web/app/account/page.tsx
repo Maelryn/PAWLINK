@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, Home, MapPin, Settings, User as UserIcon } from "lucide-react";
+import { Mascot } from "@/components/brand/Mascot";
+import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, Home, MapPin, Settings, User as UserIcon, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -136,10 +137,10 @@ function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <ButtonLink href="/report" size="lg" className="w-full">
-          <Emoji3D src="/3d/camera.png" size={22} /> {t.acct.reportCta}
+          <Camera className="h-[18px] w-[18px]" /> {t.acct.reportCta}
         </ButtonLink>
         <ButtonLink href="/adopt/new" size="lg" variant="tinted" className="w-full">
-          <Emoji3D src="/3d/home.png" size={22} /> {t.market.post}
+          <PlusCircle className="h-[18px] w-[18px]" /> {t.market.post}
         </ButtonLink>
       </div>
       <section className="card rounded-[28px] p-3">
@@ -237,7 +238,7 @@ function MyReports({ me }: { me: User }) {
   if (!mine.length)
     return (
       <section className={cn(card, "flex flex-col items-center gap-3 py-12 text-center")}>
-        <Emoji3D src="/3d/owl.png" size={72} />
+        <Mascot size={72} />
         <p className="text-label-2">{t.acct.noReports}</p>
         <ButtonLink href="/report">{t.acct.reportCta}</ButtonLink>
       </section>
