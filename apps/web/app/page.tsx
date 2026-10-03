@@ -1,7 +1,7 @@
 "use client";
 
 import { Hero } from "@/components/landing/Hero";
-import { Bento, FinalCTA, Footer, MapReveal, StatsBand } from "@/components/landing/Sections";
+import { Bento, FinalCTA, Footer, MapReveal, QuickActions } from "@/components/landing/Sections";
 import { TopNav } from "@/components/layout/TopNav";
 
 export default function Home() {
@@ -12,7 +12,7 @@ export default function Home() {
         <Hero />
         <MapReveal />
         <Bento />
-        <StatsBand />
+        <QuickActions />
         <FinalCTA />
       </main>
       <Footer />

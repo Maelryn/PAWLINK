@@ -7,14 +7,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 import { AICard } from "@/components/cases/AICard";
-import { CaseCard, CaseRow, HelpPicker } from "@/components/cases/CaseBits";
+import { CaseRow, HelpPicker } from "@/components/cases/CaseBits";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Avatar, CasePhoto, Chip, Emoji3D, Segmented, Stars, TimeAgo, TriageBadge } from "@/components/ui/primitives";
 import { useCaseAI } from "@/lib/ai/useCaseAI";
 import { useI18n } from "@/lib/i18n";
 import { EMERGENCY_ZONES } from "@/lib/mock/data";
-import { LIVESTOCK, SERVICE_EMOJI, SPECIES_EMOJI, TRIAGE_ORDER } from "@/lib/species";
+import { LIVESTOCK, SERVICE_EMOJI, SPECIES_EMOJI, TRIAGE_HEX, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, store, useStore } from "@/lib/store";
 import { gmaps } from "@/lib/trust";
 import { TrustBadge } from "@/components/cases/Trust";
@@ -311,7 +311,7 @@ export function MapExperience() {
           initial={{ x: -40, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 26, delay: 0.2 }}
-          className="glass-strong absolute bottom-4 start-4 top-[84px] z-20 flex w-[400px] flex-col overflow-hidden rounded-[34px]"
+          className="glass-strong absolute bottom-4 start-4 top-[84px] z-20 flex w-[340px] flex-col overflow-hidden rounded-[30px] xl:w-[370px]"
         >
           <AnimatePresence mode="popLayout" initial={false}>
             {selected ? (
@@ -381,11 +381,7 @@ export function MapExperience() {
           </div>
           <AnimatePresence>
             {!selected && (
-              <MobileCarousel
-                items={cases.slice(0, 15)}
-                onFocus={(c) => mapRef.current?.flyTo({ center: [c.location.lng, c.location.lat], zoom: Math.max(mapRef.current.getZoom(), 9), offset: [0, -110], duration: 1000 })}
-                onOpen={(c) => select(c.id)}
-              />
+              <MobileListSheet items={cases} onOpen={(c) => select(c.id)} />
             )}
           </AnimatePresence>
           <AnimatePresence>
@@ -668,42 +664,55 @@ function CaseQuickView({
   );
 }
 
-function MobileCarousel({ items, onFocus, onOpen }: { items: { c: Case; d: number }[]; onFocus: (c: Case) => void; onOpen: (c: Case) => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [idx, setIdx] = useState(0);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+function MobileListSheet({ items, onOpen }: { items: { c: Case; d: number }[]; onOpen: (c: Case) => void }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const urgent = items.filter((x) => x.c.triage === "urgent").length;
   return (
     <motion.div
-      initial={{ y: 140, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 140, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 260, damping: 28 }}
-      className="absolute inset-x-0 bottom-[92px] z-10"
+      initial={{ y: 200 }}
+      animate={{ y: 0, height: open ? "62svh" : 116 }}
+      exit={{ y: 200 }}
+      transition={{ type: "spring", stiffness: 300, damping: 34 }}
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={0.15}
+      onDragEnd={(_, info: PanInfo) => {
+        if (info.offset.y < -40) setOpen(true);
+        if (info.offset.y > 40) setOpen(false);
+      }}
+      className="glass-strong absolute inset-x-2 bottom-[86px] z-30 flex flex-col overflow-hidden rounded-[28px]"
     >
-      <div
-        ref={ref}
-        onScroll={(e) => {
-          const el = e.currentTarget;
-          clearTimeout(timer.current);
-          timer.current = setTimeout(() => {
-            const i = Math.round(Math.abs(el.scrollLeft) / 298);
-            if (i !== idx && items[i]) {
-              setIdx(i);
-              onFocus(items[i].c);
-            }
-          }, 140);
-        }}
-        className="flex snap-x snap-mandatory gap-2 overflow-x-auto px-[calc(50%-145px)] pb-2 no-scrollbar"
-      >
-        {items.map(({ c, d }, i) => (
-          <CaseCard key={c.id} c={c} distance={d} active={i === idx} onClick={() => onOpen(c)} />
-        ))}
-      </div>
+      <button type="button" onClick={() => setOpen((o) => !o)} className="shrink-0 touch-none px-4 pb-2 pt-2.5 text-start">
+        <span className="mx-auto mb-2 block h-1.5 w-10 rounded-full bg-label-3/60" />
+        <span className="flex items-center justify-between">
+          <span className="font-display text-[19px] font-extrabold">{t.map.nearby}</span>
+          <span className="flex items-center gap-2 text-[13px] font-semibold">
+            {urgent > 0 && <span className="rounded-full bg-urgent-soft px-2 py-0.5 text-urgent">{urgent} {t.map.zoneStats.urgent}</span>}
+            <span className="text-label-2">{t.map.results(items.length)}</span>
+          </span>
+        </span>
+      </button>
+      {!open && items[0] && (
+        <div className="flex gap-2 overflow-x-auto px-3 pb-3 no-scrollbar">
+          {items.slice(0, 8).map(({ c }) => (
+            <button key={c.id} type="button" onClick={() => onOpen(c)} className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[14px]" style={{ boxShadow: `0 0 0 2px ${TRIAGE_HEX[c.triage]}` }}>
+              <CasePhoto photo={c.photos[0]} emoji={SPECIES_EMOJI[c.species]} emojiSize={28} sizes="48px" className="h-full w-full" />
+            </button>
+          ))}
+        </div>
+      )}
+      {open && (
+        <div onPointerDownCapture={(e) => e.stopPropagation()} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-3 no-scrollbar">
+          {items.map(({ c, d }) => (
+            <CaseRow key={c.id} c={c} distance={d} onClick={() => onOpen(c)} />
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }
 
-/** Content scrolls normally (mouse wheel / touch); only the handle drags the sheet down to close. */
 function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   const controls = useDragControls();
   return (

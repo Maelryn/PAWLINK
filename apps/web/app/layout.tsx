@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans_Arabic, Inter } from "next/font/google";
+import { IBM_Plex_Sans_Arabic, Inter, Nunito } from "next/font/google";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 import { Providers } from "@/components/layout/Providers";
 import { THEME_SCRIPT } from "@/lib/theme";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
+// Rounded display face for headings (Apple devices use the system SF Pro Rounded via ui-rounded)
+const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"], weight: ["700", "800", "900"], display: "swap" });
 const plexArabic = IBM_Plex_Sans_Arabic({
   variable: "--font-plex-arabic",
   subsets: ["arabic"],
@@ -28,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" dir="ltr" suppressHydrationWarning className={`${inter.variable} ${plexArabic.variable} h-full`}>
+    <html lang="fr" dir="ltr" suppressHydrationWarning className={`${inter.variable} ${nunito.variable} ${plexArabic.variable} h-full`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

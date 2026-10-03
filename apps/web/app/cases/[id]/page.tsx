@@ -68,31 +68,49 @@ export default function CasePage() {
           </button>
         </div>
 
+        {/* Photo stays clean; details live in a sheet under it (iOS detail-view pattern) */}
         <motion.div
           initial={{ opacity: 0, scale: 0.97, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 24 }}
-          className="relative overflow-hidden rounded-[40px]"
+          className="overflow-hidden rounded-[36px] bg-surface shadow-[var(--card-shadow)]"
         >
-          <CasePhoto photo={c.photos[0]} emoji={SPECIES_EMOJI[c.species]} emojiSize={200} sizes="1200px" priority className="h-[42svh] min-h-[300px] w-full" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-10">
+          <div className="relative">
+            <CasePhoto photo={c.photos[0]} emoji={SPECIES_EMOJI[c.species]} emojiSize={200} sizes="1200px" priority className="h-[46svh] max-h-[520px] min-h-[280px] w-full" />
+            <span className="glass absolute end-4 top-4 flex h-11 items-center gap-1.5 rounded-full pe-4 ps-2 text-[14px] font-semibold">
+              <Emoji3D src={SPECIES_EMOJI[c.species]} size={28} /> {t.common.species[c.species]}
+              {(c.count ?? 1) > 1 && ` ×${c.count}`}
+            </span>
+          </div>
+          <div className="relative -mt-7 rounded-t-[30px] bg-surface p-5 sm:p-7">
             <div className="flex flex-wrap items-center gap-2">
-              <TriageBadge triage={c.triage} size="lg" className="bg-white/90" />
-              <span className="glass rounded-full px-3 py-1.5 text-[13px] font-semibold text-label">{t.common.status[c.status]}</span>
-              {zone && <span className="rounded-full bg-urgent px-3 py-1.5 text-[13px] font-semibold">🔥 {t.case.inZone}</span>}
-              {c.trust && <TrustBadge level={c.trust.level} className="bg-white/90" />}
+              <TriageBadge triage={c.triage} size="lg" />
+              <span className="rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold text-label-2">{t.common.status[c.status]}</span>
+              {zone && <span className="rounded-full bg-urgent-soft px-3 py-1.5 text-[13px] font-semibold text-urgent">🔥 {t.case.inZone}</span>}
+              {c.trust && <TrustBadge level={c.trust.level} />}
             </div>
-            <h1 className="mt-3 text-[34px] font-bold leading-[1.05] tracking-[-0.035em] sm:text-[52px]">{c.title}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 text-[15px] text-white/80">
-              <span className="flex items-center gap-1.5">
-                <Emoji3D src={SPECIES_EMOJI[c.species]} size={22} /> {t.common.species[c.species]}
-                {(c.count ?? 1) > 1 && ` ×${c.count}`}
-              </span>
-              <span>·</span>
-              <a href={gmaps(c.location)} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">📍 {c.location.address}</a>
-              <span>·</span>
-              <TimeAgo iso={c.createdAt} />
+            <h1 className="mt-3 text-[28px] font-extrabold leading-[1.1] sm:text-[40px]">{c.title}</h1>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <a href={gmaps(c.location)} target="_blank" rel="noopener noreferrer" className="col-span-2 flex items-center gap-3 rounded-[18px] bg-surface-2 p-3 transition-colors hover:bg-surface-3 sm:col-span-1">
+                <Emoji3D src="/3d/pin.png" size={30} />
+                <span className="min-w-0">
+                  <span className="block text-[11.5px] font-semibold uppercase tracking-wide text-label-2">{t.case.location}</span>
+                  <span className="block truncate text-[14.5px] font-semibold text-accent">{c.location.address}</span>
+                </span>
+              </a>
+              <div className="flex items-center gap-3 rounded-[18px] bg-surface-2 p-3">
+                <Emoji3D src="/3d/bell.png" size={30} />
+                <span className="min-w-0">
+                  <span className="block text-[11.5px] font-semibold uppercase tracking-wide text-label-2">{t.case.created}</span>
+                  <span className="block text-[14.5px] font-semibold"><TimeAgo iso={c.createdAt} /></span>
+                </span>
+              </div>
+              <div className="flex items-center gap-3 rounded-[18px] bg-surface-2 p-3">
+                <Emoji3D src="/3d/hearthands.png" size={30} />
+                <span className="min-w-0">
+                  <span className="block text-[14.5px] font-semibold">{t.common.helpers(c.helpers.length)}</span>
+                </span>
+              </div>
             </div>
           </div>
         </motion.div>

@@ -27,7 +27,7 @@ export default function AdoptPage() {
             <div className="flex items-center gap-2 text-[15px] font-semibold text-[#ff2d55]">
               <Emoji3D src="/3d/heart.png" size={22} /> {t.nav.adopt}
             </div>
-            <h1 className="mt-1 text-[44px] font-bold leading-[1.02] tracking-[-0.045em] sm:text-[64px]">{t.adopt.title}</h1>
+            <h1 className="mt-1 text-[40px] font-black leading-[1.02] sm:text-[56px]">{t.adopt.title}</h1>
             <p className="mt-3 max-w-[560px] text-[17px] text-label-2">{t.adopt.subtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -47,44 +47,27 @@ export default function AdoptPage() {
           </div>
         </Reveal>
 
-        <motion.div layout className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <motion.div layout className="mt-8 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
           <AnimatePresence mode="popLayout">
             {list.map((a, i) => (
-              <motion.div
-                key={a.id}
-                layout
-                initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 260, damping: 26, delay: i * 0.05 }}
-              >
-                <Link href={`/adopt/${a.id}`} className="group block">
-                  <motion.div
-                    whileHover={{ y: -6 }}
-                    whileTap={{ scale: 0.97 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                    className="relative h-[440px] overflow-hidden rounded-[36px] shadow-[var(--card-shadow)] transition-shadow duration-500 group-hover:shadow-[var(--card-shadow-hover)]"
-                  >
-                    <Image src={a.photos[0]} alt={a.name} fill unoptimized={a.photos[0].startsWith("data:")} sizes="(min-width:1024px) 380px, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
-                    <div className="absolute start-5 top-5 text-[12px] font-bold uppercase tracking-wider text-white/85">{a.shelter.name}</div>
-                    <span className="glass absolute end-4 top-4 flex h-11 w-11 items-center justify-center rounded-full">
-                      <Emoji3D src={SPECIES_EMOJI[a.species]} size={26} />
+              <motion.div key={a.id} layout initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 280, damping: 26, delay: Math.min(i * 0.04, 0.3) }}>
+                <Link href={`/adopt/${a.id}`} className="group block active:scale-[0.98]">
+                  <div className="relative aspect-[4/5] overflow-hidden rounded-[24px] bg-surface-2 shadow-[var(--card-shadow)]">
+                    <Image src={a.photos[0]} alt={a.name} fill unoptimized={a.photos[0].startsWith("data:")} sizes="(min-width:1024px) 280px, 50vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <span className="glass absolute end-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full">
+                      <Emoji3D src="/3d/heart.png" size={20} />
                     </span>
-                    <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-                      <div className="text-[34px] font-bold tracking-[-0.035em]">{a.name}</div>
-                      <div className="text-[15px] text-white/80">
-                        {a.breed} · {t.adopt.age(a.ageMonths)} · {t.adopt.sex[a.sex]}
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {a.behavior.slice(0, 2).map((b) => (
-                          <span key={b} className="rounded-full bg-white/20 px-3 py-1 text-[12.5px] font-medium backdrop-blur-md">
-                            {b}
-                          </span>
-                        ))}
-                      </div>
+                    <span className="absolute bottom-2.5 start-2.5 flex items-center gap-1 rounded-full bg-white/90 py-0.5 pe-2.5 ps-1 text-[12px] font-bold text-[#1d1d1f]">
+                      <Emoji3D src={SPECIES_EMOJI[a.species]} size={18} /> {t.adopt.age(a.ageMonths)}
+                    </span>
+                  </div>
+                  <div className="px-1 pt-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-display text-[18px] font-extrabold">{a.name}</span>
+                      <span className="shrink-0 text-[13px] font-semibold text-label-2">{a.sex === "male" ? "♂" : "♀"}</span>
                     </div>
-                  </motion.div>
+                    <div className="truncate text-[12.5px] text-label-2">{a.breed} · {a.location.address}</div>
+                  </div>
                 </Link>
               </motion.div>
             ))}

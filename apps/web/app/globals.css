@@ -4,7 +4,7 @@
 
 /* ───────────────────────── Design tokens ───────────────────────── */
 :root {
-  --bg: #f5f5f7;
+  --bg: #f4f3f8;
   --bg-elevated: #fbfbfd;
   --surface: #ffffff;
   --surface-2: #f2f2f7;
@@ -94,6 +94,7 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", var(--font-inter), system-ui,
     sans-serif;
   --font-arabic: "SF Arabic", var(--font-plex-arabic), var(--font-inter), system-ui, sans-serif;
+  --font-display: ui-rounded, "SF Pro Rounded", var(--font-nunito), var(--font-inter), system-ui, sans-serif;
 
   --radius-squircle: 22px;
   --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
@@ -117,6 +118,20 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.011em;
+}
+
+/* Headings use the rounded display face: friendlier, more "iOS app" than "website" */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+html[dir="rtl"] h3 {
+  font-family: var(--font-arabic);
 }
 
 html[dir="rtl"] body {

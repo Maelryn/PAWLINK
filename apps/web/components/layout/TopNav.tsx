@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
-import { Bell, Check, Globe, Heart, LayoutGrid, LogOut, Map, Moon, Plus, Shield, Sparkles, Stethoscope, Sun, SunMoon, User as UserIcon } from "lucide-react";
+import { Bell, Heart, LayoutGrid, LogOut, Map, Plus, Settings, Shield, Sparkles, Stethoscope, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -10,8 +10,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/primitives";
 import { signOut, useSession } from "@/lib/auth";
 import { useStore } from "@/lib/store";
-import { DICTS, LOCALES, useI18n } from "@/lib/i18n";
-import { useTheme, type ThemeMode } from "@/lib/theme";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 function useClickOutside(onOut: () => void) {
@@ -96,8 +95,9 @@ export function TopNav({ floating = false }: { floating?: boolean }) {
           </div>
 
           <div className="ms-auto flex items-center gap-0.5 md:ms-0">
-            <LanguageMenu />
-            <ThemeMenu />
+            <Link href="/settings" aria-label={t.acct.tabs.settings} className={cn(iconBtn, "w-10 px-0")}>
+              <Settings className="h-[18px] w-[18px]" />
+            </Link>
             <ButtonLink href="/report" size="sm" className="ms-1 hidden sm:inline-flex">
               <Plus className="h-4 w-4" strokeWidth={2.6} />
               {t.nav.report}
@@ -109,59 +109,6 @@ export function TopNav({ floating = false }: { floating?: boolean }) {
       </motion.header>
       <MobileTabBar />
     </>
-  );
-}
-
-function ThemeMenu() {
-  const { t } = useI18n();
-  const { mode, resolved, setMode } = useTheme();
-  const [open, setOpen] = useState(false);
-  const ref = useClickOutside(() => setOpen(false));
-  const opts: { m: ThemeMode; label: string; hint?: string; Icon: typeof Sun }[] = [
-    { m: "auto", label: t.theme.auto, hint: t.theme.autoHint, Icon: SunMoon },
-    { m: "light", label: t.theme.light, Icon: Sun },
-    { m: "dark", label: t.theme.dark, Icon: Moon },
-  ];
-  return (
-    <div ref={ref} className="relative">
-      <button type="button" aria-label={t.theme.title} onClick={() => setOpen((o) => !o)} className={cn(iconBtn, "w-10 px-0")}>
-        {resolved === "dark" ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
-      </button>
-      <Menu open={open} className="w-56">
-        {opts.map(({ m, label, hint, Icon }) => (
-          <button key={m} type="button" onClick={() => { setMode(m); setOpen(false); }} className={item}>
-            <Icon className="h-4 w-4 text-label-2" />
-            <span className="flex-1 text-start">
-              {label}
-              {hint && <span className="block text-[11.5px] font-normal text-label-2">{hint}</span>}
-            </span>
-            {mode === m && <Check className="h-4 w-4 text-accent" strokeWidth={2.6} />}
-          </button>
-        ))}
-      </Menu>
-    </div>
-  );
-}
-
-function LanguageMenu() {
-  const { locale, setLocale, t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const ref = useClickOutside(() => setOpen(false));
-  return (
-    <div ref={ref} className="relative">
-      <button type="button" aria-label={t.common.language} onClick={() => setOpen((o) => !o)} className={cn(iconBtn, "text-[13px] font-semibold")}>
-        <Globe className="h-[17px] w-[17px]" />
-        <span className="hidden sm:inline">{DICTS[locale].meta.short}</span>
-      </button>
-      <Menu open={open} className="w-44">
-        {LOCALES.map((l) => (
-          <button key={l} type="button" onClick={() => { setLocale(l); setOpen(false); }} className={cn(item, "justify-between")}>
-            <span>{DICTS[l].meta.name}</span>
-            {l === locale && <Check className="h-4 w-4 text-accent" strokeWidth={2.6} />}
-          </button>
-        ))}
-      </Menu>
-    </div>
   );
 }
 

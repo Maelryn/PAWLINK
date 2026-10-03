@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, Home, LogOut, MapPin, Settings, User as UserIcon } from "lucide-react";
+import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, Home, MapPin, Settings, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -10,14 +10,14 @@ import { MyAdoptions } from "@/components/adopt/AdoptionPanels";
 import { CaseRow } from "@/components/cases/CaseBits";
 import { TrustBadge } from "@/components/cases/Trust";
 import { BusinessPanel } from "@/components/account/BusinessPanel";
+import { SettingsPanel } from "@/components/account/SettingsPanel";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { Avatar, Emoji3D, Segmented, TimeAgo } from "@/components/ui/primitives";
-import { signOut, useSession } from "@/lib/auth";
-import { DICTS, LOCALES, useI18n } from "@/lib/i18n";
+import { Avatar, Emoji3D, TimeAgo } from "@/components/ui/primitives";
+import { useSession } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, store, useStore } from "@/lib/store";
-import { useTheme, type ThemeMode } from "@/lib/theme";
 import type { HelpType, User } from "@/lib/types";
 import { cn, distanceKm } from "@/lib/utils";
 
@@ -96,7 +96,7 @@ function Account() {
             {tab === "adoption" && <MyAdoptions me={me} />}
             {tab === "pro" && <BusinessPanel me={me} />}
             {tab === "notifications" && <Notifications me={me} />}
-            {tab === "settings" && <SettingsTab me={me} />}
+            {tab === "settings" && <SettingsTab />}
           </motion.main>
         </div>
       </div>
@@ -287,31 +287,6 @@ function Notifications({ me }: { me: User }) {
   );
 }
 
-function SettingsTab({ me }: { me: User }) {
-  const { t, locale, setLocale } = useI18n();
-  const { mode, setMode } = useTheme();
-  const router = useRouter();
-  return (
-    <section className={cn(card, "space-y-5")}>
-      <div>
-        <div className="mb-2 text-[13px] font-semibold text-label-2">{t.acct.language}</div>
-        <Segmented layoutId="set-lang" className="w-full [&>button]:flex-1" value={locale} onChange={setLocale} options={LOCALES.map((l) => ({ value: l, label: DICTS[l].meta.name }))} />
-      </div>
-      <div>
-        <div className="mb-2 text-[13px] font-semibold text-label-2">{t.acct.theme}</div>
-        <Segmented<ThemeMode> layoutId="set-theme" className="w-full [&>button]:flex-1" value={mode} onChange={setMode} options={[{ value: "auto", label: t.theme.auto }, { value: "light", label: t.theme.light }, { value: "dark", label: t.theme.dark }]} />
-      </div>
-      <div className="space-y-2 border-t border-separator pt-4">
-        <button type="button" onClick={() => { store.resetDemo(); toast(t.acct.resetDone); }} className="flex w-full items-center justify-between rounded-[16px] bg-surface-2 px-4 py-3 text-[14.5px] font-medium">
-          {t.acct.resetDemo} <ChevronRight className="h-4 w-4 text-label-3 rtl:rotate-180" />
-        </button>
-        <button type="button" onClick={() => { signOut(); router.push("/"); }} className="flex w-full items-center gap-2 rounded-[16px] bg-surface-2 px-4 py-3 text-[14.5px] font-semibold text-urgent">
-          <LogOut className="h-4 w-4" /> {t.account.signOut}
-        </button>
-        <button type="button" onClick={() => { if (confirm(t.acct.deleteConfirm)) { store.deleteAccount(me.id); router.push("/"); } }} className="w-full px-4 py-2 text-start text-[13px] text-label-2 underline-offset-2 hover:underline">
-          {t.acct.delete}
-        </button>
-      </div>
-    </section>
-  );
+function SettingsTab() {
+  return <SettingsPanel />;
 }

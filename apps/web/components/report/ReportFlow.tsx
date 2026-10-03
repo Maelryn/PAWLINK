@@ -11,11 +11,12 @@ import { AICard } from "@/components/cases/AICard";
 import { TopNav } from "@/components/layout/TopNav";
 import { MapView } from "@/components/map";
 import { Button } from "@/components/ui/Button";
-import { Emoji3D, Segmented } from "@/components/ui/primitives";
+import { Emoji3D } from "@/components/ui/primitives";
 import { TrustBadge } from "@/components/cases/Trust";
 import { toast } from "sonner";
 import { useSession } from "@/lib/auth";
 import { computeTrust, inAlgeria } from "@/lib/trust";
+import { useDevicePosition } from "@/components/layout/GeoGate";
 import { analyzeAsync } from "@/lib/ai/analyze";
 import { useI18n } from "@/lib/i18n";
 import { ALL_SPECIES, LIVESTOCK, SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
@@ -29,6 +30,8 @@ const TAGS = ["injured", "bleeding", "burned", "trapped", "smoke", "breathing", 
 const DEFAULT_POINT: GeoPoint = { lat: 36.6455, lng: 4.1979, address: "Larbaâ Nath Irathen, Tizi Ouzou" };
 
 type Phase = "form" | "analyzing" | "result";
+/** You must be this close to the animal to report it. */
+const MAX_KM = 2;
 type Exif = { gps: GeoPoint | null; date: Date | null; old?: boolean };
 
 /** Name the spot after the closest known locality (stand-in for reverse geocoding). */
@@ -50,9 +53,10 @@ export function ReportFlow() {
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [exif, setExif] = useState<Exif | null>(null);
-  const [device, setDevice] = useState<GeoPoint | null>(null);
-  const [onSite, setOnSite] = useState(true);
-  const [point, setPoint] = useState<GeoPoint>(DEFAULT_POINT);
+  // Position checked by <GeoGate>: the reporter must be in Algeria and near the animal.
+  const device = useDevicePosition() ?? DEFAULT_POINT;
+  const [point, setPoint] = useState<GeoPoint>(device);
+  const distFromMe = distanceKm(device, point);
   const [address, setAddress] = useState("");
   const [species, setSpecies] = useState<Species | null>(null);
   const [count, setCount] = useState(1);
@@ -69,16 +73,12 @@ export function ReportFlow() {
     setDir(n > step ? 1 : -1);
     setStep(n);
   };
-  const canNext = [true, true, !!species, tags.length > 0 || desc.trim().length > 6][step];
-
-  // Device position (for the "reporter is near the animal" check). Silent if refused.
-  useEffect(() => {
-    navigator.geolocation?.getCurrentPosition((p) => setDevice({ lat: p.coords.latitude, lng: p.coords.longitude }), () => {}, { timeout: 8000 });
-  }, []);
+  const canNext = [true, distFromMe <= MAX_KM, !!species, tags.length > 0 || desc.trim().length > 6][step];
 
   const submit = async () => {
     const location = { ...point, address: address || point.address || nearestPlace(point) };
     if (!inAlgeria(location)) return toast.error(t.trust.outside);
+    if (distFromMe > MAX_KM) return toast.error(t.geo.tooFar(t.common.km(distFromMe)));
     const recentReports = store.recentReportsBy(me.id);
     if (recentReports >= 5) return toast.error(t.trust.tooMany);
     const trust = computeTrust({
@@ -87,7 +87,7 @@ export function ReportFlow() {
       hasPhoto: !!photo,
       exifGps: exif?.gps,
       exifDate: exif?.date,
-      device: onSite ? device : null,
+      device,
       duplicatePhoto: !!photo && photo.startsWith("data:") && allCases.some((c) => c.photos.includes(photo)),
       recentReports,
     });
@@ -108,7 +108,7 @@ export function ReportFlow() {
       reporter: { id: me.id, name: me.name, avatar: me.avatar },
       ai: result,
       emergencyZoneId: Math.abs(location.lat - 36.632) < 0.07 && Math.abs(location.lng - 4.205) < 0.11 ? "z1" : undefined,
-      reporterOnSite: onSite,
+      reporterOnSite: true,
       trust,
       moderation: trust.level === "suspicious" ? "pending" : "approved",
       helpers: [],
@@ -168,9 +168,9 @@ export function ReportFlow() {
                     transition={{ type: "spring", stiffness: 320, damping: 32 }}
                   >
                     {step === 0 && <PhotoStep photo={photo} setPhoto={setPhoto} exif={exif} setExif={setExif} point={point} />}
-                    {step === 1 && <LocationStep point={point} setPoint={setPoint} address={address} setAddress={setAddress} />}
+                    {step === 1 && <LocationStep point={point} setPoint={setPoint} address={address} setAddress={setAddress} device={device} />}
                     {step === 2 && <AnimalStep species={species} setSpecies={setSpecies} count={count} setCount={setCount} />}
-                    {step === 3 && <SituationStep tags={tags} setTags={setTags} desc={desc} setDesc={setDesc} onSite={onSite} setOnSite={setOnSite} />}
+                    {step === 3 && <SituationStep tags={tags} setTags={setTags} desc={desc} setDesc={setDesc} />}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -392,24 +392,16 @@ function PhotoStep({
   );
 }
 
-function LocationStep({ point, setPoint, address, setAddress }: { point: GeoPoint; setPoint: (p: GeoPoint) => void; address: string; setAddress: (a: string) => void }) {
+function LocationStep({ point, setPoint, address, setAddress, device }: { point: GeoPoint; setPoint: (p: GeoPoint) => void; address: string; setAddress: (a: string) => void; device: GeoPoint }) {
   const { t } = useI18n();
   const mapRef = useRef<MapRef | null>(null);
-  const [locating, setLocating] = useState(false);
   const [moving, setMoving] = useState(false);
+  const dist = distanceKm(device, point);
+  const tooFar = dist > MAX_KM;
 
   const locate = () => {
-    setLocating(true);
-    navigator.geolocation?.getCurrentPosition(
-      (p) => {
-        const np = { lat: p.coords.latitude, lng: p.coords.longitude };
-        setPoint(np);
-        mapRef.current?.flyTo({ center: [np.lng, np.lat], zoom: 15, duration: 1400 });
-        setLocating(false);
-      },
-      () => setLocating(false),
-      { timeout: 6000 },
-    );
+    setPoint(device);
+    mapRef.current?.flyTo({ center: [device.lng, device.lat], zoom: 15, duration: 1200 });
   };
 
   return (
@@ -418,7 +410,8 @@ function LocationStep({ point, setPoint, address, setAddress }: { point: GeoPoin
       <div className="relative h-72 overflow-hidden rounded-[28px] ring-1 ring-black/5">
         <MapView
           cases={[]}
-          initialView={{ longitude: point.lng, latitude: point.lat, zoom: 13.5, pitch: 30 }}
+          initialView={{ longitude: point.lng, latitude: point.lat, zoom: 14.5, pitch: 30 }}
+          userLocation={device}
           onReady={(m) => {
             mapRef.current = m;
             const map = m.getMap();
@@ -444,12 +437,15 @@ function LocationStep({ point, setPoint, address, setAddress }: { point: GeoPoin
           />
         </div>
         <button type="button" onClick={locate} className="glass absolute bottom-3 end-3 flex h-10 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold">
-          <LocateFixed className={cn("h-4 w-4 text-accent", locating && "animate-spin")} />
-          {locating ? t.report.locating : t.report.useMyLocation}
+          <LocateFixed className="h-4 w-4 text-accent" />
+          {t.geo.youAreHere}
         </button>
         <div className="glass absolute start-3 top-3 rounded-full px-3 py-1.5 font-mono text-[11.5px] tabular-nums text-label-2" dir="ltr">
           {point.lat.toFixed(5)}°, {point.lng.toFixed(5)}°
         </div>
+      </div>
+      <div className={cn("mt-3 rounded-[16px] px-4 py-2.5 text-[13.5px] font-semibold", tooFar ? "bg-urgent-soft text-urgent" : "bg-stable-soft text-stable")}>
+        {tooFar ? t.geo.tooFar(t.common.km(dist)) : t.geo.near}
       </div>
       <input
         value={address}
@@ -509,21 +505,7 @@ function AnimalStep({ species, setSpecies, count, setCount }: { species: Species
   );
 }
 
-function SituationStep({
-  tags,
-  setTags,
-  desc,
-  setDesc,
-  onSite,
-  setOnSite,
-}: {
-  tags: string[];
-  setTags: (t: string[]) => void;
-  desc: string;
-  setDesc: (d: string) => void;
-  onSite: boolean;
-  setOnSite: (v: boolean) => void;
-}) {
+function SituationStep({ tags, setTags, desc, setDesc }: { tags: string[]; setTags: (t: string[]) => void; desc: string; setDesc: (d: string) => void }) {
   const { t } = useI18n();
   const toggle = (x: string) => setTags(tags.includes(x) ? tags.filter((y) => y !== x) : [...tags, x]);
   const urgentTags = ["injured", "bleeding", "burned", "trapped", "smoke", "breathing"];
@@ -556,16 +538,6 @@ function SituationStep({
         rows={4}
         placeholder={t.report.descPlaceholder}
         className="mt-4 w-full resize-none rounded-[20px] bg-surface-2 p-4 text-[15px] leading-relaxed outline-none ring-accent/40 placeholder:text-label-2 focus:ring-2"
-      />
-      <Segmented
-        layoutId="onsite-seg"
-        className="mt-3 w-full [&>button]:flex-1"
-        value={onSite ? "on" : "remote"}
-        onChange={(v) => setOnSite(v === "on")}
-        options={[
-          { value: "on", label: t.reportExtra.onSite },
-          { value: "remote", label: t.reportExtra.remote },
-        ]}
       />
       <p className="mt-3 text-[12.5px] text-label-2">🛡️ {t.trust.why}</p>
     </div>

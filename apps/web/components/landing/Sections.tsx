@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useInView, useScroll, useSpring, useTransform } from "motion/react";
 import { ArrowRight, Check, Sparkles } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AppIcon, Wordmark } from "@/components/brand/Logo";
 import { MapView } from "@/components/map";
@@ -24,7 +25,8 @@ export function MapReveal() {
   const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const cases = useStore((s) => s.cases);
-  const near = useInView(ref, { once: true, margin: "600px 0px" });
+  const near = useInView(ref, { once: true, margin: "1600px 0px" });
+  const [mapReady, setMapReady] = useState(false);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center center"] });
   // springs smooth out mouse-wheel steps so the tilt glides instead of jumping
   const smooth = useSpring(scrollYProgress, { stiffness: 90, damping: 22, mass: 0.4 });
@@ -57,7 +59,12 @@ export function MapReveal() {
             style={{ rotateX, scale, y, willChange: "transform" }}
             className="relative h-[62svh] min-h-[420px] overflow-hidden rounded-[44px] bg-surface shadow-[0_24px_60px_-28px_rgba(0,0,0,0.3)] ring-1 ring-black/5 dark:ring-white/10 sm:h-[74svh]"
           >
+            {/* poster shown until the live map has drawn (no more empty dark box) */}
+            <div className={cn("pointer-events-none absolute inset-0 z-[1] transition-opacity duration-700", mapReady ? "opacity-0" : "opacity-100")} style={{ background: "radial-gradient(60% 50% at 55% 50%, rgba(255,90,40,0.25), transparent 70%), linear-gradient(160deg,#e9f3e1 0%,#dfeccf 40%,#cfe3f4 100%)" }}>
+              <div className="flex h-full items-center justify-center"><Emoji3D src="/3d/fire.png" size={72} className="animate-pulse" /></div>
+            </div>
             {near && <MapView
+              onReady={() => setTimeout(() => setMapReady(true), 600)}
               cases={cases.filter((c) => c.emergencyZoneId)}
               zone={ZONE}
               interactive={false}
@@ -126,15 +133,16 @@ export function MapReveal() {
 
 /* ───────────────────── Bento features ───────────────────── */
 
-function BentoCard({ className, children, dark }: { className?: string; children: React.ReactNode; dark?: boolean }) {
+function BentoCard({ className, children, dark, tint }: { className?: string; children: React.ReactNode; dark?: boolean; tint?: string }) {
   return (
     <Reveal className={className}>
       <TiltCard max={3} className="h-full">
         <div
           className={cn(
             "relative h-full overflow-hidden rounded-[36px] p-7 transition-shadow duration-500 hover:shadow-[var(--card-shadow-hover)] sm:p-9",
-            dark ? "bg-[#0b0b0f] text-white" : "card",
+            dark ? "bg-[#0b0b0f] text-white" : "card bg-[image:var(--tint)] dark:bg-none",
           )}
+          style={tint ? ({ "--tint": tint } as React.CSSProperties) : undefined}
         >
           {children}
         </div>
@@ -246,7 +254,7 @@ export function Bento() {
     <section className="px-4 pb-24 sm:pb-36">
       <div className="mx-auto grid max-w-[1180px] gap-5 lg:grid-cols-3">
         {/* AI triage */}
-        <BentoCard className="lg:col-span-2 lg:row-span-2">
+        <BentoCard className="lg:col-span-2 lg:row-span-2" tint="linear-gradient(160deg,#efeaff 0%,#e2dbff 100%)">
           <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#5e5ce6]/20 blur-3xl" />
           <CardText kicker={L.s2.kicker} title={L.s2.title} body={L.s2.body} color="var(--accent-2)" />
           <div className="relative grid gap-6 md:grid-cols-[1fr_1.1fr] md:items-end">
@@ -269,7 +277,7 @@ export function Bento() {
         </BentoCard>
 
         {/* Report */}
-        <BentoCard>
+        <BentoCard tint="linear-gradient(160deg,#e6f1ff 0%,#d3e6ff 100%)">
           <CardText kicker={L.s1.kicker} title={L.s1.title} body={L.s1.body} color="var(--accent)" />
           <div className="relative mt-8 flex items-end justify-center gap-3">
             {[
@@ -325,13 +333,13 @@ export function Bento() {
 
       <div className="mx-auto mt-5 grid max-w-[1180px] gap-5 lg:grid-cols-3">
         {/* Help matching */}
-        <BentoCard>
+        <BentoCard tint="linear-gradient(160deg,#e5f8ea 0%,#cfefd8 100%)">
           <CardText kicker={L.s4.kicker} title={L.s4.title} body={L.s4.body} color="var(--stable)" />
           <HelpOrbit />
         </BentoCard>
 
         {/* Adoption */}
-        <BentoCard className="lg:col-span-2">
+        <BentoCard className="lg:col-span-2" tint="linear-gradient(160deg,#ffe9f0 0%,#ffd5e2 100%)">
           <div className="grid gap-8 md:grid-cols-2 md:items-center">
             <CardText kicker={L.s5.kicker} title={L.s5.title} body={L.s5.body} color="#ff2d55" />
             <div className="relative mx-auto w-full max-w-[320px]">
@@ -372,7 +380,7 @@ export function Bento() {
 
       {/* Livestock banner */}
       <div className="mx-auto mt-5 max-w-[1180px]">
-        <BentoCard>
+        <BentoCard tint="linear-gradient(160deg,#fff4e0 0%,#ffe6bd 100%)">
           <div className="grid gap-8 md:grid-cols-[1fr_1.3fr] md:items-center">
             <CardText kicker={L.s6.kicker} title={L.s6.title} body={L.s6.body} color="#a2845e" />
             <div className="flex flex-wrap items-end justify-center gap-3 sm:gap-5">
@@ -476,5 +484,51 @@ export function Footer() {
         <span className="rounded-full bg-surface-2 px-3 py-1 text-[12px]">{t.common.demo}</span>
       </div>
     </footer>
+  );
+}
+
+/* ───────────────────── Quick actions: colorful app-style tiles (replaces fake stats) ───────────────────── */
+const ACTION_TINTS = [
+  ["#e4efff", "#cfe1ff", "#0a7cff"],
+  ["#ffe6ee", "#ffd0de", "#ff2d55"],
+  ["#e6f8ec", "#cdefda", "#28a745"],
+  ["#fff0e0", "#ffdcb6", "#ff7a00"],
+  ["#efe9ff", "#ddd2ff", "#5e5ce6"],
+  ["#fff8d9", "#ffedaa", "#c79300"],
+];
+
+export function QuickActions() {
+  const { t } = useI18n();
+  return (
+    <section className="px-4 pb-24 sm:pb-32">
+      <div className="mx-auto max-w-[1180px]">
+        <Reveal>
+          <h2 className="text-[30px] font-black sm:text-[40px]">{t.landing.actions.title}</h2>
+        </Reveal>
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {t.landing.actions.items.map((a, i) => {
+            const [c1, c2, ink] = ACTION_TINTS[i % ACTION_TINTS.length];
+            return (
+              <Reveal key={a.href} delay={i * 0.05}>
+                <Link
+                  href={a.href}
+                  className="group relative flex h-full flex-col justify-between overflow-hidden rounded-[28px] p-4 transition-transform active:scale-[0.97] dark:!bg-surface"
+                  style={{ background: `linear-gradient(160deg, ${c1}, ${c2})` }}
+                >
+                  <motion.span whileHover={{ rotate: -8, scale: 1.1 }} className="block w-fit">
+                    <Emoji3D src={a.emoji} size={56} className="drop-shadow-[0_10px_14px_rgba(0,0,0,0.15)]" />
+                  </motion.span>
+                  <span className="mt-6 block">
+                    <span className="block font-display text-[18px] font-extrabold" style={{ color: ink }}>{a.title}</span>
+                    <span className="block text-[12.5px] text-[#3a3a3c] dark:text-label-2">{a.sub}</span>
+                  </span>
+                  <span className="absolute end-4 top-4 flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-[15px] font-bold transition-transform group-hover:translate-x-0.5 dark:bg-white/10" style={{ color: ink }}>›</span>
+                </Link>
+              </Reveal>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { TopNav } from "@/components/layout/TopNav";
+import { GeoGate } from "@/components/layout/GeoGate";
 import { Button } from "@/components/ui/Button";
 import { Emoji3D, Segmented } from "@/components/ui/primitives";
 import { useSession } from "@/lib/auth";
@@ -21,6 +22,14 @@ const list = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
 const SPECIES: Species[] = ["dog", "cat", "rabbit", "bird", "horse", "donkey", "goat", "sheep"];
 
 export default function NewAdoptionPage() {
+  return (
+    <GeoGate>
+      <NewAdoption />
+    </GeoGate>
+  );
+}
+
+function NewAdoption() {
   const { t } = useI18n();
   const me = useSession()!;
   const router = useRouter();
