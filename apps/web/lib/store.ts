@@ -233,10 +233,10 @@ export const store = {
     });
   },
   /** Demo payment: activates Pro for 30 days. Real: Chargily (CIB / Edahabia) webhook → PATCH /me/pro */
-  activatePro(userId: string) {
+  activatePro(userId: string, days = 30) {
     const u = state.users.find((x) => x.id === userId);
     const since = now();
-    const until = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    const until = new Date(Date.now() + days * 86_400_000).toISOString();
     set({
       users: state.users.map((x) => (x.id === userId ? { ...x, pro: { plan: "pro", since, until } } : x)),
       services: state.services.map((s) => (s.id === u?.serviceId ? { ...s, pro: true } : s)),

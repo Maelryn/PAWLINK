@@ -22,3 +22,21 @@ export function useTabBarHidden() {
     () => false,
   );
 }
+
+/* Paywall (PawLink Pro) opened as a sheet from anywhere: openPaywall() */
+let paywallOpen = false;
+const pwListeners = new Set<() => void>();
+export function openPaywall(v = true) {
+  paywallOpen = v;
+  pwListeners.forEach((l) => l());
+}
+export function usePaywallOpen() {
+  return useSyncExternalStore(
+    (l) => {
+      pwListeners.add(l);
+      return () => pwListeners.delete(l);
+    },
+    () => paywallOpen,
+    () => false,
+  );
+}

@@ -4,7 +4,8 @@ import { Check, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
+import { openPaywall } from "@/lib/ui";
 import { Avatar, Emoji3D, Stars, TimeAgo } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
 import { SERVICE_EMOJI } from "@/lib/species";
@@ -70,7 +71,7 @@ export function BusinessPanel({ me }: { me: User }) {
         <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#0a7cff] via-[#5e5ce6] to-[#ff2d78] p-5 text-white">
           <div className="text-[18px] font-bold">{t.biz.proTitle}</div>
           <p className="mt-1 max-w-[440px] text-[14px] text-white/85">{t.biz.proPitch}</p>
-          <ButtonLink href="/pro" variant="white" size="sm" className="mt-3">{t.biz.goPro} · {t.pro.proPrice}{t.pro.perMonth}</ButtonLink>
+          <Button variant="white" size="sm" className="mt-3" onClick={() => openPaywall()}>{t.biz.goPro} · {t.pro.proPrice}{t.pro.perMonth}</Button>
         </div>
       )}
 
@@ -100,7 +101,12 @@ export function BusinessPanel({ me }: { me: User }) {
       {/* appointments */}
       <section className={card}>
         <h2 className="mb-3 text-[18px] font-bold">{t.biz.bookings}</h2>
-        {!isPro && <p className="text-[13.5px] text-label-2">{t.biz.proPitch}</p>}
+        {!isPro && (
+          <button type="button" onClick={() => openPaywall()} className="flex w-full items-center gap-3 rounded-[18px] bg-accent-soft p-3.5 text-start">
+            <span className="flex h-9 items-center gap-1 rounded-full bg-gradient-to-r from-[#0a7cff] to-[#5e5ce6] px-3 text-[13px] font-bold text-white">🔒 {t.pay.locked}</span>
+            <span className="flex-1 text-[13.5px] text-label">{t.biz.proPitch}</span>
+          </button>
+        )}
         {isPro && bookings.length === 0 && <p className="text-[14px] text-label-2">{t.biz.noBookings}</p>}
         <div className="space-y-2">
           {bookings.map((b) => (

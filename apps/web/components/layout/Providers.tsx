@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { I18nProvider, useI18n } from "@/lib/i18n";
 import { ThemeSync, useTheme } from "@/lib/theme";
 import { AuthGate } from "./AuthGate";
+import { ProHost } from "@/components/pro/ProHost";
 import { useEffect } from "react";
 import { store } from "@/lib/store";
 
@@ -37,6 +38,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <I18nProvider>
       <ThemeSync />
       <AuthGate>{children}</AuthGate>
+      <ProHost />
       <ThemedToaster />
     </I18nProvider>
   );
