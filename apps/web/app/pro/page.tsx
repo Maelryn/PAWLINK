@@ -9,6 +9,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { Reveal } from "@/components/motion";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Emoji3D } from "@/components/ui/primitives";
+import { Burst, Sparkles } from "@/components/ui/Sparkles";
 import { useSession } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { store } from "@/lib/store";
@@ -23,6 +24,7 @@ export default function ProPage() {
   const [checkout, setCheckout] = useState(false);
   const [method, setMethod] = useState<"cib" | "edahabia">("edahabia");
   const [paying, setPaying] = useState(false);
+  const [burst, setBurst] = useState(false);
   const isPro = !!me?.pro && new Date(me.pro.until) > new Date();
 
   const choose = () => {
@@ -34,10 +36,11 @@ export default function ProPage() {
   const pay = () => {
     setPaying(true);
     setTimeout(() => {
+      setBurst(true);
       store.activatePro(me!.id);
       toast.success(t.pro.paid, { icon: <Emoji3D src="/3d/star.png" size={22} /> });
-      router.push("/account?tab=pro");
-    }, 1400);
+      setTimeout(() => router.push("/account?tab=pro"), 1300);
+    }, 1200);
   };
 
   const Feature = ({ children, on }: { children: React.ReactNode; on?: boolean }) => (
@@ -53,8 +56,11 @@ export default function ProPage() {
     <div className="min-h-[100svh] pb-32">
       <TopNav />
       <div className="mx-auto max-w-[960px] px-4 pt-28 sm:pt-32">
-        <Reveal className="text-center">
-          <Emoji3D src="/3d/star.png" size={64} className="mx-auto" />
+        <Reveal className="relative text-center">
+          <Sparkles count={14} colors={["#ffd60a", "#5e5ce6", "#ff375f", "#0a84ff"]} />
+          <motion.div className="mx-auto w-fit" animate={{ rotate: [0, -10, 10, 0], scale: [1, 1.1, 1] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
+            <Emoji3D src="/3d/star.png" size={72} className="drop-shadow-[0_0_24px_rgba(255,200,0,0.7)]" />
+          </motion.div>
           <h1 className="mx-auto mt-4 max-w-[640px] text-[36px] font-bold leading-[1.05] tracking-[-0.04em] sm:text-[52px]">{t.pro.title}</h1>
           <p className="mx-auto mt-3 max-w-[560px] text-[17px] text-label-2">{t.pro.subtitle}</p>
         </Reveal>
@@ -69,7 +75,21 @@ export default function ProPage() {
             </div>
           </Reveal>
           <Reveal delay={0.08}>
-            <div className="relative h-full overflow-hidden rounded-[34px] bg-gradient-to-br from-[#0a7cff] via-[#5e5ce6] to-[#ff2d78] p-7 text-white shadow-[0_30px_60px_-30px_rgba(94,92,230,0.8)]">
+            <motion.div whileHover={{ y: -6, scale: 1.01 }} transition={{ type: "spring", stiffness: 260, damping: 20 }} className="relative h-full overflow-hidden rounded-[36px] p-[3px] shadow-[0_30px_80px_-30px_rgba(94,92,230,0.9)]">
+            {/* animated glowing border */}
+            <motion.div
+              className="absolute -inset-[60%]"
+              style={{ background: "conic-gradient(from 0deg, #ffd60a, #ff375f, #5e5ce6, #0a84ff, #30d158, #ffd60a)" }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+            />
+            <div className="relative h-full overflow-hidden rounded-[33px] bg-gradient-to-br from-[#0a7cff] via-[#5e5ce6] to-[#ff2d78] p-7 text-white">
+            <Sparkles count={20} />
+            <motion.div
+              className="pointer-events-none absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+              animate={{ left: ["-40%", "140%"] }}
+              transition={{ duration: 2.8, repeat: Infinity, repeatDelay: 1.6, ease: "easeInOut" }}
+            />
               <div className="flex items-center justify-between">
                 <span className="text-[15px] font-semibold text-white/85">PawLink Pro</span>
                 <Emoji3D src="/3d/sparkles.png" size={30} />
@@ -84,9 +104,11 @@ export default function ProPage() {
                 <Button variant="white" size="lg" className="mt-6 w-full" onClick={choose}>{t.pro.choose}</Button>
               )}
             </div>
+            </motion.div>
           </Reveal>
         </div>
 
+        {burst && <Burst />}
         <p className="mt-6 text-center text-[14px] text-label-2">🐾 {t.pro.citizens}</p>
 
         <AnimatePresence>

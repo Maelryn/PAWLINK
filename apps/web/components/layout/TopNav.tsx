@@ -51,7 +51,7 @@ function Menu({ open, children, className }: { open: boolean; children: React.Re
 const item = "flex w-full items-center gap-2.5 rounded-[14px] px-3 py-2.5 text-[14px] font-medium hover:bg-black/5 dark:hover:bg-white/10";
 const iconBtn = "flex h-10 items-center justify-center gap-1.5 rounded-full px-2.5 text-label-2 transition-colors hover:bg-black/5 hover:text-label dark:hover:bg-white/10";
 
-export function TopNav({ floating = false }: { floating?: boolean }) {
+export function TopNav({ floating = false, noTabBar = false }: { floating?: boolean; noTabBar?: boolean }) {
   const { t } = useI18n();
   const pathname = usePathname();
   const user = useSession();
@@ -66,6 +66,7 @@ export function TopNav({ floating = false }: { floating?: boolean }) {
     { href: "/services", label: t.nav.services },
     ...(user ? [{ href: "/account", label: t.nav.dashboard }] : []),
     ...(user?.role === "admin" ? [{ href: "/admin", label: t.nav.admin }] : []),
+    { href: "/pro", label: "Pro ✦" },
   ];
 
   return (
@@ -114,7 +115,7 @@ export function TopNav({ floating = false }: { floating?: boolean }) {
           </div>
         </nav>
       </motion.header>
-      <MobileTabBar />
+      {!noTabBar && <MobileTabBar />}
     </>
   );
 }

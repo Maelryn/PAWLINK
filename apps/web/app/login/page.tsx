@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
@@ -206,68 +207,88 @@ function Login() {
 }
 
 /* ───────── Welcome: stickers orbiting the app icon (first screen, like a real iOS onboarding) ───────── */
-const ORBIT = ["/3d/dog.png", "/3d/pin.png", "/3d/cat.png", "/3d/stethoscope.png", "/3d/sheep.png", "/3d/heart.png", "/3d/camel.png"];
+
+/* Welcome: a stack of real rescued-animal photos (like a photo collection) + stickers, fits one screen */
+const STACK = [
+  { src: "/mock/cat-kitten.jpg", rot: -9, x: "-38%", y: "6%", z: 1, d: 0.15 },
+  { src: "/mock/dog-puppy.jpg", rot: 8, x: "38%", y: "2%", z: 2, d: 0.25 },
+  { src: "/mock/dog-beagle.jpg", rot: -2, x: "0%", y: "-4%", z: 3, d: 0.35 },
+];
+const STICKERS = [
+  { src: "/3d/heart.png", x: "4%", y: "0%", s: 46, r: -14 },
+  { src: "/3d/paw.png", x: "84%", y: "74%", s: 44, r: 12 },
+  { src: "/3d/sparkles.png", x: "88%", y: "-4%", s: 38, r: 0 },
+  { src: "/3d/pin.png", x: "-2%", y: "72%", s: 42, r: -8 },
+];
 
 function Welcome({ onEmail, onPhone }: { onEmail: () => void; onPhone: () => void }) {
   const { t } = useI18n();
-  const social = "flex h-14 w-full items-center justify-center gap-3 rounded-full bg-white/80 text-[16px] font-semibold backdrop-blur transition-transform active:scale-[0.98] dark:bg-white/10";
+  const social = "flex h-12 w-full items-center justify-center gap-2.5 rounded-full bg-white/85 text-[15px] font-semibold backdrop-blur transition-transform active:scale-[0.98] sm:h-[52px] dark:bg-white/10";
   return (
-    <div className="relative min-h-[100svh] overflow-hidden bg-[linear-gradient(160deg,#cfe6ff_0%,#e6dcff_45%,#ffd9e8_100%)] dark:bg-[linear-gradient(160deg,#0b1830_0%,#1a1236_50%,#2a0f1f_100%)]">
-      <TopNav />
-      {/* phones: stacked · desktop: orbit on the left, buttons on the right (fits a laptop screen) */}
-      <div className="mx-auto flex min-h-[100svh] max-w-[440px] flex-col items-center justify-center px-5 pb-28 pt-24 lg:max-w-[1040px] lg:flex-row lg:gap-16 lg:pb-10">
-        <div className="relative h-[260px] w-[260px] shrink-0 sm:h-[300px] sm:w-[300px] lg:h-[400px] lg:w-[400px]">
-          <div className="absolute inset-0 rounded-full border-2 border-dashed border-white/70 dark:border-white/15" />
-          <div className="absolute inset-[22%] rounded-full border-2 border-dashed border-white/60 dark:border-white/10" />
-          <div className="absolute inset-[32%] rounded-full bg-white/40 blur-2xl dark:bg-white/5" />
-          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 180, damping: 14 }} className="absolute inset-0 flex items-center justify-center">
-            <AppIcon className="h-20 w-20 sm:h-24 sm:w-24 lg:h-32 lg:w-32" glow />
-          </motion.div>
-          <motion.div className="absolute inset-0" animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: "linear" }}>
-            {ORBIT.map((src, i) => {
-              const ang = (i / ORBIT.length) * Math.PI * 2 - Math.PI / 2;
-              return (
+    <div className="relative h-[100svh] overflow-hidden bg-[linear-gradient(165deg,#d8ebff_0%,#ece3ff_50%,#ffe1ec_100%)] dark:bg-[linear-gradient(165deg,#0b1830_0%,#1a1236_50%,#2a0f1f_100%)]">
+      <TopNav noTabBar />
+      <div className="mx-auto flex h-full max-w-[440px] flex-col justify-end px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-20 lg:max-w-[1080px] lg:flex-row lg:items-center lg:justify-center lg:gap-20 lg:pb-8">
+        {/* photo stack */}
+        <div className="relative mx-auto w-full max-w-[340px] flex-1 lg:max-w-[460px] lg:flex-none lg:basis-[460px] lg:self-stretch">
+          <div className="absolute inset-x-0 top-1/2 h-[min(36svh,300px)] -translate-y-1/2 lg:h-[400px]">
+            {STACK.map((p) => (
+              <div key={p.src} className="absolute aspect-[3/4] h-[88%] -translate-x-1/2 -translate-y-1/2" style={{ left: `calc(50% + ${p.x})`, top: `calc(50% + ${p.y})`, zIndex: p.z }}>
                 <motion.div
-                  key={src}
-                  className="absolute"
-                  style={{ left: `calc(50% + ${Math.round(Math.cos(ang) * 47)}% - 28px)`, top: `calc(50% + ${Math.round(Math.sin(ang) * 47)}% - 28px)` }}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1, rotate: -360 }}
-                  transition={{ scale: { type: "spring", delay: 0.2 + i * 0.07 }, rotate: { duration: 60, repeat: Infinity, ease: "linear" } }}
+                  className="relative h-full w-full overflow-hidden rounded-[26px] border-[5px] border-white bg-surface shadow-[0_24px_48px_-20px_rgba(40,30,90,0.45)] dark:border-white/15"
+                  initial={{ opacity: 0, y: 80, rotate: 0 }}
+                  animate={{ opacity: 1, y: [0, -8, 0], rotate: p.rot }}
+                  transition={{ opacity: { delay: p.d }, rotate: { type: "spring", stiffness: 120, damping: 14, delay: p.d }, y: { duration: 5 + p.z, repeat: Infinity, ease: "easeInOut", delay: 1 + p.d } }}
+                  whileHover={{ scale: 1.04, rotate: 0 }}
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-white shadow-[0_10px_24px_-8px_rgba(60,40,120,0.35)] ring-4 ring-white lg:h-16 lg:w-16 dark:bg-white/10 dark:ring-white/10">
-                    <Emoji3D src={src} size={38} />
-                  </div>
+                  <Image src={p.src} alt="" fill sizes="260px" priority className="object-cover" />
                 </motion.div>
-              );
-            })}
-          </motion.div>
+              </div>
+            ))}
+            {STICKERS.map((st, i) => (
+              <motion.div
+                key={st.src}
+                className="absolute z-10"
+                style={{ left: st.x, top: st.y }}
+                initial={{ scale: 0, rotate: st.r - 30 }}
+                animate={{ scale: 1, rotate: st.r, y: [0, -6, 0] }}
+                transition={{ scale: { type: "spring", stiffness: 260, damping: 12, delay: 0.6 + i * 0.1 }, rotate: { type: "spring", delay: 0.6 + i * 0.1 }, y: { duration: 3 + i * 0.4, repeat: Infinity, ease: "easeInOut" } }}
+              >
+                <Emoji3D src={st.src} size={st.s} className="drop-shadow-[0_8px_12px_rgba(0,0,0,0.18)]" />
+              </motion.div>
+            ))}
+          </div>
         </div>
 
-        <div className="w-full lg:max-w-[420px]">
-          <h1 className="mt-8 text-center text-[30px] font-black leading-[1.05] sm:text-[36px] lg:mt-0 lg:text-start lg:text-[44px]">{t.login.hello}</h1>
-          <p className="mt-2 text-center text-[15.5px] text-label-2 lg:text-start">{t.login.sub}</p>
+        <div className="w-full shrink-0 lg:max-w-[400px]">
+          <div className="flex items-center justify-center gap-2 lg:justify-start">
+            <AppIcon className="h-9 w-9" />
+            <span className="bg-gradient-to-r from-[#1f8bff] to-[#7b4dff] bg-clip-text font-display text-[22px] font-black text-transparent">pawlink</span>
+          </div>
+          <h1 className="mt-3 text-center text-[28px] font-black leading-[1.05] sm:text-[32px] lg:text-start lg:text-[44px]">{t.login.hello}</h1>
+          <p className="mx-auto mt-2 max-w-[360px] text-center text-[14.5px] leading-snug text-label-2 lg:mx-0 lg:text-start lg:text-[15.5px]">{t.login.sub}</p>
 
-          <div className="mt-7 w-full space-y-3">
-            <button type="button" onClick={onEmail} className="h-14 w-full rounded-full bg-[#1d1d1f] text-[16px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.5)] transition-transform active:scale-[0.98] dark:bg-white dark:text-black">
+          <div className="mt-5 w-full space-y-2.5">
+            <button type="button" onClick={onEmail} className="h-12 w-full rounded-full bg-[#1d1d1f] text-[15.5px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.5)] transition-transform active:scale-[0.98] sm:h-[52px] dark:bg-white dark:text-black">
               {t.login.email}
             </button>
             <button type="button" onClick={onPhone} className={social}>
               {t.login.phone}
             </button>
-            <div className="flex items-center gap-3 py-1 text-[12px] uppercase tracking-widest text-label-2">
+            <div className="flex items-center gap-3 text-[11.5px] uppercase tracking-widest text-label-2">
               <span className="h-px flex-1 bg-black/10 dark:bg-white/15" /> {t.login.or} <span className="h-px flex-1 bg-black/10 dark:bg-white/15" />
             </div>
-            {/* Google / Facebook sign-in: wired by the backend (OAuth via Supabase Auth or NestJS Passport) */}
-            <button type="button" onClick={() => toast(t.login.soon)} className={social}>
-              <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" aria-hidden><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.63h6.46a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.56-5.17 3.56-8.8Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3a7.2 7.2 0 0 1-10.73-3.78h-4v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.33 14.31a7.2 7.2 0 0 1 0-4.62v-3.1h-4a12 12 0 0 0 0 10.82l4-3.1Z"/><path fill="#EA4335" d="M12 4.75c1.76 0 3.34.6 4.59 1.8l3.44-3.44A12 12 0 0 0 1.33 6.59l4 3.1A7.17 7.17 0 0 1 12 4.75Z"/></svg>
-              {t.login.google}
-            </button>
-            <button type="button" onClick={() => toast(t.login.soon)} className={social}>
-              <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" aria-hidden><path fill="#1877F2" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.96h-1.51c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07Z"/></svg>
-              {t.login.facebook}
-            </button>
-            <p className="pt-2 text-center text-[11.5px] text-label-2 lg:text-start">{t.login.terms}</p>
+            {/* Google / Facebook sign-in: wired by the backend (OAuth via Supabase Auth) */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <button type="button" onClick={() => toast(t.login.soon)} className={social} aria-label={t.login.google}>
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.63h6.46a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.56-5.17 3.56-8.8Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3a7.2 7.2 0 0 1-10.73-3.78h-4v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.33 14.31a7.2 7.2 0 0 1 0-4.62v-3.1h-4a12 12 0 0 0 0 10.82l4-3.1Z"/><path fill="#EA4335" d="M12 4.75c1.76 0 3.34.6 4.59 1.8l3.44-3.44A12 12 0 0 0 1.33 6.59l4 3.1A7.17 7.17 0 0 1 12 4.75Z"/></svg>
+                Google
+              </button>
+              <button type="button" onClick={() => toast(t.login.soon)} className={social} aria-label={t.login.facebook}>
+                <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden><path fill="#1877F2" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.96h-1.51c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07Z"/></svg>
+                Facebook
+              </button>
+            </div>
+            <p className="text-center text-[11px] leading-snug text-label-2 lg:text-start">{t.login.terms}</p>
           </div>
         </div>
       </div>
