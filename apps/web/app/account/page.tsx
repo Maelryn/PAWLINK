@@ -54,7 +54,7 @@ function Account() {
   return (
     <div className="min-h-[100svh] pb-32">
       <TopNav />
-      <div className="mx-auto max-w-[1100px] px-4 pt-24 sm:pt-28">
+      <div className="mx-auto max-w-[1100px] px-4 pt-[76px] sm:pt-24">
         {/* header */}
         <div className="flex items-center gap-4">
           <Avatar name={me.name} photo={me.photo} size={64} />

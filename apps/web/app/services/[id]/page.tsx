@@ -49,7 +49,7 @@ export default function ServicePage() {
   return (
     <div className="min-h-[100svh] pb-32">
       <TopNav />
-      <div className="mx-auto max-w-[1000px] px-4 pt-24 sm:pt-28">
+      <div className="mx-auto max-w-[1000px] px-4 pt-[76px] sm:pt-24">
         <Link href="/services" className="glass mb-4 inline-flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
           <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t.nav.services}
         </Link>

@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
 import { AppIcon } from "@/components/brand/Logo";
+import { Aurora } from "@/components/ui/Aurora";
+import { ChevronLeft } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button } from "@/components/ui/Button";
 import { Emoji3D, Segmented } from "@/components/ui/primitives";
@@ -17,7 +19,6 @@ import { SERVICE_EMOJI } from "@/lib/species";
 import type { ServiceType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const input = "h-12 w-full rounded-[16px] bg-surface-2 px-4 text-[15px] outline-none ring-accent/40 placeholder:text-label-2 focus:ring-2";
 const BIZ_TYPES: ServiceType[] = ["shelter", "transport", "boarding", "training", "store"];
 
 export default function LoginPage() {
@@ -95,97 +96,109 @@ function Login() {
       />
     );
 
+  const field = "h-11 w-full rounded-[14px] bg-surface-2 px-3.5 text-[15px] outline-none ring-accent/40 placeholder:text-label-2 focus:ring-2";
+  const shortRole: Record<SignUpRole, string> = { reporter: t.dashboard.roles.reporter, volunteer: t.dashboard.roles.volunteer, vet: t.dashboard.roles.vet, pro: t.pay.tiers.pro };
+
   return (
-    <div className="min-h-[100svh] pb-32">
-      <TopNav />
-      <div className="mx-auto flex max-w-[460px] flex-col items-center px-4 pt-28">
-        <button type="button" onClick={() => setStep("choose")} className="mb-2 self-start text-[15px] font-semibold text-accent">‹ {t.common.back}</button>
-        <AppIcon className="h-16 w-16" glow />
-        <h1 className="mt-5 text-center text-[30px] font-extrabold">{t.auth.title}</h1>
-        <p className="mt-1 text-center text-[15px] text-label-2">{t.account.needLoginBody}</p>
+    <div className="relative h-[100svh] overflow-hidden bg-bg">
+      <Aurora />
+      <TopNav noTabBar />
+      {/* one screen, no scroll: photos on the left (desktop), compact form on the right */}
+      <div className="relative mx-auto flex h-full max-w-[1080px] items-center justify-center gap-16 px-4 pb-4 pt-[68px] lg:pt-16">
+        <div className="relative hidden h-[440px] w-[440px] shrink-0 lg:block">
+          <PhotoStack />
+        </div>
 
-        <Segmented
-          layoutId="auth-seg"
-          className="mt-6 w-full [&>button]:flex-1"
-          value={mode}
-          onChange={(m) => {
-            setMode(m);
-            setOtpStep(false);
-            setError("");
-          }}
-          options={[
-            { value: "in", label: t.account.signIn },
-            { value: "up", label: t.account.signUp },
-          ]}
-        />
-
-        <form onSubmit={submit} className="glass-strong mt-4 w-full space-y-3 rounded-[30px] p-5">
-          <AnimatePresence mode="wait" initial={false}>
-            {mode === "up" && otpStep ? (
-              <motion.div key="otp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-3 text-center">
-                <Emoji3D src="/3d/phone.png" size={56} className="mx-auto" />
-                <p className="text-[14px] text-label-2">{t.account.phoneNote}</p>
-                <div className="text-[15px] font-semibold" dir="ltr">{f.phone}</div>
-                <input autoFocus inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="• • • • • •" className={cn(input, "text-center text-[22px] tracking-[0.5em]")} dir="ltr" />
-              </motion.div>
-            ) : (
-              <motion.div key={mode} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-                {mode === "up" && (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      {roles.map(([r, e, label]) => (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => setRole(r)}
-                          className={cn("flex items-center gap-2 rounded-[18px] p-2.5 text-start text-[12.5px] font-semibold leading-tight transition-colors", role === r ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}
-                        >
-                          <Emoji3D src={e} size={30} className="shrink-0" />
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    {(role === "vet" || role === "pro") && (
-                      <>
-                        <input required value={f.bizName} onChange={(e) => up("bizName", e.target.value)} placeholder={t.biz.bizName} className={input} />
-                        {role === "pro" && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {BIZ_TYPES.map((ty) => (
-                              <button key={ty} type="button" onClick={() => setBizType(ty)} className={cn("flex items-center gap-1.5 rounded-full py-1 pe-3 ps-1 text-[12.5px] font-semibold", bizType === ty ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}>
-                                <Emoji3D src={SERVICE_EMOJI[ty]} size={22} /> {t.common.service[ty]}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        <p className="text-[12.5px] text-label-2">{role === "vet" ? t.account.vetNote : t.biz.pending}</p>
-                      </>
-                    )}
-                    <input required value={f.name} onChange={(e) => up("name", e.target.value)} placeholder={t.account.name} className={input} autoComplete="name" />
-                  </>
-                )}
-                <input required type="email" value={f.email} onChange={(e) => up("email", e.target.value)} placeholder={t.account.email} className={input} dir="ltr" autoComplete="email" />
-                <input required type="password" minLength={mode === "up" ? 8 : 1} value={f.password} onChange={(e) => up("password", e.target.value)} placeholder={t.account.password} className={input} autoComplete={mode === "up" ? "new-password" : "current-password"} />
-                {mode === "up" && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <input required type="tel" value={f.phone} onChange={(e) => up("phone", e.target.value)} placeholder="+213 5XX XX XX XX" className={input} dir="ltr" autoComplete="tel" />
-                    <input required value={f.city} onChange={(e) => up("city", e.target.value)} placeholder={t.acct.city} className={input} />
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {error && <p className="text-[13.5px] font-medium text-urgent">{error}</p>}
-          <Button type="submit" size="lg" className="w-full" disabled={mode === "up" && otpStep && otp.length < 6}>
-            {mode === "in" ? t.account.signIn : otpStep ? t.common.next : t.account.signUp}
-          </Button>
-        </form>
-
-        {/* Demo helper: only for the jury demo, remove once the real API is plugged in */}
-        <div className="mt-6 w-full rounded-[22px] border border-dashed border-separator p-4">
-          <div className="text-[12px] font-semibold text-label-2">
-            {t.account.demo} <code className="rounded bg-surface-2 px-1.5 py-0.5">{DEMO_PASSWORD}</code>
+        <div className="flex max-h-full w-full max-w-[420px] flex-col">
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setStep("choose")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm" aria-label={t.common.back}>
+              <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
+            </button>
+            <AppIcon className="h-10 w-10" />
+            <h1 className="truncate text-[22px] font-black sm:text-[26px]">{t.auth.title}</h1>
           </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+
+          <Segmented
+            layoutId="auth-seg"
+            className="mt-3 w-full [&>button]:flex-1"
+            value={mode}
+            onChange={(m) => {
+              setMode(m);
+              setOtpStep(false);
+              setError("");
+            }}
+            options={[
+              { value: "in", label: t.account.signIn },
+              { value: "up", label: t.account.signUp },
+            ]}
+          />
+
+          <form onSubmit={submit} className="glass-strong mt-3 w-full space-y-2.5 rounded-[26px] p-4">
+            <AnimatePresence mode="wait" initial={false}>
+              {mode === "up" && otpStep ? (
+                <motion.div key="otp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-3 py-2 text-center">
+                  <Emoji3D src="/3d/phone.png" size={52} className="mx-auto" />
+                  <p className="text-[13.5px] text-label-2">{t.account.phoneNote}</p>
+                  <div className="text-[15px] font-semibold" dir="ltr">{f.phone}</div>
+                  <input autoFocus inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="• • • • • •" className={cn(field, "h-12 text-center text-[22px] tracking-[0.5em]")} dir="ltr" />
+                </motion.div>
+              ) : (
+                <motion.div key={mode} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-2.5">
+                  {mode === "up" && (
+                    <>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {roles.map(([r, e]) => (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => setRole(r)}
+                            className={cn("flex flex-col items-center gap-0.5 rounded-[16px] px-1 py-2 text-[11px] font-semibold leading-tight transition-colors", role === r ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}
+                          >
+                            <Emoji3D src={e} size={26} />
+                            <span className="max-w-full truncate">{shortRole[r]}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {(role === "vet" || role === "pro") && (
+                        <>
+                          <input required value={f.bizName} onChange={(e) => up("bizName", e.target.value)} placeholder={t.biz.bizName} className={field} />
+                          {role === "pro" && (
+                            <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 no-scrollbar">
+                              {BIZ_TYPES.map((ty) => (
+                                <button key={ty} type="button" onClick={() => setBizType(ty)} className={cn("flex shrink-0 items-center gap-1 rounded-full py-1 pe-2.5 ps-1 text-[12px] font-semibold", bizType === ty ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}>
+                                  <Emoji3D src={SERVICE_EMOJI[ty]} size={20} /> {t.common.service[ty]}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      <input required value={f.name} onChange={(e) => up("name", e.target.value)} placeholder={t.account.name} className={field} autoComplete="name" />
+                    </>
+                  )}
+                  <div className={cn("grid gap-2.5", mode === "up" && "grid-cols-2")}>
+                    <input required type="email" value={f.email} onChange={(e) => up("email", e.target.value)} placeholder={t.account.email} className={field} dir="ltr" autoComplete="email" />
+                    <input required type="password" minLength={mode === "up" ? 8 : 1} value={f.password} onChange={(e) => up("password", e.target.value)} placeholder={t.account.password} className={field} autoComplete={mode === "up" ? "new-password" : "current-password"} />
+                  </div>
+                  {mode === "up" && (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <input required type="tel" value={f.phone} onChange={(e) => up("phone", e.target.value)} placeholder="+213 5XX XX XX XX" className={field} dir="ltr" autoComplete="tel" />
+                      <input required value={f.city} onChange={(e) => up("city", e.target.value)} placeholder={t.acct.city} className={field} />
+                    </div>
+                  )}
+                  {mode === "up" && (role === "vet" || role === "pro") && <p className="text-[11.5px] leading-snug text-label-2">{role === "vet" ? t.account.vetNote : t.biz.pending}</p>}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {error && <p className="text-[13px] font-medium text-urgent">{error}</p>}
+            <Button type="submit" className="h-12 w-full text-[16px]" disabled={mode === "up" && otpStep && otp.length < 6}>
+              {mode === "in" ? t.account.signIn : otpStep ? t.common.next : t.account.signUp}
+            </Button>
+          </form>
+
+          {/* Demo helper (jury demo only, remove once the real API is plugged in) */}
+          <div className="mt-3 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <span className="shrink-0 text-[11.5px] font-semibold text-label-2">{t.account.demo} <code className="rounded bg-surface-2 px-1">{DEMO_PASSWORD}</code></span>
             {USERS.filter((u) => ["u1", "u2", "u3", "u9"].includes(u.id)).map((u) => (
               <button
                 key={u.id}
@@ -194,9 +207,9 @@ function Login() {
                   setMode("in");
                   setF((x) => ({ ...x, email: u.email!, password: DEMO_PASSWORD }));
                 }}
-                className="rounded-full bg-surface-2 px-3 py-1.5 text-[12.5px] font-medium"
+                className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-medium shadow-sm"
               >
-                {u.name.replace(/^Dr\.\s*/, "Dr ").split(" ").slice(0, 2).join(" ")} · {t.dashboard.roles[u.role]}
+                {u.name.replace(/^Dr\.\s*/, "Dr ").split(" ")[0] === "Dr" ? u.name.replace(/^Dr\.\s*/, "Dr ").split(" ").slice(0, 2).join(" ") : u.name.split(" ")[0]} · {t.dashboard.roles[u.role]}
               </button>
             ))}
           </div>
@@ -226,36 +239,13 @@ function Welcome({ onEmail, onPhone }: { onEmail: () => void; onPhone: () => voi
   const social = "flex h-12 w-full items-center justify-center gap-2.5 rounded-full bg-white/85 text-[15px] font-semibold backdrop-blur transition-transform active:scale-[0.98] sm:h-[52px] dark:bg-white/10";
   return (
     <div className="relative h-[100svh] overflow-hidden bg-[linear-gradient(165deg,#d8ebff_0%,#ece3ff_50%,#ffe1ec_100%)] dark:bg-[linear-gradient(165deg,#0b1830_0%,#1a1236_50%,#2a0f1f_100%)]">
+      <Aurora intensity={0.8} />
       <TopNav noTabBar />
-      <div className="mx-auto flex h-full max-w-[440px] flex-col justify-end px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-20 lg:max-w-[1080px] lg:flex-row lg:items-center lg:justify-center lg:gap-20 lg:pb-8">
+      <div className="relative mx-auto flex h-full max-w-[440px] flex-col justify-end px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-20 lg:max-w-[1080px] lg:flex-row lg:items-center lg:justify-center lg:gap-20 lg:pb-8">
         {/* photo stack */}
         <div className="relative mx-auto w-full max-w-[340px] flex-1 lg:max-w-[460px] lg:flex-none lg:basis-[460px] lg:self-stretch">
           <div className="absolute inset-x-0 top-1/2 h-[min(36svh,300px)] -translate-y-1/2 lg:h-[400px]">
-            {STACK.map((p) => (
-              <div key={p.src} className="absolute aspect-[3/4] h-[88%] -translate-x-1/2 -translate-y-1/2" style={{ left: `calc(50% + ${p.x})`, top: `calc(50% + ${p.y})`, zIndex: p.z }}>
-                <motion.div
-                  className="relative h-full w-full overflow-hidden rounded-[26px] border-[5px] border-white bg-surface shadow-[0_24px_48px_-20px_rgba(40,30,90,0.45)] dark:border-white/15"
-                  initial={{ opacity: 0, y: 80, rotate: 0 }}
-                  animate={{ opacity: 1, y: [0, -8, 0], rotate: p.rot }}
-                  transition={{ opacity: { delay: p.d }, rotate: { type: "spring", stiffness: 120, damping: 14, delay: p.d }, y: { duration: 5 + p.z, repeat: Infinity, ease: "easeInOut", delay: 1 + p.d } }}
-                  whileHover={{ scale: 1.04, rotate: 0 }}
-                >
-                  <Image src={p.src} alt="" fill sizes="260px" priority className="object-cover" />
-                </motion.div>
-              </div>
-            ))}
-            {STICKERS.map((st, i) => (
-              <motion.div
-                key={st.src}
-                className="absolute z-10"
-                style={{ left: st.x, top: st.y }}
-                initial={{ scale: 0, rotate: st.r - 30 }}
-                animate={{ scale: 1, rotate: st.r, y: [0, -6, 0] }}
-                transition={{ scale: { type: "spring", stiffness: 260, damping: 12, delay: 0.6 + i * 0.1 }, rotate: { type: "spring", delay: 0.6 + i * 0.1 }, y: { duration: 3 + i * 0.4, repeat: Infinity, ease: "easeInOut" } }}
-              >
-                <Emoji3D src={st.src} size={st.s} className="drop-shadow-[0_8px_12px_rgba(0,0,0,0.18)]" />
-              </motion.div>
-            ))}
+            <PhotoStack />
           </div>
         </div>
 
@@ -292,6 +282,39 @@ function Welcome({ onEmail, onPhone }: { onEmail: () => void; onPhone: () => voi
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Tilted stack of real rescued-animal photos + floating 3D stickers. Fills its parent. */
+function PhotoStack() {
+  return (
+    <div className="absolute inset-0">
+            {STACK.map((p) => (
+              <div key={p.src} className="absolute aspect-[3/4] h-[88%] -translate-x-1/2 -translate-y-1/2" style={{ left: `calc(50% + ${p.x})`, top: `calc(50% + ${p.y})`, zIndex: p.z }}>
+                <motion.div
+                  className="relative h-full w-full overflow-hidden rounded-[26px] border-[5px] border-white bg-surface shadow-[0_24px_48px_-20px_rgba(40,30,90,0.45)] dark:border-white/15"
+                  initial={{ opacity: 0, y: 80, rotate: 0 }}
+                  animate={{ opacity: 1, y: [0, -8, 0], rotate: p.rot }}
+                  transition={{ opacity: { delay: p.d }, rotate: { type: "spring", stiffness: 120, damping: 14, delay: p.d }, y: { duration: 5 + p.z, repeat: Infinity, ease: "easeInOut", delay: 1 + p.d } }}
+                  whileHover={{ scale: 1.04, rotate: 0 }}
+                >
+                  <Image src={p.src} alt="" fill sizes="260px" priority className="object-cover" />
+                </motion.div>
+              </div>
+            ))}
+            {STICKERS.map((st, i) => (
+              <motion.div
+                key={st.src}
+                className="absolute z-10"
+                style={{ left: st.x, top: st.y }}
+                initial={{ scale: 0, rotate: st.r - 30 }}
+                animate={{ scale: 1, rotate: st.r, y: [0, -6, 0] }}
+                transition={{ scale: { type: "spring", stiffness: 260, damping: 12, delay: 0.6 + i * 0.1 }, rotate: { type: "spring", delay: 0.6 + i * 0.1 }, y: { duration: 3 + i * 0.4, repeat: Infinity, ease: "easeInOut" } }}
+              >
+                <Emoji3D src={st.src} size={st.s} className="drop-shadow-[0_8px_12px_rgba(0,0,0,0.18)]" />
+              </motion.div>
+            ))}
     </div>
   );
 }

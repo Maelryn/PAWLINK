@@ -47,7 +47,7 @@ export default function ServicesPage() {
   return (
     <div className="min-h-[100svh] pb-32">
       <TopNav />
-      <div className="mx-auto max-w-[1180px] px-4 pt-24 sm:pt-28">
+      <div className="mx-auto max-w-[1180px] px-4 pt-[76px] sm:pt-24">
         {/* header: title + view switch */}
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-[30px] font-black sm:text-[38px]">{t.nav.services}</h1>

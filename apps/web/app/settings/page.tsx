@@ -9,7 +9,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-[100svh] pb-32">
       <TopNav />
-      <div className="mx-auto max-w-[620px] px-4 pt-28">
+      <div className="mx-auto max-w-[620px] px-4 pt-[76px] sm:pt-24">
         <h1 className="mb-6 text-[34px] font-extrabold">{t.acct.tabs.settings}</h1>
         <SettingsPanel />
       </div>

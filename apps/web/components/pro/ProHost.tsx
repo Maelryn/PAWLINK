@@ -9,6 +9,7 @@ import { useSession } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { openPaywall, usePaywallOpen } from "@/lib/ui";
 import { Paywall } from "./Paywall";
+import { ProShowcase } from "./ProShowcase";
 
 const PROMO_KEY = "pawlink.proPromo";
 const PROMO_EVERY = 24 * 3_600_000; // remind at most once a day
@@ -84,9 +85,12 @@ export function ProHost() {
               exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 32 }}
               onClick={(e) => e.stopPropagation()}
-              className="h-[100svh] w-full overflow-hidden md:h-[min(760px,92svh)] md:w-[430px] md:rounded-[38px] md:shadow-2xl"
+              className="flex h-[100svh] w-full overflow-hidden md:h-[min(760px,92svh)] md:max-w-[1040px] md:rounded-[38px] md:shadow-2xl"
             >
-              <Paywall onClose={() => openPaywall(false)} />
+              <ProShowcase />
+              <div className="h-full w-full md:w-[430px] md:shrink-0">
+                <Paywall onClose={() => openPaywall(false)} />
+              </div>
             </motion.div>
           </motion.div>
         )}

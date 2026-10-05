@@ -64,9 +64,7 @@ export function TopNav({ floating = false, noTabBar = false }: { floating?: bool
     { href: "/map", label: t.nav.map },
     { href: "/adopt", label: t.nav.adopt },
     { href: "/services", label: t.nav.services },
-    ...(user ? [{ href: "/account", label: t.nav.dashboard }] : []),
     ...(user?.role === "admin" ? [{ href: "/admin", label: t.nav.admin }] : []),
-    { href: "/pro", label: "Pro ✦" },
   ];
 
   return (
@@ -163,7 +161,7 @@ function AccountMenu() {
         <Link href="/account" onClick={() => setOpen(false)} className={item}>
           <LayoutGrid className="h-4 w-4 text-label-2" /> {t.account.mySpace}
         </Link>
-        {user.serviceId && (
+        {(
           <Link href="/pro" onClick={() => setOpen(false)} className={item}>
             <Sparkles className="h-4 w-4 text-label-2" /> PawLink Pro
           </Link>

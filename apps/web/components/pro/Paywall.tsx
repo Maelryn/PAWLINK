@@ -90,7 +90,7 @@ export function Paywall({ onClose }: { onClose: () => void }) {
       {/* header */}
       <div className="relative flex shrink-0 flex-col items-center text-center">
         <motion.div initial={{ scale: 0.4, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 220, damping: 12 }} className="relative">
-          <AppIcon className="h-[72px] w-[72px] sm:h-20 sm:w-20" glow />
+          <AppIcon className="h-[72px] w-[72px] sm:h-20 sm:w-20 [@media(max-height:800px)]:h-14 [@media(max-height:800px)]:w-14" glow />
           <motion.span
             className="absolute -end-2 -top-2 flex h-7 items-center rounded-full bg-gradient-to-r from-[#ffd60a] to-[#ff9f0a] px-2 text-[11px] font-black text-[#1d1d1f] shadow"
             animate={{ rotate: [0, -8, 8, 0] }}
@@ -99,8 +99,8 @@ export function Paywall({ onClose }: { onClose: () => void }) {
             PRO
           </motion.span>
         </motion.div>
-        <h1 className="mt-3 text-[30px] font-black leading-tight sm:text-[34px]">{t.pay.title}</h1>
-        <p className="mt-1 max-w-[320px] text-[14.5px] text-label-2">{t.pay.sub}</p>
+        <h1 className="mt-3 text-[30px] font-black leading-tight sm:text-[34px] [@media(max-height:800px)]:mt-2 [@media(max-height:800px)]:text-[26px]">{t.pay.title}</h1>
+        <p className="mt-1 max-w-[320px] text-[14.5px] text-label-2 [@media(max-height:800px)]:hidden">{t.pay.sub}</p>
       </div>
 
       <AnimatePresence mode="wait" initial={false}>
@@ -153,7 +153,7 @@ export function Paywall({ onClose }: { onClose: () => void }) {
                         {on && <Check className="h-4 w-4" strokeWidth={3} />}
                       </span>
                     </span>
-                    <span className="mt-2.5 flex items-start gap-2 border-t border-separator pt-2.5 text-[13px] text-label-2">
+                    <span className="mt-2.5 flex items-start gap-2 border-t border-separator pt-2.5 text-[13px] text-label-2 [@media(max-height:800px)]:mt-2 [@media(max-height:800px)]:pt-2 [@media(max-height:800px)]:text-[12px]">
                       <Store className="mt-0.5 h-4 w-4 shrink-0" /> {t.pay.features[tier]}
                     </span>
                   </span>
@@ -196,7 +196,7 @@ export function Paywall({ onClose }: { onClose: () => void }) {
                 <button type="submit" className="h-12 rounded-full bg-[#1d1d1f] px-5 text-[15px] font-semibold text-white dark:bg-white dark:text-black">OK</button>
               </form>
             )}
-            <p className="text-center text-[11px] text-label-2">🐾 {t.pro.citizens}</p>
+            <p className="text-center text-[11px] text-label-2 [@media(max-height:800px)]:hidden">🐾 {t.pro.citizens}</p>
           </motion.div>
         ) : (
           <motion.div key="pay" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="relative mt-auto flex flex-col gap-3 pt-4">

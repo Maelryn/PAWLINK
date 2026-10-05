@@ -43,7 +43,7 @@ function AdminPage() {
   return (
     <div className="min-h-[100svh] pb-32">
       <TopNav />
-      <div className="mx-auto max-w-[1280px] px-4 pt-24 sm:pt-28">
+      <div className="mx-auto max-w-[1280px] px-4 pt-[76px] sm:pt-24">
         <div className="grid gap-6 lg:grid-cols-[230px_1fr]">
           {/* macOS-style sidebar */}
           <aside className="lg:sticky lg:top-24 lg:self-start">

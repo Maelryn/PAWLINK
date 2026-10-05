@@ -5,6 +5,7 @@ import { I18nProvider, useI18n } from "@/lib/i18n";
 import { ThemeSync, useTheme } from "@/lib/theme";
 import { AuthGate } from "./AuthGate";
 import { ProHost } from "@/components/pro/ProHost";
+import { Aurora } from "@/components/ui/Aurora";
 import { useEffect } from "react";
 import { store } from "@/lib/store";
 
@@ -37,6 +38,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <I18nProvider>
       <ThemeSync />
+      {/* living background behind every page */}
+      <div className="pointer-events-none fixed inset-0 -z-10 dark:opacity-60"><Aurora intensity={0.35} /></div>
       <AuthGate>{children}</AuthGate>
       <ProHost />
       <ThemedToaster />
