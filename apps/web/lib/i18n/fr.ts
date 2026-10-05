@@ -512,6 +512,8 @@ const fr: Dict = {
     claim: "Vous avez un établissement ? Inscrivez-le gratuitement",
   },
   login: {
+    google: "Continuer avec Google",
+    facebook: "Continuer avec Facebook",
     hello: "Les animaux comptent sur vous.",
     sub: "Signaler, secourir, adopter. Rejoignez celles et ceux qui aident les animaux partout en Algérie.",
     email: "Continuer avec l'e-mail",

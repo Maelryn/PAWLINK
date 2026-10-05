@@ -510,6 +510,8 @@ const en = {
     claim: "You own a business? List it for free",
   },
   login: {
+    google: "Continue with Google",
+    facebook: "Continue with Facebook",
     hello: "Animals are counting on you.",
     sub: "Report, rescue, adopt. Join the people helping animals across Algeria.",
     email: "Continue with email",
