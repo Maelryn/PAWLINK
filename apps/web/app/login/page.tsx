@@ -105,7 +105,7 @@ function Login() {
       <TopNav noTabBar />
       {/* one screen, no scroll: photos on the left (desktop), compact form on the right */}
       <div className="relative mx-auto flex h-full max-w-[1080px] items-center justify-center gap-16 px-4 pb-4 pt-[68px] lg:pt-16">
-        <div className="relative hidden h-[440px] w-[440px] shrink-0 lg:block">
+        <div className="relative hidden h-[380px] w-[380px] shrink-0 lg:block">
           <PhotoStack />
         </div>
 
@@ -223,8 +223,8 @@ function Login() {
 
 /* Welcome: a stack of real rescued-animal photos (like a photo collection) + stickers, fits one screen */
 const STACK = [
-  { src: "/mock/cat-kitten.jpg", rot: -9, x: "-38%", y: "6%", z: 1, d: 0.15 },
-  { src: "/mock/dog-puppy.jpg", rot: 8, x: "38%", y: "2%", z: 2, d: 0.25 },
+  { src: "/mock/cat-kitten.jpg", rot: -9, x: "-30%", y: "6%", z: 1, d: 0.15 },
+  { src: "/mock/dog-puppy.jpg", rot: 8, x: "30%", y: "2%", z: 2, d: 0.25 },
   { src: "/mock/dog-beagle.jpg", rot: -2, x: "0%", y: "-4%", z: 3, d: 0.35 },
 ];
 const STICKERS = [
@@ -244,7 +244,7 @@ function Welcome({ onEmail, onPhone }: { onEmail: () => void; onPhone: () => voi
       <div className="relative mx-auto flex h-full max-w-[440px] flex-col justify-end px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-20 lg:max-w-[1080px] lg:flex-row lg:items-center lg:justify-center lg:gap-20 lg:pb-8">
         {/* photo stack */}
         <div className="relative mx-auto w-full max-w-[340px] flex-1 lg:max-w-[460px] lg:flex-none lg:basis-[460px] lg:self-stretch">
-          <div className="absolute inset-x-0 top-1/2 h-[min(36svh,300px)] -translate-y-1/2 lg:h-[400px]">
+          <div className="absolute inset-x-0 top-1/2 h-[min(32svh,270px)] -translate-y-1/2 lg:h-[360px]">
             <PhotoStack />
           </div>
         </div>
@@ -291,7 +291,7 @@ function PhotoStack() {
   return (
     <div className="absolute inset-0">
             {STACK.map((p) => (
-              <div key={p.src} className="absolute aspect-[3/4] h-[88%] -translate-x-1/2 -translate-y-1/2" style={{ left: `calc(50% + ${p.x})`, top: `calc(50% + ${p.y})`, zIndex: p.z }}>
+              <div key={p.src} className="absolute aspect-[3/4] h-[70%] -translate-x-1/2 -translate-y-1/2" style={{ left: `calc(50% + ${p.x})`, top: `calc(50% + ${p.y})`, zIndex: p.z }}>
                 <motion.div
                   className="relative h-full w-full overflow-hidden rounded-[26px] border-[5px] border-white bg-surface shadow-[0_24px_48px_-20px_rgba(40,30,90,0.45)] dark:border-white/15"
                   initial={{ opacity: 0, y: 80, rotate: 0 }}
