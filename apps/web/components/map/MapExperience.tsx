@@ -121,7 +121,7 @@ export function MapExperience() {
         m.off("moveend", orbit);
       };
     } else {
-      m.flyTo({ ...{ center: (desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [3.3, 35.9]) as [number, number] }, zoom: desktop ? 5.9 : 5.4, pitch: is3d ? 50 : 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 2000, essential: true });
+      m.flyTo({ ...{ center: (desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [4.3, 36.1]) as [number, number] }, zoom: desktop ? 5.9 : 5.4, pitch: is3d ? 50 : 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 2000, essential: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emergency, ready]);
@@ -211,7 +211,7 @@ export function MapExperience() {
           setServiceId(id);
           if (id) setSelectedId(null);
         }}
-        initialView={{ zoom: 5.2 }}
+        initialView={desktop ? { zoom: 5.2 } : { longitude: 4.3, latitude: 36.1, zoom: 5.4 }}
         dropInId={dropId}
         userLocation={userLoc}
         onReady={(m) => {
@@ -298,7 +298,7 @@ export function MapExperience() {
           aria-label={t.map.allAlgeria}
           onClick={() => {
             setEmergency(false);
-            mapRef.current?.flyTo({ center: desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [3.3, 35.9], zoom: desktop ? 5.9 : 5.4, pitch: 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 1800 });
+            mapRef.current?.flyTo({ center: desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [4.3, 36.1], zoom: desktop ? 5.9 : 5.4, pitch: 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 1800 });
           }}
           className="glass glass-sheen flex h-12 w-12 items-center justify-center rounded-full"
         >

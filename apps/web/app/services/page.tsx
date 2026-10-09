@@ -13,6 +13,8 @@ import { SERVICE_COLOR, SERVICE_EMOJI } from "@/lib/species";
 import { ratingOf, useStore } from "@/lib/store";
 import type { Service, ServiceType } from "@/lib/types";
 import { cn, distanceKm } from "@/lib/utils";
+import { inAlgeria } from "@/lib/trust";
+import { toast } from "sonner";
 
 const TYPES: ServiceType[] = ["vet", "shelter", "transport", "boarding", "training", "store"];
 const ALGIERS = { lat: 36.7538, lng: 3.0588 };
@@ -35,13 +37,33 @@ export default function ServicesPage() {
   const [type, setType] = useState<"all" | ServiceType>("all");
   const [view, setView] = useState<"grid" | "map">("grid");
   const [q, setQ] = useState("");
+  const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const locate = () => {
+    if (origin) return setOrigin(null);
+    if (!navigator.geolocation) return toast(t.svc.locFail);
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setLocating(false);
+        const here = { lat: p.coords.latitude, lng: p.coords.longitude };
+        if (inAlgeria(here)) setOrigin(here);
+        else toast(t.svc.locFail);
+      },
+      () => {
+        setLocating(false);
+        toast(t.svc.locFail);
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300_000 },
+    );
+  };
   const query = q.trim().toLowerCase();
 
   // Pro listings first (paid placement, labelled), then verified, then best rated
   const list = services
     .filter((s) => s.status === "approved" && (type === "all" || s.type === type))
     .filter((s) => !query || s.name.toLowerCase().includes(query) || (s.location.address ?? "").toLowerCase().includes(query))
-    .map((s) => ({ s, d: distanceKm(ALGIERS, s.location), ...ratingOf(s, reviews) }))
+    .map((s) => ({ s, d: distanceKm(origin ?? ALGIERS, s.location), ...ratingOf(s, reviews) }))
     .sort((a, b) => Number(!!b.s.pro) - Number(!!a.s.pro) || Number(!!b.s.verified) - Number(!!a.s.verified) || b.rating - a.rating);
 
   return (
@@ -64,13 +86,19 @@ export default function ServicesPage() {
 
         {/* search */}
         <div className="mt-3 flex gap-2">
-          <div className="flex h-11 flex-1 items-center gap-2 rounded-full bg-surface-2 px-4">
+          <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-surface-2 px-4">
             <Search className="h-[18px] w-[18px] text-label-2" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.map.search} className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-label-2" />
           </div>
-          <span className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[14px] font-semibold">
-            <MapPin className="h-4 w-4 text-accent" /> Alger
-          </span>
+          <button
+            type="button"
+            onClick={locate}
+            aria-pressed={!!origin}
+            className={cn("flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-semibold transition-[background,transform] active:scale-95", origin ? "bg-accent text-white" : "bg-surface-2")}
+          >
+            <MapPin className={cn("h-4 w-4", origin ? "text-white" : "text-accent", locating && "animate-pulse")} />
+            {locating ? t.svc.locating : origin ? t.svc.nearMe : "Alger"}
+          </button>
         </div>
 
         {/* categories as round icon tiles */}

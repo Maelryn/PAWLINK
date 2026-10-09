@@ -68,7 +68,7 @@ function Account() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[230px_1fr]">
+        <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
           {/* tabs: sidebar on desktop, scrollable pills on phones */}
           <nav className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar lg:mx-0 lg:flex-col lg:self-start lg:px-0">
             {tabs.map(({ id, label, Icon, badge }) => (
@@ -143,9 +143,9 @@ function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
         </ButtonLink>
       </div>
       <section className="card rounded-[28px] p-3">
-        <div className="flex items-center justify-between px-3 pb-1 pt-3">
-          <h2 className="text-[20px] font-bold tracking-[-0.02em]">{t.dashboard.near}</h2>
-          <Link href="/map" className="text-[14px] font-semibold text-accent">{t.common.seeAll}</Link>
+        <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-3">
+          <h2 className="min-w-0 text-[20px] font-bold tracking-[-0.02em]">{t.dashboard.near}</h2>
+          <Link href="/map" className="shrink-0 py-2 text-[14px] font-semibold text-accent">{t.common.seeAll}</Link>
         </div>
         {near.map(({ c, d }) => (
           <Link key={c.id} href={`/cases/${c.id}`}>
@@ -170,6 +170,15 @@ async function toAvatar(file: File) {
 
 const field = "h-12 w-full rounded-[16px] bg-surface-2 px-4 text-[15px] outline-none ring-accent/40 placeholder:text-label-2 focus:ring-2";
 
+function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block ps-1 text-[13px] font-semibold text-label-2">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 function Profile({ me }: { me: User }) {
   const { t } = useI18n();
   const [f, setF] = useState({ name: me.name, phone: me.phone ?? "", city: me.city ?? "", bio: me.bio ?? "" });
@@ -190,20 +199,31 @@ function Profile({ me }: { me: User }) {
       <section className={cn(card, "space-y-3")}>
         <div className="flex items-center gap-4">
           <Avatar name={f.name || me.name} photo={photo} size={72} />
-          <label className="flex h-10 cursor-pointer items-center gap-2 rounded-full bg-surface-2 px-4 text-[14px] font-semibold">
+          <label className="flex h-11 cursor-pointer items-center gap-2 rounded-full bg-surface-2 px-4 text-[14px] font-semibold transition-transform active:scale-95">
             <Camera className="h-4 w-4" /> {t.acct.photo}
             <input type="file" accept="image/*" className="hidden" onChange={async (e) => e.target.files?.[0] && setPhoto(await toAvatar(e.target.files[0]))} />
           </label>
         </div>
-        <input required value={f.name} onChange={(e) => up("name", e.target.value)} placeholder={t.acct.name} className={field} />
+        <Labeled label={t.acct.name}>
+          <input required value={f.name} onChange={(e) => up("name", e.target.value)} className={field} autoComplete="name" />
+        </Labeled>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="relative">
-            <input value={f.phone} onChange={(e) => up("phone", e.target.value)} placeholder={t.acct.phone} className={field} dir="ltr" />
-            {me.phoneVerified && <span className="absolute end-3 top-1/2 flex -translate-y-1/2 items-center gap-1 text-[12px] font-semibold text-stable"><Check className="h-3.5 w-3.5" /> {t.acct.verified}</span>}
-          </div>
-          <input value={f.city} onChange={(e) => up("city", e.target.value)} placeholder={t.acct.city} className={field} />
+          <Labeled label={t.acct.phone}>
+            <div className="relative">
+              <input type="tel" value={f.phone} onChange={(e) => up("phone", e.target.value)} placeholder="+213 5XX XX XX XX" className={field} dir="ltr" autoComplete="tel" />
+              {/* the badge only belongs to the number that was actually verified */}
+              {me.phoneVerified && !!me.phone && f.phone.trim() === me.phone && (
+                <span className="pointer-events-none absolute end-3 top-1/2 flex -translate-y-1/2 items-center gap-1 text-[12px] font-semibold text-stable"><Check className="h-3.5 w-3.5" /> {t.acct.verified}</span>
+              )}
+            </div>
+          </Labeled>
+          <Labeled label={t.acct.city}>
+            <input value={f.city} onChange={(e) => up("city", e.target.value)} className={field} autoComplete="address-level2" />
+          </Labeled>
         </div>
-        <textarea rows={3} value={f.bio} onChange={(e) => up("bio", e.target.value)} placeholder={t.acct.bioPh} className={cn(field, "h-auto resize-none py-3")} />
+        <Labeled label={t.acct.bio}>
+          <textarea rows={3} value={f.bio} onChange={(e) => up("bio", e.target.value)} placeholder={t.acct.bioPh} className={cn(field, "h-auto resize-none py-3")} />
+        </Labeled>
       </section>
 
       <section className={cn(card, "space-y-3")}>

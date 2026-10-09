@@ -48,9 +48,9 @@ export default function ServicePage() {
 
   return (
     <div className="min-h-[100svh] pb-32">
-      <TopNav />
+      <TopNav back={{ href: "/services", label: t.nav.services }} />
       <div className="mx-auto max-w-[1000px] px-4 pt-[76px] sm:pt-24">
-        <Link href="/services" className="glass mb-4 inline-flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
+        <Link href="/services" className="glass mb-4 hidden md:inline-flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
           <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t.nav.services}
         </Link>
 
@@ -72,8 +72,12 @@ export default function ServicePage() {
                   {s.name}
                   {s.verified && <BadgeCheck className="h-6 w-6 shrink-0 text-accent" aria-label={t.svc.verified} />}
                 </h1>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[14px] text-label-2">
-                  <Stars value={rating} /> <b className="text-label">{rating ? rating.toFixed(1) : "—"}</b> · {t.services.reviews(count)} · {s.location.address}
+                <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] text-label-2">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <Stars value={rating} /> <b className="text-label">{rating ? rating.toFixed(1) : "—"}</b>
+                    <span>({t.services.reviews(count)})</span>
+                  </span>
+                  <span className="whitespace-nowrap">· {s.location.address}</span>
                 </div>
               </div>
             </div>
@@ -110,7 +114,7 @@ export default function ServicePage() {
           </div>
         </motion.div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
+        <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <Reveal>
             <section className="card rounded-[30px] p-5 sm:p-6">
               <h2 className="text-[20px] font-bold">{t.biz.reviews}</h2>

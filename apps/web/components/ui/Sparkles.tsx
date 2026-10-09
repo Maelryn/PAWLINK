@@ -5,7 +5,8 @@ import { useMemo } from "react";
 /** Deterministic pseudo-random (same on server and client, pure during render). */
 const rnd = (n: number) => {
   const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
-  return x - Math.floor(x);
+  // rounded: Math.sin differs in the last digits between Node and browsers, which broke hydration
+  return Math.round((x - Math.floor(x)) * 1000) / 1000;
 };
 
 /* Twinkling 4-point stars scattered over an area. Positions are generated on the client

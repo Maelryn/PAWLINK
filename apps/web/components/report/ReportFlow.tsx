@@ -16,7 +16,7 @@ import { TrustBadge } from "@/components/cases/Trust";
 import { toast } from "sonner";
 import { useSession } from "@/lib/auth";
 import { computeTrust, inAlgeria } from "@/lib/trust";
-import { useDevicePosition } from "@/components/layout/GeoGate";
+import { useDemoPosition, useDevicePosition } from "@/components/layout/GeoGate";
 import { analyzeAsync } from "@/lib/ai/analyze";
 import { useI18n } from "@/lib/i18n";
 import { ALL_SPECIES, LIVESTOCK, SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
@@ -55,6 +55,7 @@ export function ReportFlow() {
   const [exif, setExif] = useState<Exif | null>(null);
   // Position checked by <GeoGate>: the reporter must be in Algeria and near the animal.
   const device = useDevicePosition() ?? DEFAULT_POINT;
+  const demoPosition = useDemoPosition();
   const [point, setPoint] = useState<GeoPoint>(device);
   const distFromMe = distanceKm(device, point);
   const [address, setAddress] = useState("");
@@ -88,6 +89,7 @@ export function ReportFlow() {
       exifGps: exif?.gps,
       exifDate: exif?.date,
       device,
+      demo: demoPosition,
       duplicatePhoto: !!photo && photo.startsWith("data:") && allCases.some((c) => c.photos.includes(photo)),
       recentReports,
     });
@@ -141,20 +143,23 @@ export function ReportFlow() {
   };
 
   return (
-    <div className="relative min-h-[100svh] overflow-hidden">
-      <TopNav />
+    <div className="relative min-h-[100svh] overflow-x-clip">
+      {/* phones: a focused full-screen flow (close button + steps), no app bars */}
+      <div className="hidden md:block">
+        <TopNav noTabBar />
+      </div>
       <Backdrop triage={ai?.triage} />
 
-      <div className="relative z-10 mx-auto max-w-[620px] px-4 pb-36 pt-24 sm:pt-28">
+      <div className="relative z-10 mx-auto max-w-[620px] px-4 pb-10 pt-[max(16px,env(safe-area-inset-top))] md:pb-36 md:pt-28">
         <AnimatePresence mode="wait">
           {phase === "form" && (
             <motion.div key="form" exit={{ opacity: 0, scale: 0.96, filter: "blur(10px)" }} transition={{ duration: 0.35 }}>
               <div className="mb-6 flex items-center justify-between">
-                <Link href="/" className="glass flex h-10 w-10 items-center justify-center rounded-full" aria-label={t.common.close}>
+                <Link href="/map" className="glass flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90" aria-label={t.common.close}>
                   <X className="h-5 w-5" />
                 </Link>
                 <Progress step={step} labels={t.report.steps} onJump={(n) => n < step && go(n)} />
-                <span className="w-10" />
+                <span className="w-11" />
               </div>
 
               <div className="glass-strong relative overflow-hidden rounded-[36px] p-5 sm:p-7">
@@ -175,7 +180,8 @@ export function ReportFlow() {
                 </AnimatePresence>
               </div>
 
-              <div className="mt-5 flex gap-3">
+              {/* stays under the thumb on phones */}
+              <div className="sticky bottom-0 z-20 -mx-4 mt-5 flex gap-3 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 md:static md:mx-0 md:p-0">
                 {step > 0 && (
                   <Button variant="glass" size="lg" onClick={() => go(step - 1)} aria-label={t.common.back}>
                     <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
@@ -349,7 +355,10 @@ function PhotoStep({
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-[0_8px_20px_-6px_var(--accent)]">
               <ImagePlus className="h-6 w-6" />
             </span>
-            <span className="max-w-[260px] text-center text-[14.5px] font-medium text-label-2">{t.report.photoDrop}</span>
+            <span className="max-w-[260px] text-center text-[14.5px] font-medium text-label-2">
+              <span className="[@media(pointer:coarse)]:hidden">{t.report.photoDrop}</span>
+              <span className="hidden [@media(pointer:coarse)]:inline">{t.report.photoTap}</span>
+            </span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -358,10 +367,10 @@ function PhotoStep({
       {photo && exifNote && <p className="mt-3 text-[13px] text-label-2">📍 {exifNote}</p>}
       {!photo && (
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button variant="tinted" onClick={() => camera.current?.click()}>
+          <Button variant="tinted" className="whitespace-nowrap px-3 text-[14px]" onClick={() => camera.current?.click()}>
             <Camera className="h-4 w-4" /> {t.trust.takePhoto}
           </Button>
-          <Button variant="glass" onClick={() => input.current?.click()}>
+          <Button variant="glass" className="whitespace-nowrap px-3 text-[14px]" onClick={() => input.current?.click()}>
             <ImagePlus className="h-4 w-4" /> {t.trust.chooseFile}
           </Button>
         </div>

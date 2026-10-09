@@ -7,16 +7,16 @@ const NOW = Date.now();
 const ago = (minutes: number) => new Date(NOW - minutes * 60_000).toISOString();
 
 export const USERS: User[] = [
-  { id: "u1", name: "Yasmine Belkacem", avatar: "", role: "reporter", email: "yasmine@pawlink.dz", phoneVerified: true },
-  { id: "u2", name: "Amine Haddad", avatar: "", role: "volunteer", email: "amine@pawlink.dz", phoneVerified: true, helpTypes: ["transport", "search"], rating: 4.9, location: { lat: 36.66, lng: 4.12 } },
+  { id: "u1", name: "Yasmine Belkacem", avatar: "", role: "reporter", email: "yasmine@pawlink.dz", phoneVerified: true, phone: "+213 550 00 00 01", city: "Alger" },
+  { id: "u2", name: "Amine Haddad", avatar: "", role: "volunteer", email: "amine@pawlink.dz", phoneVerified: true, phone: "+213 550 00 00 02", city: "Tizi Ouzou", helpTypes: ["transport", "search"], rating: 4.9, location: { lat: 36.66, lng: 4.12 } },
   { id: "u3", name: "Dr. Meriem Taleb", avatar: "", role: "vet", email: "dr.taleb@pawlink.dz", phoneVerified: true, licenseVerified: true, helpTypes: ["medical"], rating: 5, location: { lat: 36.6352, lng: 4.1951 }, serviceId: "s2", city: "Larbaâ Nath Irathen", phone: "+213 26 00 00 02", pro: { plan: "pro", since: "2026-09-01T00:00:00.000Z", until: "2026-12-01T00:00:00.000Z" } },
-  { id: "u4", name: "Sofiane Meziane", avatar: "", role: "volunteer", email: "sofiane@pawlink.dz", phoneVerified: true, helpTypes: ["foster", "food"], rating: 4.8, location: { lat: 36.6431, lng: 4.1712 } },
-  { id: "u5", name: "Lydia Ait Ali", avatar: "", role: "volunteer", email: "lydia@pawlink.dz", phoneVerified: true, helpTypes: ["transport", "food"], rating: 4.7, location: { lat: 36.6588, lng: 4.2552 } },
-  { id: "u6", name: "Dr. Rachid Amrani", avatar: "", role: "vet", email: "dr.amrani@pawlink.dz", phoneVerified: true, licenseVerified: true, helpTypes: ["medical"], rating: 4.9, location: { lat: 36.7445, lng: 3.0362 } },
-  { id: "u7", name: "Nour Benali", avatar: "", role: "reporter", email: "nour@pawlink.dz", phoneVerified: true },
-  { id: "u8", name: "Karim Saadi", avatar: "", role: "volunteer", email: "karim@pawlink.dz", phoneVerified: true, helpTypes: ["boarding", "foster"], rating: 4.6, location: { lat: 36.7631, lng: 2.8512 } },
-  { id: "u9", name: "Ines Khelifi", avatar: "", role: "admin", email: "ines@pawlink.dz", phoneVerified: true },
-  { id: "u10", name: "Mehdi Ouali", avatar: "", role: "volunteer", email: "mehdi@pawlink.dz", phoneVerified: true, helpTypes: ["search", "transport"], rating: 4.8, location: { lat: 36.6702, lng: 4.2205 } },
+  { id: "u4", name: "Sofiane Meziane", avatar: "", role: "volunteer", email: "sofiane@pawlink.dz", phoneVerified: true, phone: "+213 550 00 00 04", city: "Béjaïa", helpTypes: ["foster", "food"], rating: 4.8, location: { lat: 36.6431, lng: 4.1712 } },
+  { id: "u5", name: "Lydia Ait Ali", avatar: "", role: "volunteer", email: "lydia@pawlink.dz", phoneVerified: true, phone: "+213 550 00 00 05", city: "Tizi Ouzou", helpTypes: ["transport", "food"], rating: 4.7, location: { lat: 36.6588, lng: 4.2552 } },
+  { id: "u6", name: "Dr. Rachid Amrani", avatar: "", role: "vet", email: "dr.amrani@pawlink.dz", phoneVerified: true, phone: "+213 550 00 00 06", city: "Tizi Ouzou", licenseVerified: true, helpTypes: ["medical"], rating: 4.9, location: { lat: 36.7445, lng: 3.0362 } },
+  { id: "u7", name: "Nour Benali", avatar: "", role: "reporter", email: "nour@pawlink.dz", phoneVerified: true, phone: "+213 550 00 00 07", city: "Oran" },
+  { id: "u8", name: "Karim Saadi", avatar: "", role: "volunteer", email: "karim@pawlink.dz", phoneVerified: true, phone: "+213 550 00 00 08", city: "Blida", helpTypes: ["boarding", "foster"], rating: 4.6, location: { lat: 36.7631, lng: 2.8512 } },
+  { id: "u9", name: "Ines Khelifi", avatar: "", role: "admin", email: "ines@pawlink.dz", phoneVerified: true, phone: "+213 550 00 00 09", city: "Alger" },
+  { id: "u10", name: "Mehdi Ouali", avatar: "", role: "volunteer", email: "mehdi@pawlink.dz", phoneVerified: true, phone: "+213 550 00 00 10", city: "Larbaâ Nath Irathen", helpTypes: ["search", "transport"], rating: 4.8, location: { lat: 36.6702, lng: 4.2205 } },
   { id: "u11", name: "Compte récent", avatar: "", role: "reporter", email: "nouveau@pawlink.dz", phoneVerified: false },
 ];
 

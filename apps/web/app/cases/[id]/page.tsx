@@ -47,20 +47,33 @@ export default function CasePage() {
     ...c.helpers.map((h) => ({ label: `${t.case.helperJoined(h.user.name)} · ${t.common.help[h.helpType]}`, at: c.updatedAt, icon: HELP_EMOJI[h.helpType] })),
   ];
 
+  const share = () => {
+    const url = window.location.href;
+    if (navigator.share) navigator.share({ title: c.title, url }).catch(() => {});
+    else {
+      navigator.clipboard?.writeText(url);
+      toast.success(t.common.share, { description: url });
+    }
+  };
+
   return (
     <div className="min-h-[100svh] pb-32">
-      <TopNav />
+      <TopNav
+        back={{ href: "/map", label: t.nav.map }}
+        actions={
+          <button type="button" onClick={share} className="flex h-11 w-11 items-center justify-center rounded-full bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition-transform active:scale-90" aria-label={t.common.share}>
+            <Share2 className="h-[18px] w-[18px]" />
+          </button>
+        }
+      />
       <div className="mx-auto max-w-[1180px] px-4 pt-[76px] sm:pt-24">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 hidden items-center justify-between md:flex">
           <Link href="/map" className="glass flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
             <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t.nav.map}
           </Link>
           <button
             type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(window.location.href);
-              toast.success(t.common.share, { description: window.location.href });
-            }}
+            onClick={share}
             className="glass flex h-10 w-10 items-center justify-center rounded-full"
             aria-label={t.common.share}
           >
@@ -115,7 +128,7 @@ export default function CasePage() {
           </div>
         </motion.div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_420px]">
+        <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
           <div className="space-y-6">
             <Reveal>
               <section className="card rounded-[32px] p-6">
@@ -178,7 +191,8 @@ export default function CasePage() {
             </Reveal>
           </div>
 
-          <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+          {/* phones: where it is + "I can help" come right after the photo */}
+          <div className="space-y-6 max-lg:order-first lg:sticky lg:top-24 lg:self-start">
             <Reveal>
               <section className="card overflow-hidden rounded-[32px]">
                 <div className="h-56">

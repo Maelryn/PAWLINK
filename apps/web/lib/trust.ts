@@ -15,6 +15,8 @@ export interface TrustInput {
   device?: GeoPoint | null;
   duplicatePhoto: boolean;
   recentReports: number;
+  /** Position came from the "try the demo" shortcut, not the device: never counts as on site. */
+  demo?: boolean;
 }
 
 export function computeTrust(i: TrustInput): Trust {
@@ -23,7 +25,7 @@ export function computeTrust(i: TrustInput): Trust {
     { id: "inAlgeria", ok: inAlgeria(i.location) },
     { id: "photoGps", ok: i.exifGps ? distanceKm(i.exifGps, i.location) < 2 : null },
     { id: "photoFresh", ok: i.exifDate ? Date.now() - i.exifDate.getTime() < 48 * 3_600_000 : null },
-    { id: "onSite", ok: i.device ? distanceKm(i.device, i.location) < 5 : null },
+    { id: "onSite", ok: i.demo ? false : i.device ? distanceKm(i.device, i.location) < 5 : null },
     { id: "animalDetected", ok: i.hasPhoto ? true : null },
     { id: "duplicate", ok: !i.duplicatePhoto },
     { id: "rateLimit", ok: i.recentReports < 5 },

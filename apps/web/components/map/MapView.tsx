@@ -148,7 +148,7 @@ export function MapView({
         dragRotate={interactive}
         maxPitch={70}
         // Algeria only (+ a little sea): no more world map
-        maxBounds={[-10.5, 17.5, 13.5, 38.8]}
+        maxBounds={[-10.5, 17.5, 13.5, 40.6]}
         minZoom={4.2}
         renderWorldCopies={false}
         onLoad={() => {

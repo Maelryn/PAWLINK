@@ -1,14 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button } from "@/components/ui/Button";
 import { Emoji3D } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
 import { inAlgeria } from "@/lib/trust";
 import type { GeoPoint } from "@/lib/types";
-
-const noop = () => () => {};
 
 /* Location gate: actions that create content (report, post, sign up) need a real position in Algeria.
    The backend must re-check (IP country + the GPS sent with the request). */
@@ -17,14 +15,17 @@ type Status = "checking" | "ok" | "denied" | "outside";
 const DEMO_POS: GeoPoint = { lat: 36.6455, lng: 4.1979 }; // Larbaâ Nath Irathen
 
 const GeoContext = createContext<GeoPoint | null>(null);
+const DemoContext = createContext(false);
 /** Device position, available inside <GeoGate>. */
 export const useDevicePosition = () => useContext(GeoContext);
+/** True when the position is the demo one (jury / testers without location): content made with it is never "verified". */
+export const useDemoPosition = () => useContext(DemoContext);
 
 export function GeoGate({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
   const { t } = useI18n();
   const [status, setStatus] = useState<Status>("checking");
   const [pos, setPos] = useState<GeoPoint | null>(null);
-  const isLocal = useSyncExternalStore(noop, () => ["localhost", "127.0.0.1"].includes(window.location.hostname), () => false);
+  const [demo, setDemo] = useState(false);
 
   const locate = useCallback(() => {
     if (!navigator.geolocation) return setStatus("denied");
@@ -49,7 +50,12 @@ export function GeoGate({ children, bare }: { children: React.ReactNode; bare?: 
     return () => clearTimeout(id);
   }, [locate]);
 
-  if (status === "ok" && pos) return <GeoContext.Provider value={pos}>{children}</GeoContext.Provider>;
+  if (status === "ok" && pos)
+    return (
+      <GeoContext.Provider value={pos}>
+        <DemoContext.Provider value={demo}>{children}</DemoContext.Provider>
+      </GeoContext.Provider>
+    );
 
   const blocked = status === "denied" || status === "outside";
   return (
@@ -66,11 +72,16 @@ export function GeoGate({ children, bare }: { children: React.ReactNode; bare?: 
             <Button size="lg" className="mt-6" onClick={check}>{t.geo.retry}</Button>
           </>
         )}
-        {/* Only on the developer's / jury laptop (localhost), never on the deployed site */}
-        {blocked && isLocal && (
-          <button type="button" onClick={() => { setPos(DEMO_POS); setStatus("ok"); }} className="mt-4 text-[13px] font-semibold text-accent underline-offset-2 hover:underline">
-            {t.geo.demo}
-          </button>
+        {/* Lets judges and testers without location try the flow. Anything made this way is labelled
+            "not on site" by the trust checks, so it can't pass as a verified report. */}
+        {blocked && (
+          <div className="mt-6 w-full rounded-[22px] bg-surface p-4 text-start shadow-[var(--card-shadow)]">
+            <div className="text-[14px] font-semibold">{t.geo.demoTitle}</div>
+            <p className="mt-0.5 text-[13px] leading-snug text-label-2">{t.geo.demoBody}</p>
+            <Button variant="tinted" size="sm" className="mt-3" onClick={() => { setPos(DEMO_POS); setDemo(true); setStatus("ok"); }}>
+              {t.geo.demo}
+            </Button>
+          </div>
         )}
       </div>
     </div>

@@ -33,7 +33,9 @@ function Login() {
   const { t } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") ?? "/account";
+  // only ever redirect inside PawLink (no open redirect to another site)
+  const rawNext = params.get("next");
+  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\") ? rawNext : "/map";
   const [mode, setMode] = useState<"in" | "up">(params.get("mode") === "up" ? "up" : "in");
   const [f, setF] = useState({ email: "", password: "", name: "", phone: "", city: "", bizName: "" });
   const [role, setRole] = useState<SignUpRole>("reporter");
@@ -104,17 +106,23 @@ function Login() {
       <Aurora />
       <TopNav noTabBar />
       {/* one screen, no scroll: photos on the left (desktop), compact form on the right */}
-      <div className="relative mx-auto flex h-full max-w-[1080px] items-center justify-center gap-16 px-4 pb-4 pt-[68px] lg:pt-16">
-        <div className="relative hidden h-[380px] w-[380px] shrink-0 lg:block">
+      <div className="relative mx-auto flex h-full max-w-[1080px] flex-col items-center justify-end px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[68px] lg:flex-row lg:justify-center lg:gap-16 lg:pb-4 lg:pt-16">
+        <div className="relative hidden h-[440px] w-[440px] shrink-0 lg:block">
           <PhotoStack />
         </div>
+        {/* phones: the photos fill whatever room the form leaves, and step aside when it's too tight */}
+        <div className="relative min-h-0 w-full max-w-[340px] flex-1 [container-type:size] lg:hidden">
+          <div className="absolute inset-x-0 top-1/2 h-[min(100%,280px)] -translate-y-1/2 transition-opacity duration-200 [@container(max-height:150px)]:opacity-0">
+            <PhotoStack />
+          </div>
+        </div>
 
-        <div className="flex max-h-full w-full max-w-[420px] flex-col">
+        <div className="flex max-h-full w-full max-w-[420px] shrink-0 flex-col">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setStep("choose")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm" aria-label={t.common.back}>
+            <button type="button" onClick={() => setStep("choose")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm transition-transform active:scale-90" aria-label={t.common.back}>
               <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
             </button>
-            <AppIcon className="h-10 w-10" />
+            <AppIcon className="hidden h-10 w-10 shrink-0 sm:block" />
             <h1 className="truncate text-[22px] font-black sm:text-[26px]">{t.auth.title}</h1>
           </div>
 
@@ -197,8 +205,8 @@ function Login() {
           </form>
 
           {/* Demo helper (jury demo only, remove once the real API is plugged in) */}
-          <div className="mt-3 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            <span className="shrink-0 text-[11.5px] font-semibold text-label-2">{t.account.demo} <code className="rounded bg-surface-2 px-1">{DEMO_PASSWORD}</code></span>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 lg:justify-start">
+            <span className="w-full text-center text-[11.5px] font-semibold text-label-2 lg:w-auto lg:text-start">{t.account.demo} <code className="rounded bg-surface-2 px-1">{DEMO_PASSWORD}</code></span>
             {USERS.filter((u) => ["u1", "u2", "u3", "u9"].includes(u.id)).map((u) => (
               <button
                 key={u.id}
@@ -207,7 +215,7 @@ function Login() {
                   setMode("in");
                   setF((x) => ({ ...x, email: u.email!, password: DEMO_PASSWORD }));
                 }}
-                className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-[11.5px] font-medium shadow-sm"
+                className="h-8 shrink-0 rounded-full bg-surface px-3 text-[12px] font-medium shadow-sm transition-transform active:scale-95"
               >
                 {u.name.replace(/^Dr\.\s*/, "Dr ").split(" ")[0] === "Dr" ? u.name.replace(/^Dr\.\s*/, "Dr ").split(" ").slice(0, 2).join(" ") : u.name.split(" ")[0]} · {t.dashboard.roles[u.role]}
               </button>
@@ -223,8 +231,8 @@ function Login() {
 
 /* Welcome: a stack of real rescued-animal photos (like a photo collection) + stickers, fits one screen */
 const STACK = [
-  { src: "/mock/cat-kitten.jpg", rot: -9, x: "-30%", y: "6%", z: 1, d: 0.15 },
-  { src: "/mock/dog-puppy.jpg", rot: 8, x: "30%", y: "2%", z: 2, d: 0.25 },
+  { src: "/mock/cat-kitten.jpg", rot: -9, x: "-23%", y: "6%", z: 1, d: 0.15 },
+  { src: "/mock/dog-puppy.jpg", rot: 8, x: "23%", y: "2%", z: 2, d: 0.25 },
   { src: "/mock/dog-beagle.jpg", rot: -2, x: "0%", y: "-4%", z: 3, d: 0.35 },
 ];
 const STICKERS = [
@@ -244,7 +252,7 @@ function Welcome({ onEmail, onPhone }: { onEmail: () => void; onPhone: () => voi
       <div className="relative mx-auto flex h-full max-w-[440px] flex-col justify-end px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-20 lg:max-w-[1080px] lg:flex-row lg:items-center lg:justify-center lg:gap-20 lg:pb-8">
         {/* photo stack */}
         <div className="relative mx-auto w-full max-w-[340px] flex-1 lg:max-w-[460px] lg:flex-none lg:basis-[460px] lg:self-stretch">
-          <div className="absolute inset-x-0 top-1/2 h-[min(32svh,270px)] -translate-y-1/2 lg:h-[360px]">
+          <div className="absolute inset-x-0 top-1/2 h-[min(100%,330px)] -translate-y-1/2 lg:h-[440px]">
             <PhotoStack />
           </div>
         </div>
@@ -291,7 +299,7 @@ function PhotoStack() {
   return (
     <div className="absolute inset-0">
             {STACK.map((p) => (
-              <div key={p.src} className="absolute aspect-[3/4] h-[70%] -translate-x-1/2 -translate-y-1/2" style={{ left: `calc(50% + ${p.x})`, top: `calc(50% + ${p.y})`, zIndex: p.z }}>
+              <div key={p.src} className="absolute aspect-[3/4] h-[76%] -translate-x-1/2 -translate-y-1/2" style={{ left: `calc(50% + ${p.x})`, top: `calc(50% + ${p.y})`, zIndex: p.z }}>
                 <motion.div
                   className="relative h-full w-full overflow-hidden rounded-[26px] border-[5px] border-white bg-surface shadow-[0_24px_48px_-20px_rgba(40,30,90,0.45)] dark:border-white/15"
                   initial={{ opacity: 0, y: 80, rotate: 0 }}

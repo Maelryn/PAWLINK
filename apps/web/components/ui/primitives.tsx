@@ -81,7 +81,7 @@ export function Chip({
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
       onClick={onClick}
       className={cn(
-        "inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13.5px] font-medium transition-colors duration-200",
+        "relative inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 after:absolute after:-inset-y-1 after:inset-x-0 after:content-[''] text-[13.5px] font-medium transition-colors duration-200",
         active ? "bg-label text-bg" : "bg-surface text-label ring-1 ring-inset ring-black/[0.06] hover:bg-surface-2 dark:ring-white/10",
         className,
       )}

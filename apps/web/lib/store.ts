@@ -29,6 +29,8 @@ export interface DB {
   services: Service[];
   bookings: Booking[];
   notifications: AppNotification[];
+  /** Saved adoption profiles (the heart), per user. API: PUT/DELETE /me/favorites/:adoptionId */
+  favorites: Record<string, string[]>;
 }
 
 interface State extends DB {
@@ -49,16 +51,19 @@ const seed = (): DB => ({
   services: SERVICES,
   bookings: [],
   notifications: [],
+  favorites: {},
 });
 
 let state: State = { ...seed(), hydrated: false, lastCreatedId: null };
+/** What the server rendered (never hydrated). Used while React hydrates, so the first client render matches the HTML. */
+const SERVER_STATE = state;
 
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 function persist() {
   try {
-    const db: DB = { users: state.users, sessionId: state.sessionId, cases: state.cases, reviews: state.reviews, adoptions: state.adoptions, requests: state.requests, services: state.services, bookings: state.bookings, notifications: state.notifications };
+    const db: DB = { users: state.users, sessionId: state.sessionId, cases: state.cases, reviews: state.reviews, adoptions: state.adoptions, requests: state.requests, services: state.services, bookings: state.bookings, notifications: state.notifications, favorites: state.favorites };
     localStorage.setItem(KEY, JSON.stringify(db));
   } catch {
     // quota exceeded (big photos): keep working in memory
@@ -244,6 +249,13 @@ export const store = {
     });
   },
 
+  toggleFavorite(userId: string, adoptionId: string) {
+    const mine = state.favorites[userId] ?? [];
+    const next = mine.includes(adoptionId) ? mine.filter((x) => x !== adoptionId) : [...mine, adoptionId];
+    set({ favorites: { ...state.favorites, [userId]: next } });
+    return next.includes(adoptionId);
+  },
+
   /* ── notifications ── */
   markAllRead(userId: string) {
     set({ notifications: state.notifications.map((n) => (n.userId === userId ? { ...n, read: true } : n)) });
@@ -254,7 +266,7 @@ export function useStore<T>(selector: (s: State) => T): T {
   return useSyncExternalStore(
     store.subscribe,
     () => selector(store.get()),
-    () => selector(store.get()),
+    () => selector(SERVER_STATE),
   );
 }
 

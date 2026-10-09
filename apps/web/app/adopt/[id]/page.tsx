@@ -40,13 +40,13 @@ export default function AdoptionProfilePage() {
 
   return (
     <div className="min-h-[100svh] pb-36">
-      <TopNav />
+      <TopNav back={{ href: "/adopt", label: t.nav.adopt }} />
       <div className="mx-auto max-w-[1080px] px-4 pt-[76px] sm:pt-24">
-        <Link href="/adopt" className="glass mb-4 inline-flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
+        <Link href="/adopt" className="glass mb-4 hidden md:inline-flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
           <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t.nav.adopt}
         </Link>
 
-        <div className="grid gap-8 lg:grid-cols-[1.05fr_1fr]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}

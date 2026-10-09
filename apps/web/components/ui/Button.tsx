@@ -19,10 +19,10 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-4 text-[14px] gap-1.5 rounded-full",
+  sm: "h-9 px-4 text-[14px] gap-1.5 rounded-full after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
   md: "h-11 px-5 text-[15px] gap-2 rounded-full",
   lg: "h-14 px-7 text-[17px] gap-2.5 rounded-full",
-  icon: "h-10 w-10 rounded-full",
+  icon: "h-11 w-11 rounded-full sm:h-10 sm:w-10",
   "icon-lg": "h-12 w-12 rounded-full",
 };
 

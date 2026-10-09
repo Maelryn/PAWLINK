@@ -93,7 +93,7 @@ function NewAdoption() {
 
   return (
     <div className="min-h-[100svh] pb-36">
-      <TopNav />
+      <TopNav back={{ href: "/adopt", label: t.nav.adopt, history: true }} />
       <form onSubmit={submit} className="mx-auto max-w-[620px] px-4 pt-[76px] sm:pt-24">
         <Emoji3D src="/3d/home.png" size={56} />
         <h1 className="mt-3 text-[34px] font-bold tracking-[-0.035em]">{t.market.postTitle}</h1>
