@@ -27,6 +27,26 @@ npm run dev                # http://localhost:4000
 
 - Swagger UI → <http://localhost:4000/docs> · machine-readable → `/docs-json`
 - Health → <http://localhost:4000/health> (`status: ok|degraded`, `db: up|down`)
+- `pg` is a **direct** dependency: Prisma 7 has no bundled Postgres driver and reaches the database
+  through `@prisma/adapter-pg` (`src/common/prisma/`).
+
+### Phase 0 acceptance status
+
+| Criterion | State |
+|---|---|
+| `npm install` | ✅ 864 packages |
+| `npm run build` (nest build) | ✅ clean |
+| `npm run lint` (eslint, flat config) | ✅ clean |
+| `npm test` | ✅ 8/8 (error envelope, Prisma error mapping, no stack leaks) |
+| `npm run test:e2e` | ✅ 4/4 (`/health`, `/docs-json`, `/docs`, 404 envelope) |
+| `npm run dev` boots | ✅ boots without a DB and reports `degraded` instead of crashing |
+| `/docs` renders | ✅ HTTP 200 + valid OpenAPI 3.0 document |
+| `prisma migrate status` clean | ⬜ **needs `apps/backend/.env`** (Supabase `SUPABASE_DB_URL`) — no credentials on this machine |
+| seed populates all tables | ⬜ **needs `apps/backend/.env`** — same reason |
+
+The two unproven rows are environment-only (missing credentials), not code. See `## Deviations` in
+`../docs/BACKEND_PROMPT.md` for the documented deviations and the one known cosmetic migration issue.
+
 
 ## Test
 
