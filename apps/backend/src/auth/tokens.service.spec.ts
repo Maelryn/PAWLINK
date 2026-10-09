@@ -60,6 +60,34 @@ describe('TokensService', () => {
     });
   });
 
+  describe('refresh tokens', () => {
+    it('are unique per signing, so rotation really rotates', async () => {
+      // The bug this pins: a JWT with the same payload and the same `iat` second
+      // is byte-identical, so "rotation" would re-issue the same cookie and a
+      // stolen one would never go stale.
+      const first = await service.signRefresh(PAYLOAD);
+      const second = await service.signRefresh(PAYLOAD);
+      expect(second).not.toBe(first);
+
+      const decodedFirst = jwt.decode<{ jti?: string; iat: number }>(first)!;
+      const decodedSecond = jwt.decode<{ jti?: string; iat: number }>(second)!;
+      expect(decodedFirst.jti).toEqual(expect.any(String));
+      expect(decodedSecond.jti).not.toBe(decodedFirst.jti);
+      // signed in the same second — exactly when a naive token collides
+      expect(decodedSecond.iat).toBe(decodedFirst.iat);
+    });
+
+    it('verifies through verifyRefresh and drops the jti from the payload', async () => {
+      const token = await service.signRefresh(PAYLOAD);
+      expect(await service.verifyRefresh(token)).toEqual(PAYLOAD);
+    });
+
+    it('never puts a jti on the access token', async () => {
+      const token = await service.signAccess(PAYLOAD);
+      expect(jwt.decode<{ jti?: string }>(token)!.jti).toBeUndefined();
+    });
+  });
+
   describe('ttl', () => {
     it('defaults the access token to 15 minutes and the refresh token to 30 days', async () => {
       const access = jwt.decode<{ iat: number; exp: number }>(await service.signAccess(PAYLOAD))!;

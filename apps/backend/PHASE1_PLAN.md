@@ -5,8 +5,8 @@
 > Phase 0 is committed (`5a12053` + re-audit). This file does not change any contract — it
 > only sequences the work.
 
-> **Status: implemented** (commit `phase 1` on `backend1`). §12 records what was built, and the
-> four places where the implementation had to go slightly beyond this plan.
+> **Status: implemented and proven against a real database.** §12 records what was built, the four
+> places the implementation had to go beyond this plan, and the two bugs a live database exposed.
 
 **Phase 1 in one line:** `POST /auth/register` → SMS OTP → `POST /auth/verify-phone` →
 `POST /auth/login` → `POST /auth/refresh` → `POST /auth/logout` → `GET/PATCH/DELETE /me`,
@@ -375,6 +375,38 @@ with the reason.
 | A2 | `AUTH_ACCOUNT_DELETED` (401) | `DELETE /me` needs a way to stop an already-issued access token. `UsersService.anonymize()` nulls `passwordHash`, which becomes the deletion marker — no schema change, and FK rows survive (R3). |
 | A3 | `ThrottlerGuard` overridden in the e2e suite | The 16-step acceptance flow makes ~6 register calls, which the 5-per-10-minute limit would rightly reject. Rate limiting is asserted by its own decorators, not by that suite. |
 | A4 | The exception filter now maps **raw driver failures** to `503 DB_UNAVAILABLE` | With `@prisma/adapter-pg`, a dead database arrives as a bare `Error` (`SASL: …`, `ECONNREFUSED`) carrying no Prisma code, so every data route was answering `500 INTERNAL_ERROR` — contradicting what the README has always claimed. 4 new unit tests pin it. |
+
+### Proven against a real database
+
+A throwaway **PostgreSQL 17.5 + PostGIS 3.5** container was used so nothing here depends on Supabase
+credentials. All four Phase 0/Phase 1 acceptance criteria are now closed:
+
+| Criterion | Result |
+|---|---|
+| `prisma migrate status` | "Database schema is **up to date**!" — 1 migration, applied by `migrate deploy` |
+| schema drift | `migrate diff --from-config-datasource --to-schema` → **"No difference detected"** (exit 0) |
+| seed populates all tables | users:11, zones:1, cases:27, case_helpers:13, trust_checks:189, services:14, reviews:5, adoptions:6 |
+| e2e flow | **21/21** (17 auth steps + 4 health/Swagger/envelope) |
+
+Plus, against the live server: seeded-login works with `pawlink2026` (so the argon2 hashes from
+`seed.ts` really verify), the unverified seeded user `u11` is refused with `403
+AUTH_PHONE_NOT_VERIFIED`, and after `DELETE /me` the row is anonymised with **0 orphaned rows** on
+`cases.reporterId`. The container was destroyed afterwards.
+
+### Three bugs the live database exposed (all fixed)
+
+1. **`/auth/refresh` and `/auth/logout` answered `201 Created`.** Nest defaults `POST` to 201; only
+   `register`, `verify-phone`, `resend-code` and `login` declared `@HttpCode`. Now `200` and `204`,
+   both pinned in the e2e suite.
+2. **Refresh "rotation" did not rotate.** A JWT signed twice in the same second from the same payload
+   `{ sub, role, name }` is **byte-identical**, so `/auth/refresh` re-issued exactly the same cookie
+   and a stolen one never went stale. `signRefresh` now stamps a random `jti` (`randomUUID`), which
+   also makes the Phase 4 `refresh_tokens` deny-list possible. Three new unit tests pin it, including
+   "two tokens signed in the same second differ".
+3. **`overrideGuard(ThrottlerGuard)` does not neutralise an APP_GUARD.** The suite was silently
+   hitting the 5-per-10-minute register limit. The e2e run now overrides the throttler *storage*
+   (`overrideProvider(getStorageToken())`) with a no-op, which does work, and the reason is written
+   in the test file.
 
 ### Bugs found and fixed along the way
 

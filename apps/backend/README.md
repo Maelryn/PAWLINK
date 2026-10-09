@@ -32,20 +32,48 @@ npm run dev                # http://localhost:4000
 
 ## Phase 1 surface
 
-| Method | Route | Auth | Notes |
-|---|---|---|---|
-| POST | `/auth/register` | public | 202 + SMS code. `role: "admin"` → `AUTH_ROLE_NOT_ALLOWED` |
-| POST | `/auth/verify-phone` | public | `{ accessToken, user }` + refresh cookie |
-| POST | `/auth/resend-code` | public | supersedes the previous code |
-| POST | `/auth/login` | public | one error for a bad email and a bad password |
-| POST | `/auth/refresh` | refresh cookie | new access token **and** a rotated refresh cookie |
-| POST | `/auth/logout` | refresh cookie | clears the cookie |
-| GET / PATCH / DELETE | `/me` | bearer | profile only; `phone` changes clear `phoneVerified` |
+| Method | Route | Auth | Success | Notes |
+|---|---|---|---|---|
+| POST | `/auth/register` | public | 202 + SMS code | `role: "admin"` → `AUTH_ROLE_NOT_ALLOWED` |
+| POST | `/auth/verify-phone` | public | 200 `{ accessToken, user }` + refresh cookie | |
+| POST | `/auth/resend-code` | public | 202, supersedes the previous code | |
+| POST | `/auth/login` | public | 200 + refresh cookie | one error for a bad email *and* a bad password |
+| POST | `/auth/refresh` | refresh cookie | 200 `{ accessToken }` + a **new** refresh cookie | |
+| POST | `/auth/logout` | refresh cookie | 204, cookie cleared | no body |
+| GET | `/me` | bearer | 200 `User` | read from the database, never from the token |
+| PATCH | `/me` | bearer | 200 `User` | profile fields only; a new `phone` clears `phoneVerified` |
+| DELETE | `/me` | bearer | 204 | row anonymised, `passwordHash` dropped |
+
+> Nest defaults `POST` to **201**. `/auth/refresh` (`200`) and `/auth/logout` (`204`) declare their
+> status explicitly — that omission is exactly what the e2e suite caught.
+
+### Phase 1 verified against a real database
+
+Proven on a throwaway PostgreSQL 17.5 + PostGIS 3.5 container (no Supabase credentials needed):
+
+| Check | Result |
+|---|---|
+| `prisma migrate status` before anything | 1 migration found, `20261003000000_init` not yet applied |
+| `prisma migrate deploy` | applied cleanly |
+| `prisma migrate status` after | **Database schema is up to date!** |
+| `prisma migrate diff --from-config-datasource --to-schema` | **No difference detected** (exit 0) |
+| `npm run seed` | users:11 zones:1 cases:27 helpers:13 trustChecks:189 services:14 reviews:5 adoptions:6 |
+| `npm test` | 96/96 |
+| `npm run test:e2e` | **21/21** (17 auth steps + 4 health/Swagger/envelope) |
+| login as a seeded user with `pawlink2026` | 200 — the argon2 hashes from `seed.ts` verify |
+| login as the unverified seeded user `u11` | 403 `AUTH_PHONE_NOT_VERIFIED` |
+| live register → OTP (logged, phone masked) → verify → `/me` → refresh → logout | all 200/202/204 as documented |
+| `DELETE /me` then read the row | `name = 'Compte supprimé'`, `passwordHash` null, **0 orphaned rows** on `cases.reporterId` |
 
 Security model:
 
 - **Protected by default.** `JwtAuthGuard` and `RolesGuard` are global guards, so a route needs a
   valid bearer token unless it opts out with `@Public()`. `/health` and `/auth/*` do; nothing else.
+- **"Rotation" is unique but not revocable.** Every `POST /auth/refresh` mints a refresh token with a
+  fresh `jti` (`randomUUID`), so the cookie genuinely changes and a leaked older one cannot be
+  replayed as "the current session". With no server-side store there is still no deny-list: the
+  access token lives its 15 minutes, a refresh cookie its 30 days. `refresh_tokens` is the Phase 4
+  fix (PHASE1_PLAN.md risk R1) — and `jti` is exactly what makes it possible then.
 - Access token in the response body, refresh token in an httpOnly cookie scoped to `path=/auth`,
   `secure` in production. Access and refresh use separate secrets and separate TTLs.
 - OTP: 6 digits, 5-minute TTL, 5 attempts, one live code per phone. With `SMS_PROVIDER=console`

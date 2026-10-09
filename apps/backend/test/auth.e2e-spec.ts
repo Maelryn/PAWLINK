@@ -1,11 +1,13 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import type { ThrottlerStorage } from '@nestjs/throttler';
+import { getStorageToken } from '@nestjs/throttler';
 import request from 'supertest';
 import { configureApp } from '../src/setup';
 import { AppModule } from '../src/app.module';
 import { AdminGuard } from '../src/auth/guards/admin.guard';
+import { REFRESH_COOKIE } from '../src/auth/strategies/jwt-refresh.strategy';
 import { cookieFrom, describeWithDatabase, uniqueEmail, uniquePhone } from './support/e2e-gate';
 
 /**
@@ -24,6 +26,11 @@ export class AdminProbeController {
     return { ok: true };
   }
 }
+
+/** A storage that never records a hit, so no per-route limit can trip. */
+const neverCount: ThrottlerStorage = {
+  increment: async () => ({ totalHits: 1, timeToExpire: 0, isBlocked: false, timeToBlockExpire: 0 }),
+};
 
 interface AuthResponse {
   accessToken: string;
@@ -55,18 +62,21 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
 
   let accessToken = '';
   let refreshCookie = '';
+  let otpCode = '';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [AdminProbeController],
     })
-      // The whole flow walks through ~6 register calls, which the per-route
-      // throttle (5 per 10 minutes) would correctly reject. Rate limiting is
-      // covered by its own decorators and is not what this suite is here to
-      // measure, so it is disabled here.
-      .overrideGuard(ThrottlerGuard)
-      .useValue({ canActivate: () => true })
+      // The acceptance flow walks through more register calls than the
+      // 5-per-10-minutes per-route limit allows, so the throttler is neutralised
+      // for this run: its storage never records a hit. `overrideGuard` cannot do
+      // this — the guard is registered as an APP_GUARD, which the guard override
+      // does not reach. Rate limiting is asserted by its own decorators and is
+      // not what this suite measures.
+      .overrideProvider(getStorageToken())
+      .useValue(neverCount)
       .compile();
 
     app = configureApp(moduleRef.createNestApplication());
@@ -86,6 +96,7 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
     expect(response.body).toMatchObject({ phone });
     expect(response.body.code).toMatch(/^\d{6}$/);
     expect(JSON.stringify(response.body)).not.toMatch(/passwordHash|argon2|accessToken/);
+    otpCode = response.body.code;
 
     const duplicate = await request(app.getHttpServer())
       .post('/auth/register')
@@ -95,15 +106,9 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
   });
 
   it('2. POST /auth/verify-phone → { accessToken, user } + httpOnly refresh cookie', async () => {
-    const register = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({ name: 'E2E Reporter', email, password, phone, role: 'reporter' })
-      .expect(202);
-    const code: string = register.body.code;
-
     const verified = await request(app.getHttpServer())
       .post('/auth/verify-phone')
-      .send({ code, phone })
+      .send({ code: otpCode, phone })
       .expect(200);
 
     const body = verified.body as AuthResponse;
@@ -138,7 +143,7 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
     });
   });
 
-  it('4. POST /auth/refresh → a new access token and a rotated cookie', async () => {
+  it('4. POST /auth/refresh → 200 with a new access token and a rotated cookie', async () => {
     const response = await request(app.getHttpServer())
       .post('/auth/refresh')
       .set('Cookie', refreshCookie)
@@ -163,14 +168,22 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
     expect(response.body.code).toBe('AUTH_NO_REFRESH_COOKIE');
   });
 
-  it('5. POST /auth/logout → the cookie is cleared', async () => {
+  it('5. POST /auth/logout → 204 and the cookie is cleared', async () => {
     const response = await request(app.getHttpServer())
       .post('/auth/logout')
       .set('Cookie', refreshCookie)
-      .expect(200);
+      .expect(204);
 
-    expect(response.body).toEqual({ ok: true });
+    // 204 carries no body; the cleared cookie is the whole answer
+    expect(response.body).toEqual({});
     expect(response.headers['set-cookie'][0]).toMatch(/refreshToken=;/);
+  });
+
+  it('5b. the cleared cookie is useless for a refresh', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', `${REFRESH_COOKIE}=;`)
+      .expect(401);
   });
 
   it('6. a reporter token on an admin-only route → 403 FORBIDDEN', async () => {

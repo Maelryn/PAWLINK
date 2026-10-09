@@ -13,6 +13,7 @@ import {
   ApiBody,
   ApiCookieAuth,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -117,6 +118,7 @@ export class AuthController {
   @Post('refresh')
   @Public() // the global bearer guard must stand down; the cookie guard below takes over
   @UseGuards(RefreshAuthGuard)
+  @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiCookieAuth(REFRESH_COOKIE)
   @ApiOperation({
@@ -136,6 +138,7 @@ export class AuthController {
   @Post('logout')
   @Public() // same as /refresh: the cookie guard replaces the global bearer guard
   @UseGuards(RefreshAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiCookieAuth(REFRESH_COOKIE)
   @ApiOperation({
@@ -144,11 +147,10 @@ export class AuthController {
       'Without a server-side session store this is all a logout can do — the ' +
       'access token stays valid until it expires (15m by default).',
   })
-  @ApiOkResponse({ description: 'Cookie cleared.' })
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<{ ok: true }> {
+  @ApiNoContentResponse({ description: '204 — the refresh cookie is cleared.' })
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
     await this.auth.logout((req.user as AuthTokenPayload | undefined)?.sub);
     res.clearCookie(REFRESH_COOKIE, this.refreshCookieOptions());
-    return { ok: true };
   }
 
   /**

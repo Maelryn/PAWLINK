@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { randomUUID } from 'node:crypto';
 import type { Role } from '@prisma/client';
 import { ApiError } from '../common/filters/http-exception.filter';
 import {
@@ -46,6 +47,11 @@ export class TokensService {
       secret: refreshSecret(),
       expiresIn: parseDuration(process.env.JWT_REFRESH_TTL, REFRESH_TTL_FALLBACK_SECONDS),
       issuer: jwtIssuer(),
+      // A refresh token must be **unique every time it is signed**. Without a
+      // `jti`, two tokens minted in the same second from the same payload are
+      // byte-identical — "rotation" would silently re-issue the very same
+      // cookie, and a stolen one would never go stale.
+      jwtid: randomUUID(),
     });
   }
 
