@@ -168,7 +168,8 @@ export type NotificationKind =
   | "help"
   | "review"
   | "serviceApproved"
-  | "proActive";
+  | "proActive"
+  | "resolved";
 
 export interface AppNotification {
   id: string;

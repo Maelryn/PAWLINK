@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 import { motion } from "motion/react";
 import { ArrowLeft, Share2 } from "lucide-react";
 import Link from "next/link";
@@ -16,7 +18,11 @@ import { useCaseAI } from "@/lib/ai/useCaseAI";
 import { useI18n } from "@/lib/i18n";
 import { EMERGENCY_ZONES } from "@/lib/mock/data";
 import { HELP_EMOJI, SPECIES_EMOJI } from "@/lib/species";
-import { useStore } from "@/lib/store";
+import { store, useStore } from "@/lib/store";
+import { Burst } from "@/components/ui/Sparkles";
+import { Button } from "@/components/ui/Button";
+import { CheckCircle2 } from "lucide-react";
+import { useState } from "react";
 import { useSession } from "@/lib/auth";
 import { gmaps, gmapsDirections } from "@/lib/trust";
 import { TrustBadge, TrustPanel } from "@/components/cases/Trust";
@@ -27,6 +33,7 @@ export default function CasePage() {
   const c = useStore((s) => s.cases).find((x) => x.id === id);
   const ai = useCaseAI(c);
   const user = useSession();
+  const [party, setParty] = useState(false);
 
   if (!c)
     return (
@@ -58,6 +65,7 @@ export default function CasePage() {
 
   return (
     <div className="min-h-[100svh] pb-32">
+      {party && <Burst />}
       <TopNav
         back={{ href: "/map", label: t.nav.map }}
         actions={
@@ -98,7 +106,7 @@ export default function CasePage() {
           <div className="relative -mt-7 rounded-t-[30px] bg-surface p-5 sm:p-7">
             <div className="flex flex-wrap items-center gap-2">
               <TriageBadge triage={c.triage} size="lg" />
-              <span className="rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold text-label-2">{t.common.status[c.status]}</span>
+              <motion.span key={c.status} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} className={cn("rounded-full px-3 py-1.5 text-[13px] font-semibold", c.status === "resolved" ? "bg-stable-soft text-stable" : c.status === "in_progress" ? "bg-accent-soft text-accent" : "bg-surface-2 text-label-2")}>{c.status === "resolved" && "✓ "}{t.common.status[c.status]}</motion.span>
               {zone && <span className="rounded-full bg-urgent-soft px-3 py-1.5 text-[13px] font-semibold text-urgent">🔥 {t.case.inZone}</span>}
               {c.trust && <TrustBadge level={c.trust.level} />}
             </div>
@@ -221,7 +229,20 @@ export default function CasePage() {
             </Reveal>
             <Reveal delay={0.08}>
               <section className="card rounded-[32px] p-5">
-                <HelpPicker c={c} />
+                {c.status === "resolved" ? (
+                  <div className="flex items-start gap-3 rounded-[22px] bg-stable-soft p-4">
+                    <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-stable" />
+                    <div>
+                      <div className="text-[17px] font-bold text-stable">{t.case.resolvedTitle}</div>
+                      <p className="text-[14px] text-label-2">{t.case.resolvedBody}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <HelpPicker c={c} />
+                    <ResolveButton c={c} onResolved={() => setParty(true)} />
+                  </>
+                )}
                 {c.helpers.length > 0 && (
                   <div className="mt-5 border-t border-separator pt-4">
                     <div className="text-[13px] font-semibold text-label-2">{t.common.helpers(c.helpers.length)}</div>
@@ -244,6 +265,32 @@ export default function CasePage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Reporter, people helping, vets and admins can close the case once the animal is safe. */
+function ResolveButton({ c, onResolved }: { c: NonNullable<ReturnType<typeof store.get>["cases"][number]>; onResolved: () => void }) {
+  const { t } = useI18n();
+  const user = useSession();
+  if (!user) return null;
+  const allowed = user.id === c.reporter.id || c.helpers.some((h) => h.user.id === user.id) || user.role === "vet" || user.role === "admin";
+  if (!allowed) return null;
+  return (
+    <div className="mt-5 border-t border-separator pt-4">
+      <p className="text-[13.5px] text-label-2">{t.case.resolveBody}</p>
+      <Button
+        variant="tinted"
+        className="mt-3 w-full !bg-stable-soft !text-stable"
+        onClick={() => {
+          store.resolveCase(c.id, user);
+          onResolved();
+          if (navigator.vibrate) navigator.vibrate([10, 40, 18]);
+          toast.success(t.case.resolvedToast);
+        }}
+      >
+        <CheckCircle2 className="h-[18px] w-[18px]" /> {t.case.resolveCta}
+      </Button>
     </div>
   );
 }

@@ -326,7 +326,7 @@ function PhotoStep({
               <X className="h-4 w-4" />
             </button>
             <div className="glass absolute bottom-3 start-3 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold">
-              <Check className="h-3.5 w-3.5 text-stable" strokeWidth={3} /> Cloudinary · 1.2 MB → 180 KB
+              <Check className="h-3.5 w-3.5 text-stable" strokeWidth={3} /> {t.report.photoAdded}
             </div>
           </motion.div>
         ) : (

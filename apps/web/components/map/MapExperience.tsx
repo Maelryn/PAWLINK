@@ -602,7 +602,7 @@ function CaseQuickView({
 
       <div className="mt-4 flex items-center gap-2">
         <TriageBadge triage={c.triage} />
-        <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[12px] font-semibold text-label-2">{t.common.status[c.status]}</span>
+        <motion.span key={c.status} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} className={cn("rounded-full px-2.5 py-1 text-[12px] font-semibold", c.status === "resolved" ? "bg-stable-soft text-stable" : c.status === "in_progress" ? "bg-accent-soft text-accent" : "bg-surface-2 text-label-2")}>{c.status === "resolved" && "✓ "}{t.common.status[c.status]}</motion.span>
         {c.emergencyZoneId && <span className="rounded-full bg-urgent-soft px-2.5 py-1 text-[12px] font-semibold text-urgent">🔥 {t.case.inZone}</span>}
       </div>
       <h2 className="mt-2 text-[24px] font-bold leading-tight tracking-[-0.025em]">{c.title}</h2>

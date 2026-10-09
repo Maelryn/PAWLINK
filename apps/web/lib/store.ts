@@ -142,6 +142,14 @@ export const store = {
     }));
     if (c && c.reporter.id !== me.id) set({ notifications: [...notify(c.reporter.id, "help", me.name, `/cases/${caseId}`), ...state.notifications] });
   },
+  /** PATCH /cases/:id/status { status: "resolved" } — reporter, a helper, a vet or an admin */
+  resolveCase(caseId: string, me: User) {
+    const c = state.cases.find((x) => x.id === caseId);
+    if (!c || c.status === "resolved") return;
+    updateCase(caseId, (x) => ({ ...x, status: "resolved", updatedAt: now() }));
+    const people = [c.reporter.id, ...c.helpers.map((h) => h.user.id)].filter((id, i, a) => id !== me.id && a.indexOf(id) === i);
+    set({ notifications: [...people.flatMap((id) => notify(id, "resolved", me.name, `/cases/${caseId}`)), ...state.notifications] });
+  },
   confirm(caseId: string) {
     updateCase(caseId, (c) => {
       if (!c.trust) return c;
