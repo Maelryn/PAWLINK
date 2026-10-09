@@ -83,10 +83,60 @@ function readCode(response: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * Prisma error codes that mean "the database is not talking to us".
+ * Covers both the classic Prisma codes and the raw `pg` codes that surface when
+ * the client runs through a driver adapter (`@prisma/adapter-pg`), where Prisma
+ * does not wrap the failure in a `PrismaClientKnownRequestError` at all.
+ */
+const DB_UNAVAILABLE_CODES = new Set([
+  'P1001', // can't reach database server
+  'P1002', // server timed out
+  'P1008', // operation timed out
+  'P2024', // timed out fetching a new connection from the pool
+  'P1017', // server closed the connection
+  '57P01', // pg: admin shutdown
+  '08006', // pg: connection failure
+  '08000',
+  '08003',
+  'ECONNREFUSED',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'ETIMEDOUT',
+  'EPIPE',
+]);
+
+const CONNECTION_MESSAGE = /sasl|scram|can(?:no|')?t reach database|connection (?:refused|reset|closed|failed|terminated)|timeout|timed out|econnrefused|enotfound|getaddrinfo|socket hang up|pool/i;
+
+const CONNECTION_ERROR_NAMES = new Set([
+  'PrismaClientInitializationError',
+  'PrismaClientRustPanicError',
+  'PrismaClientUnknownRequestError',
+]);
+
+/** True when the error is "the database is unreachable" rather than "a bad query". */
+function isDatabaseUnavailable(error: unknown): boolean {
+  const e = error as { name?: string; code?: unknown; message?: unknown; cause?: unknown };
+  if (e?.name && CONNECTION_ERROR_NAMES.has(e.name)) return true;
+  if (typeof e?.code === 'string' && DB_UNAVAILABLE_CODES.has(e.code)) return true;
+
+  // With a driver adapter the failure arrives as a bare `Error`, so the message
+  // is the only signal left: "SASL: …", "connect ECONNREFUSED …", …
+  if (e instanceof Error && CONNECTION_MESSAGE.test(e.message)) return true;
+
+  // …and one level down, for errors wrapped by the driver.
+  const cause = e?.cause as { code?: unknown; message?: unknown } | undefined;
+  if (cause) {
+    if (typeof cause.code === 'string' && DB_UNAVAILABLE_CODES.has(cause.code)) return true;
+    if (typeof cause.message === 'string' && CONNECTION_MESSAGE.test(cause.message)) return true;
+  }
+  return false;
+}
+
 /** Map Prisma known errors to honest HTTP codes without importing Prisma here (keeps this testable). */
 function prismaCode(error: unknown): string | undefined {
   const e = error as { name?: string; code?: unknown };
-  if (e?.name !== 'PrismaClientKnownRequestError' || typeof e.code !== 'string') return undefined;
+  if (typeof e?.code !== 'string') return undefined;
   switch (e.code) {
     case 'P2002':
       return 'CONFLICT';
@@ -96,10 +146,6 @@ function prismaCode(error: unknown): string | undefined {
       return 'CONFLICT';
     case 'P2023':
       return 'VALIDATION_ERROR';
-    case 'P1001':
-    case 'P1002':
-    case 'P1008':
-      return 'DB_UNAVAILABLE';
     default:
       return undefined;
   }
@@ -121,18 +167,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const body = exception.getResponse();
       code = readCode(body);
       message = readMessage(body);
+    } else if (isDatabaseUnavailable(exception)) {
+      // A raw driver failure (SASL, ECONNREFUSED, pool timeout …): the API is
+      // alive, the database is not — 503, never a 500.
+      status = HttpStatus.SERVICE_UNAVAILABLE;
+      code = 'DB_UNAVAILABLE';
     } else {
-      const prismaMapped = prismaCode(exception);
-      if (prismaMapped) {
-        code = prismaMapped;
+      const mapped = prismaCode(exception);
+      if (mapped) {
+        code = mapped;
         status =
-          prismaMapped === 'DB_UNAVAILABLE'
-            ? HttpStatus.SERVICE_UNAVAILABLE
-            : prismaMapped === 'NOT_FOUND'
-              ? HttpStatus.NOT_FOUND
-              : prismaMapped === 'VALIDATION_ERROR'
-                ? HttpStatus.BAD_REQUEST
-                : HttpStatus.CONFLICT;
+          mapped === 'NOT_FOUND'
+            ? HttpStatus.NOT_FOUND
+            : mapped === 'VALIDATION_ERROR'
+              ? HttpStatus.BAD_REQUEST
+              : HttpStatus.CONFLICT;
       }
     }
 

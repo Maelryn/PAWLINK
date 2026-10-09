@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Public } from '../common/decorators/auth.decorators';
 import { PrismaService } from '../common/prisma/prisma.service';
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -23,6 +24,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @Public()
   @Get('health')
   @ApiOperation({ summary: 'Liveness probe + database reachability' })
   @ApiOkResponse({

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { hash } from '@node-rs/argon2';
 import { Prisma, PrismaClient } from '@prisma/client';
+import type { TrustCheckId } from '@prisma/client';
 import { prismaClientOptions } from '../src/common/prisma/client-options';
 import {
   ADOPTIONS,
@@ -125,7 +126,7 @@ async function main(): Promise<void> {
       await prisma.trustCheck.createMany({
         data: c.trust.checks.map((ch) => ({
           caseId: c.id,
-          check: ch.id as Prisma.TrustCheckId,
+          check: ch.id as TrustCheckId,
           ok: ch.ok,
           detail: ch.detail,
         })),

@@ -77,6 +77,34 @@ describe('HttpExceptionFilter (BACKEND_PROMPT §3.1 envelope)', () => {
     expect(res.body).toMatchObject({ code: 'DB_UNAVAILABLE' });
   });
 
+  it('maps a raw driver-adapter failure to 503, not 500', () => {
+    // With @prisma/adapter-pg the failure is a bare Error with no code and no
+    // Prisma name, so only the message identifies it.
+    const err = new Error('SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string');
+    filter.catch(err, makeHost(res));
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toMatchObject({ code: 'DB_UNAVAILABLE' });
+  });
+
+  it('maps ECONNREFUSED to 503 DB_UNAVAILABLE', () => {
+    const err = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:5432'), { code: 'ECONNREFUSED' });
+    filter.catch(err, makeHost(res));
+    expect(res.body).toMatchObject({ statusCode: 503, code: 'DB_UNAVAILABLE' });
+  });
+
+  it('maps a nested driver cause to 503 DB_UNAVAILABLE', () => {
+    const err = new Error('query failed', { cause: Object.assign(new Error('socket hang up'), { code: 'EPIPE' }) });
+    filter.catch(err, makeHost(res));
+    expect(res.body).toMatchObject({ statusCode: 503, code: 'DB_UNAVAILABLE' });
+  });
+
+  it('keeps an unrelated internal error at 500 INTERNAL_ERROR', () => {
+    const err = new TypeError('Cannot read properties of undefined (reading map)');
+    filter.catch(err, makeHost(res));
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toMatchObject({ code: 'INTERNAL_ERROR' });
+  });
+
   it('never leaks stack traces or raw messages for unknown errors', () => {
     const err = new Error('secret internal detail at C:\\very\\private\\file.ts:12');
     filter.catch(err, makeHost(res));

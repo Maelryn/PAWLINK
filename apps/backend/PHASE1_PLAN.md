@@ -5,6 +5,9 @@
 > Phase 0 is committed (`5a12053` + re-audit). This file does not change any contract — it
 > only sequences the work.
 
+> **Status: implemented** (commit `phase 1` on `backend1`). §12 records what was built, and the
+> four places where the implementation had to go slightly beyond this plan.
+
 **Phase 1 in one line:** `POST /auth/register` → SMS OTP → `POST /auth/verify-phone` →
 `POST /auth/login` → `POST /auth/refresh` → `POST /auth/logout` → `GET/PATCH/DELETE /me`,
 plus the guards, throttling and the `console`/`twilio` SMS providers.
@@ -328,3 +331,57 @@ Run after every step: `npm run lint`, `npm test`, `npx tsc --noEmit`.
 | R4 | `email` is nullable + unique in the schema, and phone-only sign-up is not in the contract | keep email required at the DTO for Phase 1 (matches web `signIn`), revisit if phone-only auth is wanted |
 | R5 | Throttler storage is in-memory | fine for a single instance; move to a shared store when the API scales out (Phase 4 hardening) |
 | R6 | `ConsoleSmsProvider` returning the code in the response | gate strictly on `NODE_ENV !== "production"` and assert it in the e2e — this is the one place a demo convenience can become a production hole |
+
+---
+
+## 12. What was actually built (2026-10-09)
+
+Executed in the order of §9. Everything in §1–§7 shipped, plus four additions that the
+implementation turned out to need.
+
+### Shipped
+
+| Step | Delivered |
+|---|---|
+| 1 | `src/users/serialize.ts` (`userRowToUser`, `userRowToUserLite`) · `UsersService` (findByEmail/Phone, create, updateProfile, setPhoneVerified, clearOtps, anonymize) + specs |
+| 2 | `src/common/env.ts` · `SmsProvider` interface + symbol token · `ConsoleSmsProvider` · `TwilioSmsProvider` (global `fetch`, no SDK) · `SmsService` + specs |
+| 3 | `OtpService` — 6 digits via `crypto.randomInt`, 5-min TTL, 5 attempts, one live code per account, `IssuedOtp` has no `code` field at all + spec |
+| 4 | `TokensService` · `src/auth/secrets.ts` (single source of truth for secrets/TTL/issuer) + spec |
+| 5 | `AuthService` — register / verifyPhone / resendCode / login / refresh / logout + spec |
+| 6 | `JwtStrategy`, `JwtRefreshStrategy`, `JwtAuthGuard`, `RefreshAuthGuard`, `RolesGuard`, `AdminGuard`, `@Roles()`, `@Public()`, `@CurrentUser()` |
+| 7 | DTOs: `RegisterDto`, `LoginDto`, `VerifyPhoneDto`, `ResendCodeDto`, `UpdateMeDto`, `GeoPointDto` |
+| 8 | `AuthController` — cookie wiring (`httpOnly`, `path=/auth`, `secure` in prod, `sameSite=lax`), rotation on refresh, per-route `@Throttle` |
+| 9 | `MeController` + `MeService` — GET/PATCH/DELETE `/me` |
+| 10 | `app.module.ts`: `AuthModule`, `MeModule`, `SmsModule`, `UsersModule` + **global** `JwtAuthGuard` and `RolesGuard` |
+| 11 | 93 unit tests + `test/auth.e2e-spec.ts` (16 steps) + `test/global-setup.ts` (skips, never passes silently) |
+| 12 | README phase table, route table, security model, layout |
+
+### Verified locally
+
+`tsc --noEmit` clean · `npm run lint` clean · `npm test` **93/93** · `npm run build` clean ·
+server boots, `/docs` 200 with all 10 routes in the OpenAPI 3.0 document · `/me` without a token
+→ `401 AUTH_UNAUTHORIZED` · `POST /auth/register {role:"admin"}` → `400 AUTH_ROLE_NOT_ALLOWED`
+· bad body → `400 VALIDATION_ERROR` · tampered and expired tokens → `401` · `/docs-json` reachable.
+
+**Not verified:** `prisma migrate status` and the e2e flow — `apps/backend/.env` (Supabase
+credentials) does not exist on this machine, so the auth e2e suite correctly reports **16 skipped**
+with the reason.
+
+### Four additions beyond this plan
+
+| # | Addition | Why |
+|---|---|---|
+| A1 | `AUTH_PHONE_TAKEN` (409) on duplicate phone | `phone_otps` is keyed by `userId`, so the OTP lookup is scoped by phone. Two accounts sharing one number would confirm the wrong account's code. |
+| A2 | `AUTH_ACCOUNT_DELETED` (401) | `DELETE /me` needs a way to stop an already-issued access token. `UsersService.anonymize()` nulls `passwordHash`, which becomes the deletion marker — no schema change, and FK rows survive (R3). |
+| A3 | `ThrottlerGuard` overridden in the e2e suite | The 16-step acceptance flow makes ~6 register calls, which the 5-per-10-minute limit would rightly reject. Rate limiting is asserted by its own decorators, not by that suite. |
+| A4 | The exception filter now maps **raw driver failures** to `503 DB_UNAVAILABLE` | With `@prisma/adapter-pg`, a dead database arrives as a bare `Error` (`SASL: …`, `ECONNREFUSED`) carrying no Prisma code, so every data route was answering `500 INTERNAL_ERROR` — contradicting what the README has always claimed. 4 new unit tests pin it. |
+
+### Bugs found and fixed along the way
+
+1. `scripts/seed.ts` used `Prisma.TrustCheckId`, which does not exist as a namespace member — a
+   pre-existing **type error that `nest build` never saw** (it excludes `scripts/`) and that would
+   have broken `npm run seed` at compile time. Now `import type { TrustCheckId }`.
+2. `@nestjs/common` 11 turned `InjectionToken` into a type alias, so the SMS provider token is a
+   plain `Symbol`.
+3. Nest 11's `Strategy` has no static `extractJwtFromAuthHeaderAsBearerToken`; the extractor lives
+   on `ExtractJwt`.
