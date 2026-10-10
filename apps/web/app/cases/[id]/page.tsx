@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveCase } from "@/lib/cases";
+
 import { cn } from "@/lib/utils";
 
 import { motion } from "motion/react";
@@ -282,8 +284,9 @@ function ResolveButton({ c, onResolved }: { c: NonNullable<ReturnType<typeof sto
       <Button
         variant="tinted"
         className="mt-3 w-full !bg-stable-soft !text-stable"
-        onClick={() => {
-          store.resolveCase(c.id, user);
+        onClick={async () => {
+          const r = await resolveCase(c, user);
+          if (!r.ok) return toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
           onResolved();
           if (navigator.vibrate) navigator.vibrate([10, 40, 18]);
           toast.success(t.case.resolvedToast);

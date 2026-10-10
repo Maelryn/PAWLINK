@@ -17,7 +17,8 @@ import { toast } from "sonner";
 import { useSession } from "@/lib/auth";
 import { computeTrust, inAlgeria } from "@/lib/trust";
 import { useDemoPosition, useDevicePosition } from "@/components/layout/GeoGate";
-import { analyzeAsync } from "@/lib/ai/analyze";
+import { analyze, analyzeAsync } from "@/lib/ai/analyze";
+import { casesFromApi, createCaseRemote } from "@/lib/cases";
 import { useI18n } from "@/lib/i18n";
 import { ALL_SPECIES, LIVESTOCK, SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
@@ -94,22 +95,46 @@ export function ReportFlow() {
       recentReports,
     });
     setPhase("analyzing");
+    const title = `${t.common.species[species!]} — ${tags.slice(0, 2).map((x) => t.common.tags[x]).join(", ") || t.report.title}`;
+    const category = LIVESTOCK.includes(species!) ? "livestock" : "companion";
+    const description = desc || tags.map((x) => t.common.tags[x]).join(", ");
+    const emergencyZoneId = Math.abs(location.lat - 36.632) < 0.07 && Math.abs(location.lng - 4.205) < 0.11 ? "z1" : undefined;
+
+    // Real API (backend Phase 2): the server uploads/checks the photo, runs the AI and the trust checks
+    if (casesFromApi()) {
+      const started = Date.now();
+      const r = await createCaseRemote(
+        { title, species: species!, category, count: count > 1 ? count : undefined, location, description, conditionTags: tags, device: demoPosition ? undefined : device, emergencyZoneId, reporterOnSite: !demoPosition },
+        photo,
+      );
+      // keep the "analyzing" moment long enough to read, even when the server is fast
+      await new Promise((res) => setTimeout(res, Math.max(0, 2400 - (Date.now() - started))));
+      if (!r.ok) {
+        setPhase("form");
+        return toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
+      }
+      setAi(r.case.ai ?? analyze({ species: species!, count, description: desc, conditionTags: tags, location }, t));
+      setCreated(r.case);
+      setPhase("result");
+      return;
+    }
+
     const result = await analyzeAsync({ species: species!, count, description: desc, conditionTags: tags, location }, t, 3600);
     const c: Case = {
       id: `new-${Date.now()}`,
-      title: `${t.common.species[species!]} — ${tags.slice(0, 2).map((x) => t.common.tags[x]).join(", ") || t.report.title}`,
+      title,
       species: species!,
-      category: LIVESTOCK.includes(species!) ? "livestock" : "companion",
+      category,
       count: count > 1 ? count : undefined,
       status: "open",
       triage: result.triage,
       location,
       photos: photo ? [photo] : [],
-      description: desc || tags.map((x) => t.common.tags[x]).join(", "),
+      description,
       conditionTags: tags,
       reporter: { id: me.id, name: me.name, avatar: me.avatar },
       ai: result,
-      emergencyZoneId: Math.abs(location.lat - 36.632) < 0.07 && Math.abs(location.lng - 4.205) < 0.11 ? "z1" : undefined,
+      emergencyZoneId,
       reporterOnSite: !demoPosition,
       trust,
       moderation: trust.level === "suspicious" ? "pending" : "approved",

@@ -11,7 +11,7 @@ import { ChevronLeft } from "lucide-react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button } from "@/components/ui/Button";
 import { Emoji3D, Segmented } from "@/components/ui/primitives";
-import { signIn, signUp, type SignUpRole } from "@/lib/auth";
+import { finishSignUp, resendCode, signIn, startSignUp, type SignUpInput, type SignUpRole } from "@/lib/auth";
 import { inAlgeria } from "@/lib/trust";
 import { useI18n } from "@/lib/i18n";
 import { DEMO_PASSWORD, USERS } from "@/lib/mock/data";
@@ -43,41 +43,62 @@ function Login() {
   const [otpStep, setOtpStep] = useState(false);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  /** SMS code returned by the API outside production (console SMS provider), shown so testers can sign up */
+  const [devCode, setDevCode] = useState<string | null>(null);
+  const errText = (code: string, message?: string) => t.auth.errors[code] ?? (code === "RATE_LIMITED" ? t.auth.errors.TOO_MANY : message || t.auth.errors.UNKNOWN);
   const [step, setStep] = useState<"choose" | "form">(params.get("mode") || params.get("next") ? "form" : "choose");
   const up = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
 
+  const signUpInput = (): SignUpInput => ({
+    name: f.name,
+    email: f.email,
+    password: f.password,
+    phone: f.phone,
+    city: f.city,
+    role,
+    business: role === "pro" || role === "vet" ? { name: f.bizName || f.name, type: role === "vet" ? "vet" : bizType } : undefined,
+  });
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setError("");
-    if (mode === "in") {
-      const r = signIn(f.email, f.password);
-      if (r === "invalid") return setError(t.account.invalid);
-      toast.success(t.account.welcome(r.name));
-      return router.push(next);
+    setBusy(true);
+    try {
+      if (mode === "in") {
+        const r = await signIn(f.email, f.password);
+        if ("error" in r) return setError(errText(r.error, r.message));
+        toast.success(t.account.welcome(r.user.name));
+        return router.push(next);
+      }
+      if (!otpStep) {
+        // Sign-up is reserved for people in Algeria (backend re-checks with IP + GPS)
+        const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+        const pos = await new Promise<GeolocationPosition | null>((res) => (navigator.geolocation ? navigator.geolocation.getCurrentPosition(res, () => res(null), { timeout: 8000 }) : res(null)));
+        if (pos && !inAlgeria({ lat: pos.coords.latitude, lng: pos.coords.longitude })) return setError(t.geo.outside);
+        if (!pos && !local) return setError(t.geo.denied);
+        const r = await startSignUp(signUpInput()); // POST /auth/register → SMS code
+        if ("error" in r) return setError(errText(r.error, r.message));
+        setDevCode(r.sent.code ?? null);
+        if (r.sent.expiresAt) toast(t.auth.codeSent(r.sent.phone));
+        return setOtpStep(true);
+      }
+      const r = await finishSignUp(signUpInput(), otp); // POST /auth/verify-phone
+      if ("error" in r) return setError(errText(r.error, r.message));
+      toast.success(t.account.welcome(r.user.name));
+      router.push(role === "pro" || role === "vet" ? "/account?tab=pro" : next);
+    } finally {
+      setBusy(false);
     }
-    if (!otpStep) {
-      // Sign-up is reserved for people in Algeria (backend re-checks with IP + GPS)
-      const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-      const pos = await new Promise<GeolocationPosition | null>((res) => navigator.geolocation ? navigator.geolocation.getCurrentPosition(res, () => res(null), { timeout: 8000 }) : res(null));
-      if (pos && !inAlgeria({ lat: pos.coords.latitude, lng: pos.coords.longitude })) return setError(t.geo.outside);
-      if (!pos && !local) return setError(t.geo.denied);
-      return setOtpStep(true); // real app: POST /auth/register → SMS code
-    }
-    const r = signUp({
-      name: f.name,
-      email: f.email,
-      password: f.password,
-      phone: f.phone,
-      city: f.city,
-      role,
-      business: role === "pro" || role === "vet" ? { name: f.bizName || f.name, type: role === "vet" ? "vet" : bizType } : undefined,
-    });
-    if (r === "exists") {
-      setOtpStep(false);
-      return setError(t.account.exists);
-    }
-    toast.success(t.account.welcome(r.name));
-    router.push(role === "pro" || role === "vet" ? "/account?tab=pro" : next);
+  };
+
+  const resend = async () => {
+    const r = await resendCode(f.phone);
+    if ("error" in r) return setError(errText(r.error, r.message));
+    setDevCode(r.sent.code ?? null);
+    setOtp("");
+    toast(t.auth.resent);
   };
 
   const roles: [SignUpRole, string, string][] = [
@@ -148,7 +169,15 @@ function Login() {
                   <Emoji3D src="/3d/phone.png" size={52} className="mx-auto" />
                   <p className="text-[13.5px] text-label-2">{t.account.phoneNote}</p>
                   <div className="text-[15px] font-semibold" dir="ltr">{f.phone}</div>
-                  <input autoFocus inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="• • • • • •" className={cn(field, "h-12 text-center text-[22px] tracking-[0.5em]")} dir="ltr" />
+                  <input autoFocus inputMode="numeric" autoComplete="one-time-code" enterKeyHint="done" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="• • • • • •" className={cn(field, "h-12 text-center text-[22px] tracking-[0.5em]")} dir="ltr" />
+                  {devCode && (
+                    <button type="button" onClick={() => setOtp(devCode)} className="mx-auto block rounded-full bg-accent-soft px-3 py-1.5 text-[12.5px] font-semibold text-accent" dir="ltr">
+                      {t.auth.devCode(devCode)}
+                    </button>
+                  )}
+                  <button type="button" onClick={resend} className="mx-auto block py-1 text-[13px] font-semibold text-accent">
+                    {t.auth.resend}
+                  </button>
                 </motion.div>
               ) : (
                 <motion.div key={mode} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-2.5">
@@ -199,7 +228,7 @@ function Login() {
               )}
             </AnimatePresence>
             {error && <p className="text-[13px] font-medium text-urgent">{error}</p>}
-            <Button type="submit" className="h-12 w-full text-[16px]" disabled={mode === "up" && otpStep && otp.length < 6}>
+            <Button type="submit" className="h-12 w-full text-[16px]" disabled={busy || (mode === "up" && otpStep && otp.length < 6)}>
               {mode === "in" ? t.account.signIn : otpStep ? t.common.next : t.account.signUp}
             </Button>
           </form>

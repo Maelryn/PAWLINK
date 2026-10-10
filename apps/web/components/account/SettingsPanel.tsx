@@ -4,7 +4,7 @@ import { ChevronRight, Globe, LogOut, Moon, Sun, SunMoon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Emoji3D } from "@/components/ui/primitives";
-import { signOut, useSession } from "@/lib/auth";
+import { deleteMyAccount, signOut, useSession } from "@/lib/auth";
 import { DICTS, LOCALES, useI18n } from "@/lib/i18n";
 import { store } from "@/lib/store";
 import { useTheme, type ThemeMode } from "@/lib/theme";
@@ -42,7 +42,7 @@ export function SettingsPanel() {
           <Row onClick={() => { store.resetDemo(); toast(t.acct.resetDone); }} icon={<Tile tint="#8e8e93"><Emoji3D src="/3d/sparkles.png" size={18} /></Tile>} label={t.acct.resetDemo} chevron />
           <Row onClick={() => { signOut(); router.push("/"); }} icon={<Tile tint="#ff3b30"><LogOut className="h-[16px] w-[16px]" /></Tile>} label={t.account.signOut} danger />
           <Row
-            onClick={() => { if (confirm(t.acct.deleteConfirm)) { store.deleteAccount(me.id); router.push("/"); } }}
+            onClick={async () => { if (confirm(t.acct.deleteConfirm) && (await deleteMyAccount(me.id))) router.push("/"); }}
             icon={<Tile tint="#ff3b30"><Emoji3D src="/3d/warning.png" size={18} /></Tile>}
             label={t.acct.delete}
             danger

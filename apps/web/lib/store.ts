@@ -38,6 +38,8 @@ interface State extends DB {
   hydrated: boolean;
   /** id of the case that was just created; the map uses it to play the "drop" animation */
   lastCreatedId: string | null;
+  /** false while the real API session is being restored (refresh cookie → /me). Always true in demo mode. */
+  authChecked: boolean;
 }
 
 const KEY = "pawlink.db.v2";
@@ -54,7 +56,7 @@ const seed = (): DB => ({
   favorites: {},
 });
 
-let state: State = { ...seed(), hydrated: false, lastCreatedId: null };
+let state: State = { ...seed(), hydrated: false, lastCreatedId: null, authChecked: false };
 /** What the server rendered (never hydrated). Used while React hydrates, so the first client render matches the HTML. */
 const SERVER_STATE = state;
 
@@ -96,20 +98,24 @@ export const store = {
   },
   get: () => state,
 
-  /** Reads the saved database once on the client (called by <Providers>). */
-  hydrate() {
+  /** Reads the saved database once on the client (called by <Providers>).
+      With the real auth API, the session is restored separately (lib/auth.ts restoreSession). */
+  hydrate(opts: { realAuth?: boolean } = {}) {
     if (state.hydrated) return;
     let saved: Partial<DB> = {};
     try {
       saved = JSON.parse(localStorage.getItem(KEY) ?? "{}");
     } catch {}
-    state = { ...state, ...saved, hydrated: true };
+    state = { ...state, ...saved, hydrated: true, authChecked: !opts.realAuth };
     emit();
+  },
+  setAuthChecked() {
+    set({ authChecked: true });
   },
 
   resetDemo() {
     localStorage.removeItem(KEY);
-    state = { ...seed(), hydrated: true, lastCreatedId: null, sessionId: state.sessionId };
+    state = { ...seed(), hydrated: true, lastCreatedId: null, authChecked: true, sessionId: state.sessionId };
     persist();
     emit();
   },
@@ -120,6 +126,11 @@ export const store = {
   },
   addUser(u: User) {
     set({ users: [...state.users, u] });
+  },
+  /** A user coming from the API: replace the local copy (same id) or add it, and optionally sign them in. */
+  upsertUser(u: User, signIn = false) {
+    const users = state.users.some((x) => x.id === u.id) ? state.users.map((x) => (x.id === u.id ? { ...x, ...u } : x)) : [...state.users, u];
+    set({ users, ...(signIn ? { sessionId: u.id } : {}) });
   },
   updateUser(id: string, patch: Partial<User>) {
     set({ users: state.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) });
@@ -172,6 +183,18 @@ export const store = {
   },
   moderate(caseId: string, decision: "approved" | "hidden") {
     updateCase(caseId, (c) => ({ ...c, moderation: decision }));
+  },
+  /** Cases coming from the API (GET /cases, POST responses, realtime): replace by id or add. */
+  upsertCase(c: Case, opts: { justCreated?: boolean } = {}) {
+    const exists = state.cases.some((x) => x.id === c.id);
+    set({
+      cases: exists ? state.cases.map((x) => (x.id === c.id ? c : x)) : [c, ...state.cases],
+      ...(opts.justCreated && c.moderation !== "pending" ? { lastCreatedId: c.id } : {}),
+    });
+  },
+  /** The public map list from GET /cases replaces the demo cases. */
+  setCases(list: Case[]) {
+    set({ cases: list });
   },
   recentReportsBy(userId: string) {
     const hourAgo = Date.now() - 3_600_000;

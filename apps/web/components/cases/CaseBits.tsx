@@ -1,5 +1,7 @@
 "use client";
 
+import { offerHelp } from "@/lib/cases";
+
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -11,7 +13,6 @@ import { Button } from "@/components/ui/Button";
 import { Avatar, CasePhoto, Emoji3D, TimeAgo, TriageBadge } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, SPECIES_EMOJI } from "@/lib/species";
-import { store } from "@/lib/store";
 import type { Case, HelpType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -129,10 +130,11 @@ export function HelpPicker({ c, onDone }: { c: Case; onDone?: () => void }) {
         className="mt-4 w-full"
         size="lg"
         disabled={!!user && !picked}
-        onClick={() => {
+        onClick={async () => {
           if (!picked) return;
           if (!user) return router.push(`/login?next=/cases/${c.id}`);
-          store.offerHelp(c.id, picked, user);
+          const r = await offerHelp(c, picked, user);
+          if (!r.ok) return toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
           toast.success(t.case.helpThanks, { icon: <Emoji3D src="/3d/hearthands.png" size={22} /> });
           onDone?.();
         }}

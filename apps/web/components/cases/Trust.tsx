@@ -1,9 +1,10 @@
 "use client";
 
+import { confirmCase, flagCase } from "@/lib/cases";
+
 import { Check, CircleHelp, Flag, ShieldCheck, ShieldAlert, Shield, X } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
-import { store } from "@/lib/store";
 import type { Case, TrustLevel } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -57,9 +58,10 @@ export function TrustPanel({ c, canAct }: { c: Case; canAct: boolean }) {
         <div className="mt-3 flex gap-2">
           <button
             type="button"
-            onClick={() => {
-              store.confirm(c.id);
-              toast.success(t.trust.confirmed);
+            onClick={async () => {
+              const r = await confirmCase(c);
+              if (r.ok) toast.success(t.trust.confirmed);
+              else toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
             }}
             className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-stable-soft text-[14px] font-semibold text-stable"
           >
@@ -67,9 +69,10 @@ export function TrustPanel({ c, canAct }: { c: Case; canAct: boolean }) {
           </button>
           <button
             type="button"
-            onClick={() => {
-              store.flag(c.id);
-              toast(t.trust.flagged);
+            onClick={async () => {
+              const r = await flagCase(c);
+              if (r.ok) toast(t.trust.flagged);
+              else toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
             }}
             className="flex h-10 items-center justify-center gap-1.5 rounded-full bg-surface-2 px-4 text-[14px] font-semibold text-label-2"
           >

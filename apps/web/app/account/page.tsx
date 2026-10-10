@@ -14,7 +14,7 @@ import { SettingsPanel } from "@/components/account/SettingsPanel";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Avatar, Emoji3D, TimeAgo } from "@/components/ui/primitives";
-import { useSession } from "@/lib/auth";
+import { useSession, saveProfile } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, store, useStore } from "@/lib/store";
@@ -190,10 +190,11 @@ function Profile({ me }: { me: User }) {
   return (
     <form
       className="space-y-5"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        store.updateUser(me.id, { ...f, photo, helpTypes: skills, available });
-        toast.success(t.acct.saved);
+        const r = await saveProfile(me.id, { ...f, photo, helpTypes: skills, available });
+        if ("error" in r) toast.error(r.message ?? t.auth.errors.UNKNOWN);
+        else toast.success(t.acct.saved);
       }}
     >
       <section className={cn(card, "space-y-3")}>

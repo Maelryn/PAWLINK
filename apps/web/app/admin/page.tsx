@@ -1,5 +1,7 @@
 "use client";
 
+import { moderateCase } from "@/lib/cases";
+
 import { RequireAuth } from "@/components/layout/RequireAuth";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, EyeOff, LayoutGrid, ListChecks, Map as MapIcon, Plus, Users } from "lucide-react";
@@ -14,7 +16,7 @@ import { Avatar, CasePhoto, Emoji3D, TimeAgo, TriageBadge } from "@/components/u
 import { useI18n } from "@/lib/i18n";
 import { EMERGENCY_ZONES, USERS } from "@/lib/mock/data";
 import { SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
-import { store, useStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { TrustBadge } from "@/components/cases/Trust";
 import { AdoptionQueue, ServiceQueue } from "@/components/adopt/AdoptionPanels";
 import type { Triage } from "@/lib/types";
@@ -281,10 +283,10 @@ function Moderation() {
                       </span>
                     ) : (
                       <>
-                        <button type="button" onClick={() => store.moderate(c.id, "approved")} className="flex h-8 w-8 items-center justify-center rounded-full bg-stable-soft text-stable" title={t.admin.approve}>
+                        <button type="button" onClick={() => moderateCase(c, "approved")} className="flex h-8 w-8 items-center justify-center rounded-full bg-stable-soft text-stable" title={t.admin.approve}>
                           <Check className="h-4 w-4" strokeWidth={2.6} />
                         </button>
-                        <button type="button" onClick={() => store.moderate(c.id, "hidden")} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-label-2" title={t.admin.reject}>
+                        <button type="button" onClick={() => moderateCase(c, "hidden")} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-label-2" title={t.admin.reject}>
                           <EyeOff className="h-4 w-4" />
                         </button>
                       </>
