@@ -110,7 +110,7 @@ export function ReportFlow() {
       reporter: { id: me.id, name: me.name, avatar: me.avatar },
       ai: result,
       emergencyZoneId: Math.abs(location.lat - 36.632) < 0.07 && Math.abs(location.lng - 4.205) < 0.11 ? "z1" : undefined,
-      reporterOnSite: true,
+      reporterOnSite: !demoPosition,
       trust,
       moderation: trust.level === "suspicious" ? "pending" : "approved",
       helpers: [],

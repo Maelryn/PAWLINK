@@ -462,6 +462,7 @@ const fr: Dict = {
     serviceApproved: (s) => `${s} est vérifié et visible`,
     proActive: () => "PawLink Pro est actif. Votre fiche est mise en avant.",
     resolved: (s) => `${s} a marqué un cas comme résolu 🎉`,
+    nearbyCase: (s) => `Un animal a besoin d'aide près de vous : ${s}`,
   },
   biz: {
     signupAs: "Professionnel (clinique, refuge, animalerie…)",

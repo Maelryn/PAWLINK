@@ -1,4 +1,6 @@
-# Data — Sabrine
+# Research — Sabrine
+
+Sabrine is a vet student: she already gives Katia the veterinary references and realistic animal test cases for the AI (see AI.md §4). This file is the research part.
 
 You give PawLink **proof**. 40 of the 100 points (problem + impact) depend on showing the problem is real, that we talked to people who have it, and on numbers that aren't invented. You also make the demo data feel like real Algeria.
 

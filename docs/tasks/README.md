@@ -24,8 +24,8 @@ The website already does all of this **on fake data**. Our job now is to make it
 |---|---|---|
 | Maelryn | Website: connects every screen to the API, live link | — |
 | Mohamed + Aymen | Backend API (NestJS + Supabase) | [BACKEND.md](BACKEND.md) |
-| Katia | AI: Gemini photo analysis + safety rules | [AI.md](AI.md) |
-| Sabrine | Data: facts, interviews, demo data, impact numbers | [DATA.md](DATA.md) |
+| Katia | Data/AI: triage with Gemini (description first, photo checks), safety rules, evaluation | [AI.md](AI.md) |
+| Sabrine | Vet references + AI test cases (with Katia), research: facts, interviews, demo data, impact | [DATA.md](DATA.md) |
 | Naila → Aymen | Mobile app design, then build | `docs/MOBILE_PLAN.md` |
 | **Everyone** | Interview 1 real person, test on your phone, write your role line | [DATA.md](DATA.md#for-everyone) |
 

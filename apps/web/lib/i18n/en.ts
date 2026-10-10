@@ -460,6 +460,7 @@ const en = {
     serviceApproved: (s: string) => `${s} is verified and visible`,
     proActive: () => "PawLink Pro is active. Your listing is now featured.",
     resolved: (s: string) => `${s} marked a case as resolved 🎉`,
+    nearbyCase: (s: string) => `An animal needs help near you: ${s}`,
   },
   biz: {
     signupAs: "Business (clinic, shelter, store…)",

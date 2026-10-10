@@ -15,14 +15,21 @@ Open http://localhost:3000. `npm install` also copies the map worker and the Ara
 
 | Route | What |
 |---|---|
-| `/` | Landing page (hero with 3D animals, scroll-driven 3D map, bento features) |
-| `/map` | Live map: photo pins, clustering, filters, side panel / mobile sheet. `?mode=emergency` opens the wildfire mode |
-| `/report` | 4-step report flow, then the AI triage reveal. The new case drops onto the map |
-| `/cases/[id]` | Case detail: AI analysis, timeline, "I can help" |
-| `/adopt`, `/adopt/[id]` | Adoption cards and structured profiles |
-| `/services` | Vets, shelters, transport… with ratings and reviews |
-| `/dashboard` | Reporter / volunteer / vet views (switch role at the top) |
-| `/admin` | Overview charts, moderation, emergency zones, users |
+| `/` | Landing page (hero with 3D animals, scroll-driven 3D map, features) |
+| `/login` | Welcome screen, sign in / sign up (reporter, volunteer, vet, business) on one screen |
+| `/map` | Live map: photo pins, clustering, filters, side panel (desktop) / sheet (phone). `?mode=emergency` opens wildfire mode |
+| `/report` | 4-step report (photo, position within 2 km, animal, situation), then the AI triage. Needs an account and a position in Algeria |
+| `/cases/[id]` | Case: AI analysis, trust checks, timeline, "I can help", "Mark as resolved" |
+| `/adopt`, `/adopt/[id]`, `/adopt/new` | Adoption: cards, saved favourites, profile + request, posting (max 3 real photos, admin approval) |
+| `/services`, `/services/[id]` | Vets, shelters, transport, shops: near me, reviews, appointment requests |
+| `/account` | My space: home, profile, my reports, adoption, business/Pro, notifications, settings |
+| `/settings` | Language (FR / AR / EN) and appearance (auto / light / dark) |
+| `/pro` | PawLink Pro for businesses (demo payment, code `DEMODAY`) |
+| `/admin` | Admin only: overview, moderation queues, emergency zones, users |
+
+## Demo data
+
+Until the API is connected, `lib/store.ts` is a small database saved in the browser (localStorage). Every action notes the API endpoint that replaces it, so the screens don't change when the backend is plugged in. Demo accounts use the password `pawlink2026`.
 
 ## Where things live
 

@@ -130,7 +130,13 @@ export const store = {
 
   /* ── cases ── POST /cases · POST /cases/:id/help · /confirm · /flag */
   addCase(c: Case) {
-    set({ cases: [c, ...state.cases], lastCreatedId: c.moderation === "pending" ? null : c.id });
+    // the volunteers / vets the AI matched nearby get a notification (only once the report is public)
+    const nearby = c.moderation === "pending" ? [] : (c.ai?.suggestedHelpers ?? []).map((h) => h.userId).filter((id) => id !== c.reporter.id);
+    set({
+      cases: [c, ...state.cases],
+      lastCreatedId: c.moderation === "pending" ? null : c.id,
+      notifications: [...nearby.flatMap((id) => notify(id, "nearbyCase", c.title, `/cases/${c.id}`)), ...state.notifications],
+    });
   },
   offerHelp(caseId: string, helpType: HelpType, me: User) {
     const c = state.cases.find((x) => x.id === caseId);
