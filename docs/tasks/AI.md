@@ -1,6 +1,6 @@
 # AI — Katia
 
-You build the brain of the report flow: someone uploads a photo of an animal, and PawLink tells them **how urgent it is** and **what to do now**, safely. This is the moment judges remember, so it has to be fast, correct and never dangerous.
+You build the brain of the report flow (Data/AI, using an existing model, not training one): from what the person describes (plus their photo for a few checks), PawLink tells them **how urgent it is** and **what to do now**, safely. This is the moment judges remember, so it has to be fast, correct and never dangerous.
 
 ## 1. Where your code goes
 
@@ -63,13 +63,19 @@ Pick the provider with `AI_PROVIDER=mock|gemini`. The key is `GEMINI_API_KEY` (f
 
 ## 4. Test set (this is how we prove it works)
 
-Collect **20 photos** (free to use: Unsplash / Pexels / your own) in `apps/backend/test/ai-photos/` with a `cases.json` file holding what the right answer is:
-- 6 urgent (bleeding, hit by a car, trapped, burned)
-- 6 monitoring (limping, very thin, eye infection, puppy alone)
-- 4 stable (healthy stray, lost but fine)
-- 4 traps: no animal, a drawing, an AI image, a photo of a screen → `animalDetected` / `isRealPhoto` false
+**The description drives the triage. The photo is only used for 3 simple checks, never for a diagnosis:**
+1. Is there a real animal, and is it a real photo (not a screenshot, drawing or AI image)? → `animalDetected`, `isRealPhoto` (our anti-fake-reports check)
+2. Which species? → `speciesDetected`
+3. Visible danger (blood, fire, smoke, trapped) → can only make it **more** urgent, never less
 
-Write `npm run ai:eval`, which runs all 20 and prints a score (correct triage %, average time). **Put the score in the README.** Judges love numbers we actually measured.
+Both go in the **same** Gemini call, so there's no extra complexity.
+
+**Test cases**: `apps/backend/test/ai-cases/cases.json`, written with Sabrine (vet student) so they are realistic:
+- 30 descriptions (FR / AR / Darija / EN mix): 10 urgent, 10 monitoring, 10 stable, each with the expected triage
+- 5 tricky ones: very short ("chien blessé"), contradictory, a joke/fake report, no animal at all
+- a few photos (free to use: Unsplash / Pexels / your own) only for the 3 photo checks above, including 2–3 traps (a drawing, a screenshot, an AI image)
+
+Write `npm run ai:eval`, which runs all cases and prints: % correct triage, % of urgent cases caught (must be 100 %), average time. **Put the score in the README.** Judges love numbers we actually measured.
 
 ## 5. Dates
 
@@ -78,5 +84,5 @@ Write `npm run ai:eval`, which runs all 20 and prints a score (correct triage %,
 | **Sun 11 Oct** | Script: 1 photo in → a valid JSON answer from Gemini |
 | **Tue 13 Oct** | Full `src/ai/` module + safety rules + fallbacks + unit tests. PR into `backend1` |
 | **Wed 14 Oct** | Plugged into `POST /cases` with the backend team. Works on the live API |
-| **Tue 20 Oct** | 20-photo test set + `ai:eval` score in the README. Prompt improved until urgent cases are never missed |
+| **Tue 20 Oct** | Test cases + `ai:eval` score in the README. Prompt improved until urgent cases are never missed |
 | **24 Oct** | Freeze |
