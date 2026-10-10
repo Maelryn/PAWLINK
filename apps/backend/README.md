@@ -4,13 +4,13 @@ The API the PawLink web + mobile apps consume. Built against **`../docs/TEAM_HAN
 **`../docs/BACKEND_PROMPT.md`** — response shapes must match `../apps/web/lib/types.ts`
 field-for-field, because the frontend generates its typed client from this service's Swagger.
 
-**Status: Phase 0 — Foundation** ✅ · **Phase 1 — Auth + profile** ✅ · Phase 2 (cases/trust/AI/realtime) · Phase 3 (marketplace) · Phase 4 (admin/hardening)
+**Status: Phase 0 — Foundation** ✅ · **Phase 1 — Auth + profile** ✅ · **Phase 2 — cases, trust, AI, realtime** ✅ · Phase 3 (marketplace) · Phase 4 (admin/hardening)
 
 | Phase | What |
 |---|---|
 | 0 ✅ | NestJS scaffold · Swagger · Prisma schema (15 tables + PostGIS) · error envelope · health · seed |
 | 1 ✅ | register → OTP → verify → login → refresh (rotated cookie) → logout · `/me` GET/PATCH/DELETE · guards · SMS providers |
-| 2 ⬜ | cases + bbox query + trust pipeline + `/ai/analyze` + Socket.IO |
+| 2 ✅ | cases + the PostGIS bbox map query · the 8-check trust pipeline · `/ai/analyze` · Socket.IO on `/realtime` |
 | 3 ⬜ | adoptions, services, reviews, bookings, zones, notifications |
 | 4 ⬜ | admin, moderation queues, hardening |
 
@@ -25,7 +25,10 @@ npm run seed:admin -- --email you@pawlink.dz --password <secret>   # admin (neve
 npm run dev                # http://localhost:4000
 ```
 
-- Swagger UI → <http://localhost:4000/docs> · machine-readable → `/docs-json`
+- Swagger UI → <http://localhost:4000/docs> · machine-readable → `/docs-json` — every Phase 2 route
+  is listed there with its request and response schemas, because the frontend generates its typed
+  client from it
+- Realtime → `ws://localhost:4000/realtime` (Socket.IO, `auth: { token }`)
 - Health → <http://localhost:4000/health> (`status: ok|degraded`, `db: up|down`)
 - `pg` is a **direct** dependency: Prisma 7 has no bundled Postgres driver and reaches the database
   through `@prisma/adapter-pg` (`src/common/prisma/`).
@@ -47,7 +50,98 @@ npm run dev                # http://localhost:4000
 > Nest defaults `POST` to **201**. `/auth/refresh` (`200`) and `/auth/logout` (`204`) declare their
 > status explicitly — that omission is exactly what the e2e suite caught.
 
-### Phase 1 verified against a real database
+### Phase 2 surface
+
+| Method | Route | Auth | Success | Notes |
+|---|---|---|---|---|
+| GET | `/cases?bbox=…` | public (optional bearer) | 200 `{items,total,page,pageSize}` | **one raw PostGIS statement** on the GIST index; ordered `triage` then `createdAt DESC`; `moderation` null or `approved` only |
+| GET | `/cases/nearby?lat=&lng=&radiusKm=` | bearer | 200 | `ST_DWithin`, ordered by the KNN operator; each item carries `distanceKm` |
+| GET | `/cases/:id` | public (optional bearer) | 200 | a held case is a 404 unless the caller is its reporter |
+| POST | `/cases` | bearer + verified phone | 201 | response **includes `ai` and `trust`**; `@Throttle` 15/h per IP, 5/h per account |
+| PATCH | `/cases/:id/status` | volunteer / vet / admin | 200 | a reporter gets `403 FORBIDDEN` |
+| POST | `/cases/:id/help` | bearer | 200 | `open → in_progress`; emits `help.offered` + `case.updated`; writes a `help` notification |
+| POST | `/cases/:id/confirm` | bearer | 200 | confirming twice raises `unverified` to `verified` |
+| POST | `/cases/:id/flag` | bearer | 200 | three distinct flags → `pending`, off the public map |
+| PATCH | `/admin/cases/:id/moderation` | admin | 200 | `{ decision: "approved" \| "hidden" }` |
+| GET | `/admin/cases` | admin | 200 | no moderation gating — this is the queue |
+| POST | `/uploads/signature` | bearer | 201 | Cloudinary signed params; **501 `UPLOADS_NOT_CONFIGURED`** without keys |
+| POST | `/uploads/probe` | bearer | 200 | multipart → EXIF + 64-bit dHash, returns an opaque `probeId` |
+| POST | `/ai/analyze` | bearer | 201 | `AIAnalysis` + `animalDetected` + `isRealPhoto` |
+
+> Nest defaults `POST` to **201**. `/cases/:id/help`, `/confirm`, `/flag` and `/uploads/probe`
+> answer **200** and declare it with `@HttpCode(HttpStatus.OK)` — exactly the omission the
+> Phase 1 e2e caught, now covered by the Phase 2 suite.
+
+### The trust pipeline (`src/cases/trust.service.ts`)
+
+A line-for-line port of `apps/web/lib/trust.ts`, because the web UI already *displays* these
+scores: drift in the thresholds would be visible to a reporter. `scoreTrust()` is pure and
+exported, so the web's own scenarios are asserted against it directly.
+
+```
+score   = known.length ? passed / known.length : 0.5      // rounded to 2 decimals
+hardFail = some check failed AND its id ∈ { inAlgeria, photoGps, duplicate, rateLimit }
+level   = hardFail || score < 0.5        → "suspicious"
+          score >= 0.85 && checks[0].ok  → "verified"
+          otherwise                      → "unverified"
+suspicious → moderation: "pending" → hidden from GET /cases until an admin approves
+```
+
+The eight checks, and where each one now reads from:
+
+| id | Real check |
+|---|---|
+| `account` | `user.phoneVerified`, read from the row |
+| `inAlgeria` | `ST_Within(ST_SetSRID(ST_MakePoint(lng,lat),4326), ST_GeomFromGeoJSON($1))` against the checked-in **simplified Algeria polygon** (`src/geo/algeria-boundary.json`, Natural Earth 50m, Douglas-Peucker 0.05°) |
+| `photoGps` | `exifr`-read GPS from the probed original vs the pin, `< 2 km` |
+| `photoFresh` | EXIF `DateTimeOriginal`, `< 48 h` |
+| `onSite` | device GPS `< 5 km`, else `null` |
+| `animalDetected` | the AI provider; `null` when it could not tell |
+| `duplicate` | `sharp` → 64-bit dHash, **Hamming distance computed in SQL**, `≤ 8` against `photo_hashes` |
+| `rateLimit` | ≤ 5 reports/hour/account in the service, ≤ 15/hour/IP by the throttler |
+
+### Why uploads are two steps
+
+Cloudinary strips metadata on upload, so "read the EXIF server-side" and "the photos are already
+uploaded" cannot both be true. The resolution is `POST /uploads/probe`: the original bytes come to
+the API, which reads EXIF and a perceptual hash and hands back an opaque `probeId`.
+`POST /cases` then takes `probeIds` — one per photo, enforced — so the only way to influence
+`photoGps`, `photoFresh` or `duplicate` is to hand the server a real file first. A probe is usable
+for one hour, only by the account that created it.
+
+### The AI (`src/ai/`)
+
+The order is the contract: **provider → safety rules → geography → validation**.
+
+1. `AI_PROVIDER=mock` (default) is a faithful port of `apps/web/lib/ai/analyze.ts` with the text
+   moved server-side into `src/ai/templates/{fr,en,ar}.ts` — same tags, same advice selection, same
+   confidence seed. `AI_PROVIDER=gemini` calls Gemini Flash with
+   `responseMimeType: application/json` and a strict schema, in under 4 s.
+2. The **safety-rule layer then overrides the model**. The keyword lists are the web's own, in
+   French, English, Arabic and Darija, copied as-is. A hit forces `triage: "urgent"` and sets
+   `forcedUrgentByRule: true`. Rules can only ever *raise* a triage.
+3. `suggestedServices` and `suggestedHelpers` are real: `ST_DWithin`/`ST_Distance` against
+   `services.location` (KNN-sorted, GIST-indexed) for the top 3 nearest vet / transport / shelter,
+   and the volunteers whose declared skills match, measured with the same great-circle formula the
+   trust pipeline uses.
+4. On a timeout, a model error or an answer that fails validation, one of the **three cached
+   examples** in `src/ai/fallbacks/` is returned with `model: "gemini-flash (fallback)"`, so it can
+   never be mistaken for a real answer. The disclaimer is always the template's — never the model's.
+
+### Realtime (`src/realtime/`)
+
+Socket.IO on `/realtime`, the access token in `auth.token`, verified in **handshake middleware**
+(`server.use`) — the only place a connection can genuinely be refused, so an anonymous socket gets
+`connect_error` and never joins.
+
+| event | when | payload |
+|---|---|---|
+| `case.created` | a case is stored **and it is public** | `{ case: Case }` |
+| `case.updated` | status, confirm or flag | `{ case: Case }` |
+| `help.offered` | `POST /cases/:id/help` | `{ caseId, helper: UserLite, helpType }` |
+| `notification` | a notification row is written | `{ notification }` |
+
+## Phase 1 verified against a real database
 
 Proven on a throwaway PostgreSQL 17.5 + PostGIS 3.5 container (no Supabase credentials needed):
 
@@ -85,22 +179,15 @@ Security model:
 ## Test
 
 ```bash
-npm run test       # unit (error envelope, users, SMS, OTP, tokens, auth)
-npm run test:e2e   # boots the app: /health, /docs, auth flow, role denial
+npm run test       # unit: 278 tests — error envelope, users, SMS, OTP, tokens, auth, bbox,
+                   # EXIF, dHash, geo, serialize, trust, safety rules, AI, realtime, cases
+npm run test:e2e   # boots the app against a real database: 53 tests
 npm run lint
+npx tsc --noEmit  # the only gate that also sees scripts/
 ```
 
-`npm run test:e2e` needs a reachable database. Without one the auth suite reports itself as
-**skipped** with the reason — it never passes silently.
-
-
-## Test
-
-```bash
-npm run test       # unit (error envelope, …)
-npm run test:e2e   # boots the app: /health, /docs-json, error envelope
-npm run lint
-```
+`npm run test:e2e` needs a reachable database. Without one the suites report themselves as
+**skipped**, with the reason printed once — they never pass silently.
 
 ## Environment
 
@@ -126,6 +213,13 @@ src/users              UsersService + userRowToUser(), the only row → User map
 src/sms                SmsProvider interface · console (default) · twilio · SmsService
 src/auth               controller/service · OtpService · TokensService · strategies · guards · DTOs
 src/me                 GET/PATCH/DELETE /me
+src/cases              the map query (bbox.ts) · the trust pipeline · caseRowToCase · DTOs
+src/uploads            POST /uploads/probe (EXIF + dHash) · /uploads/signature (Cloudinary)
+src/ai                 AIProvider interface · mock · gemini · safety rules · templates · fallbacks
+src/geo                the checked-in Algeria boundary + ST_Within / ST_DWithin helpers
+src/realtime           the Socket.IO gateway on /realtime + the four typed events
+src/admin              /admin/cases — the moderation queue
+src/shared/ai-analysis the AIAnalysis contract as a runtime guard, shared by both readers
 scripts/seed.ts        ports the demo scenario into PostgreSQL (re-runnable)
 scripts/create-admin.ts the ONLY way an admin account is created
 test/global-setup.ts   decides whether the e2e suites run or are reported as skipped
@@ -151,6 +245,118 @@ Decisions taken while building Phase 1, all consistent with `docs/BACKEND_PROMPT
 - The global exception filter also recognises **raw driver failures** (SASL errors, `ECONNREFUSED`,
   pool timeouts) and answers `503 DB_UNAVAILABLE` — as the README always claimed — instead of a
   `500`, because `@prisma/adapter-pg` surfaces them as bare `Error`s that carry no Prisma code.
+
+## Phase 2 verified against a real database
+
+The same throwaway **PostgreSQL 17.5 + PostGIS 3.5.2** container, recreated and re-seeded for this
+phase. Every row below was produced by running the command, not by reasoning about it.
+
+| Check | Result |
+|---|---|
+| `prisma migrate deploy` | applied cleanly — **2 migrations** (`…_init`, `20261010200738_photo_probes`) |
+| `prisma migrate status` | **Database schema is up to date!** |
+| `prisma migrate diff --from-config-datasource --to-schema` | **No difference detected** (exit 0) |
+| `npm run seed` | users:11 zones:1 cases:27 helpers:13 trustChecks:189 services:14 reviews:5 adoptions:6 — **the counts did not move** |
+| `npm test` | **278/278** |
+| `npm run test:e2e` | **53/53** (21 Phase 1 + 32 Phase 2) |
+| `GET /cases?bbox=3.9,36.5,4.4,36.9` | 13 cases, **urgent-first**, `total: 13` with `pageSize` unchanged |
+| a bbox around Algiers only | the Kabylie cases are absent, `c13` is present |
+| `?bbox=,,,` / `?bbox=1,2,3` / `?bbox=0,0,0,200` / `?bbox=-180,-90,180,90` | 400 `VALIDATION_ERROR` for all four |
+| the seeded `pending` case | **absent** from the public bbox, present in `GET /admin/cases` |
+| `POST /uploads/probe` on `with-exif.jpg` | `probeId`, `exif.gps = {lat:36.632,lng:4.205}`, `takenAt`, `camera`, 16-hex dHash |
+| `POST /uploads/probe` on `no-exif.jpg` | `exif: {}` **and no error** — `exifr` returns `undefined`, not `null` |
+| the same dHash for `with-exif.jpg` and `recompressed.jpg` | confirmed — that is what catches a reused photo |
+| `POST /uploads/signature` with no keys | **501 `UPLOADS_NOT_CONFIGURED`**, never a 500 |
+| `POST /cases` | response contains **`ai` and `trust`**; `moderation` null for a verified reporter |
+| a client-supplied `trust: {level:"verified", confirmations:99}` | ignored — recomputed, `confirmations: 0` |
+| an out-of-Algeria pin (Paris) | `trust.level: "suspicious"`, `moderation: "pending"`, absent from the public bbox, present for an admin |
+| the same photo twice | `duplicate: false` with a detail string → `pending` |
+| `GET /cases/:id` for a held case as a stranger | **404** |
+| `POST /cases/:id/confirm` by two different accounts | `confirmations: 2`, `score: 0.96`, `level: "verified"` |
+| `POST /cases/:id/confirm` twice by one account | 409 `CONFLICT` — one per account |
+| `POST /cases/:id/flag` ×3 by three accounts | `moderation: "pending"`, gone from the public map |
+| `PATCH /cases/:id/status` by a volunteer / by the reporter | **200** / **403 `FORBIDDEN`** |
+| `POST /ai/analyze` with an Arabic description | `triage: "urgent"`, `forcedUrgentByRule: true` |
+| `POST /ai/analyze` with a Darija description | `triage: "urgent"`, `forcedUrgentByRule: true` |
+| `animalDetected` with no photo | `null` |
+| `suggestedServices` | the nearest vet at **1.0 km**, transport 10 km, shelter 12.9 km — matches an independent `ST_Distance` query |
+| the 6th report in an hour | **429 `TRUST_RATE_LIMITED`** |
+| Socket.IO with no handshake token | `connect_error` — the socket never joins |
+| Socket.IO with a forged token | `connect_error` |
+| a connected socket creating a case and receiving help | `case.created` · `case.updated` · `help.offered` · `notification` all arrive with the documented payloads |
+| a **held** case | **no `case.created` broadcast** |
+| `/docs-json` | all 23 routes listed, each with request and response schemas |
+| boot log | no token, password, OTP or API key appears in any line |
+
+Live smoke (`npm start` + `curl` + a real `socket.io-client`) was used for the socket rows, the
+Swagger route list and the boot log, because a unit test cannot prove a broadcast is delivered.
+
+### What only running it caught
+
+| Bug | Why the tests missed it | Fix |
+|---|---|---|
+| `Cannot access 'PointDto' before initialization` at boot | no unit test loaded the controller; `tsc` is happy | nested DTO classes are declared **first** in the file — `emitDecoratorMetadata` turns a property's type into `Reflect.metadata('design:type', X)`, which is evaluated while the class is being defined. `src/app.bootstrap.spec.ts` now imports every controller and DTO, and was verified to fail when the order is reverted |
+| `Nest can't resolve dependencies of the RealtimeGateway (?)` | same | `TokensService` is imported as a **value**, not `import type` — a type-only import is erased before the metadata is written |
+| `Cannot access 'CreateCaseLocationDto' before initialization` | same | nested DTO declared first, plus the bootstrap spec above |
+| `GeoService` unresolvable in `CasesModule` | `GeoModule` is `@Global()`, so it is importable **nowhere** until it is imported once | `GeoModule` added to `app.module.ts` |
+| `Post /cases` answered with eight `ok: null` trust checks | the row from `create`'s transaction is written **before** the `trust_checks`, so its `trustChecks` is empty | the service re-reads the case after the transaction |
+| `GET /admin/cases` → 500 | `Prisma.join([])` **throws** on an empty array, and an unfiltered admin list builds none | `WHERE TRUE` when there are no filters |
+| `@Throttle` 5/h per IP shadowed the account limit, so `TRUST_RATE_LIMITED` was unreachable | the two limits were the same number, so the guard always fired first | the per-IP throttler is now a 15/h backstop, documented in the controller |
+| `photos` always failed validation | `@MaxLength(6)` on an **array** always fails — class-validator's `maxLength` returns false for non-strings | `@ArrayMaxSize(6)` |
+
+## Deviations from the spec documents
+
+Each one is a deliberate departure from `docs/BACKEND_PROMPT.md` or `PHASE2_PLAN.md`, with the reason.
+
+1. **`photo_probes` is a new table** (migration `20261010200738_photo_probes`). §4's table list does
+   not include it. It is PHASE2_PLAN §6 option A, and the alternative — trusting client-extracted
+   EXIF — is the one thing §3.5 forbids. Rows hold EXIF + a dHash and expire after an hour; they are
+   pruned on every probe, so no cron is needed. `photo_hashes` keeps the permanent record.
+2. **`users` has no geography column, so `suggestedHelpers` is measured in JavaScript.** §7.5 asks
+   for `users.location`, but the schema has only `lat`/`lng` there and adding one is a schema change
+   outside this phase's scope. The distance uses the same great-circle formula the trust pipeline
+   and the web mock use, so the numbers agree — it is still real data from the database rather than
+   the hard-coded mock array. `suggestedServices` **is** real PostGIS.
+3. **The per-IP report limit is 15/h, not 5/h.** At exactly 5 it would always fire before the
+   account-level check and the documented `429 TRUST_RATE_LIMITED` would be unreachable. The
+   per-account 5/h is the contract; the throttler is the coarser backstop against account farming.
+4. **Moderation endpoints under `/admin/*` ship in Phase 2** (R6). The trust pipeline cannot be
+   demonstrated without a `pending → approved` path, and a report held forever is a report the
+   reporter never gets answered.
+5. **`GET /cases` is public** (R9, `BACKEND_PROMPT` §3.3 wins over `TEAM_HANDOFF` §5). It accepts an
+   **optional** bearer token so a signed-in reporter still sees their own held report; an admin's
+   full view is `GET /admin/cases`.
+6. **`animalDetected` stays `null` whenever the provider cannot tell** (R5) — including for every
+   cached fallback, which has seen nothing.
+7. **`socket.io-client` is a devDependency.** The e2e suite connects a real socket; without it the
+   "the broadcast actually arrives" rows above could only be asserted with a mock, which would
+   defeat the point.
+8. **Nest's 201 default is declared explicitly** on the routes that answer 200 (`/cases/:id/help`,
+   `/confirm`, `/flag`, `/uploads/probe`) — the same omission the Phase 1 suite caught.
+
+## Phase 2 implementation notes
+
+Decisions taken while building this phase, all consistent with `docs/BACKEND_PROMPT.md`:
+
+- **One trust scorer, pure and exported.** `scoreTrust()` in `src/cases/trust.service.ts` is the
+  web's arithmetic with no I/O in it, so the web's own five scenarios are asserted against the same
+  function the server runs rather than against a paraphrase of it.
+- **The rule layer runs after the provider, always.** `AIProvider` returns a pre-rules answer; the
+  keywords are ported verbatim so a hit means the same thing on both sides of the wire.
+- **The bbox is one raw statement; the relations are Prisma's.** `location &&` on the GIST index does
+  the spatial work, `COUNT(*) OVER ()` gives the matching total in the same round trip, and
+  `include` loads the reporter, helpers and checks — then the SQL's ordering is preserved in
+  JavaScript, because the map depends on urgent-first.
+- **The Hamming distance is computed in SQL**, not in Node: `bit_count(('x' || hash)::bit(64) # …)`
+  compares against every stored hash without shipping them out.
+- **`OptionalJwtAuthGuard`** is paired with `@Public()` on the case reads: the global
+  `JwtAuthGuard` runs first and would otherwise reject the anonymous caller before the optional
+  guard could attach one.
+- **`src/shared/ai-analysis.ts`** holds the `AIAnalysis` contract as a runtime guard, shared by the
+  row mapper and the AI service, because a `Json` column accepts anything and the frontend's
+  generated client trusts the Swagger type.
+- **`caseRowToCase` is the only row → `Case` mapper**, and it strips `animalDetected`/`isRealPhoto`
+  on the way in: those two are internal facts for the trust checks, not part of the web's `Case`.
 
 ## Contract rules that are not negotiable
 

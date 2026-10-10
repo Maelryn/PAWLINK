@@ -1,0 +1,18 @@
+{
+  "triage": "stable",
+  "confidence": 0.76,
+  "summary": "This dog looks safe. Basic needs like food and shelter are the next step.",
+  "observedSigns": [
+    "No visible issue"
+  ],
+  "safetyAdvice": [
+    "Don't give human medication or force food.",
+    "Contact a veterinarian as soon as possible."
+  ],
+  "possiblyContagious": false,
+  "recommendedHelp": ["food", "foster"],
+  "suggestedServices": [],
+  "forcedUrgentByRule": false,
+  "disclaimer": "PawLink AI does not diagnose. Always contact a veterinarian.",
+  "model": "gemini-flash (fallback)"
+}

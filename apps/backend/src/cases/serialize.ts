@@ -1,5 +1,6 @@
 import type { Case as CaseRow, CaseHelper, CaseConfirm, CaseFlag, TrustCheck, User as UserRow } from '@prisma/client';
-import type { AIAnalysis, Case, Trust, UserLite } from '../shared/types';
+import { aiOrUndefined } from '../shared/ai-analysis';
+import type { Case, Trust, UserLite } from '../shared/types';
 
 /**
  * The ONLY place a `cases` row becomes the frontend `Case`
@@ -7,9 +8,13 @@ import type { AIAnalysis, Case, Trust, UserLite } from '../shared/types';
  * every response, so the typed client the frontend generates from Swagger can
  * never drift from the contract.
  *
- * `Case.ai` is `Json` in the database and is stored **exactly as
- * `POST /ai/analyze` returned it**, so it is passed through untouched rather than
- * reshaped — reshaping here would silently rewrite the AI contract.
+ * `Case.ai` is `Json` in the database and holds the `AIAnalysis` part of what
+ * `POST /ai/analyze` returned — `animalDetected` and `isRealPhoto` are internal
+ * facts used by the trust pipeline and are deliberately not stored. It is passed
+ * through untouched rather than reshaped — reshaping here would silently rewrite
+ * the AI contract — but it is validated on the way out with
+ * `isAIAnalysis()` (`src/shared/ai-analysis.ts`), because a Json column accepts
+ * anything and the frontend's generated client trusts the Swagger type.
  */
 
 /** What the row must carry for the mapper to work: the row plus its relations. */
@@ -23,39 +28,6 @@ export interface CaseRowWithRelations extends CaseRow {
 
 function toLite(user: Pick<UserRow, 'id' | 'name' | 'avatar'>): UserLite {
   return { id: user.id, name: user.name, avatar: user.avatar };
-}
-
-const TRIAGE_VALUES = ['urgent', 'monitoring', 'stable'];
-
-/**
- * `ai` is a Json column: it is stored verbatim as `POST /ai/analyze` returned it,
- * so it is passed through untouched — but it must still be *validated* on the way
- * out, because a Json column accepts anything and the frontend's generated client
- * trusts the Swagger type. A malformed blob becomes `undefined`, never a silently
- * wrong shape.
- */
-export function isAIAnalysis(value: unknown): value is AIAnalysis {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-  const a = value as Record<string, unknown>;
-  return (
-    typeof a.triage === 'string' &&
-    TRIAGE_VALUES.includes(a.triage) &&
-    typeof a.confidence === 'number' &&
-    typeof a.summary === 'string' &&
-    Array.isArray(a.observedSigns) &&
-    Array.isArray(a.safetyAdvice) &&
-    typeof a.possiblyContagious === 'boolean' &&
-    Array.isArray(a.recommendedHelp) &&
-    Array.isArray(a.suggestedServices) &&
-    typeof a.forcedUrgentByRule === 'boolean' &&
-    typeof a.disclaimer === 'string' &&
-    typeof a.model === 'string'
-  );
-}
-
-/** `null`/`undefined` → `undefined`; a valid blob → itself; anything else → `undefined`. */
-export function aiOrUndefined(value: unknown): AIAnalysis | undefined {
-  return isAIAnalysis(value) ? value : undefined;
 }
 
 /**

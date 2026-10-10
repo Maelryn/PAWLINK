@@ -8,7 +8,10 @@
 
 ---
 
-## 0. Status at the time of writing
+## 0. Status
+
+**Phase 2 is complete and verified against a real database.** Every row in §9 below was produced by
+running the command named in it — nothing is marked green from reasoning.
 
 | Step | Built | Unit tests | Proven against a real database |
 |---|---|---|---|
@@ -16,18 +19,23 @@
 | 2 · case serializer | ✅ | 12 | — |
 | 3 · bbox parsing | ✅ | 13 | — |
 | 4 · EXIF + dHash | ✅ | 28 | ✅ real fixtures, real `exifr`/`sharp` |
-| 5 · trust pipeline | ✅ | 35 | ⬜ needs the case routes |
-| 6 · uploads | ⬜ | — | — |
-| 7 · AI | ⬜ | — | — |
-| 8 · case reads | ⬜ | — | ⬜ bbox, moderation gating |
-| 9 · `POST /cases` | ⬜ | — | ⬜ **the headline acceptance** |
-| 10 · community | ⬜ | — | ⬜ help/confirm/flag |
-| 11 · realtime | ⬜ | — | ⬜ socket events |
-| 12 · admin moderation | ⬜ | — | ⬜ pending → approved |
-| 13 · e2e | ⬜ | — | ⬜ the whole flow |
-| 14 · docs | ⬜ | — | — |
+| 5 · trust pipeline | ✅ | 35 | ✅ through `POST /cases` |
+| 6 · uploads | ✅ | 15 | ✅ probe + signature on a live server |
+| 7 · AI | ✅ | 49 | ✅ safety rules + fallbacks + real geo |
+| 8 · case reads | ✅ | 8 | ✅ bbox, moderation gating, nearby |
+| 9 · `POST /cases` | ✅ | 8 | ✅ **the headline acceptance** |
+| 10 · community | ✅ | — | ✅ help/confirm/flag, all e2e |
+| 11 · realtime | ✅ | 11 | ✅ 4 events, real `socket.io-client` |
+| 12 · admin moderation | ✅ | — | ✅ pending → approved → hidden |
+| 13 · e2e | ✅ | — | ✅ **53/53** |
+| 14 · docs | ✅ | — | ✅ 23 routes in `/docs-json` |
 
-**Totals so far: 197 unit tests, `tsc` and `lint` clean.**
+**Totals: 278 unit tests, 53 e2e tests, `tsc`, `lint` and `build` clean.**
+
+> Phase 2 also added `src/app.bootstrap.spec.ts`, which imports every controller and DTO. It exists
+> because three separate boot-time crashes — `Cannot access 'X' before initialization`,
+> `Nest can't resolve dependencies … (?)`, and a missing `@Global()` import — were invisible to
+> every unit test and invisible to `tsc`. See "What only running it caught" in the README.
 
 ---
 
@@ -106,7 +114,8 @@ npm run seed
 
 Expected: `users:11 zones:1 cases:27 helpers:13 trustChecks:189 services:14 reviews:5 adoptions:6`
 — and **the counts must not move** between phases, because a change means the port stopped matching
-`apps/web/lib/mock/data.ts`.
+`apps/web/lib/mock/data.ts`. Phase 2 adds `photo_probes` and leaves this line untouched: the seed
+writes no rows to either of the two new tables.
 
 One fact worth knowing before writing the case tests: **the seed already contains 1 case with
 `moderation = 'pending'` and 26 `approved`**, so the public-map gating is exercised by the demo data
@@ -222,7 +231,7 @@ Sequence, in order (from `PHASE2_PLAN.md` §9): probe → create → appears in 
 held → help + socket event → confirm ×2 → flag ×3 → status by role → AI in a second language →
 6th report rate-limited.
 
-Against Tier A the expected result is **`21 + the new case tests` passing, 0 skipped**.
+Against Tier A the result is **53 passing, 0 skipped** — 21 from Phase 1 and 32 new. The suite deletes its own rows on the way out, so it is re-runnable against a seeded database (verified: run twice back to back, both green, and the database returns to its seeded counts).
 
 ---
 
@@ -258,6 +267,10 @@ The reason this section exists is that every one of them was found by *running* 
 | a migration that never applied | `prisma migrate status` on a fresh container |
 | a seed that no longer matches the web mock | the fixed counts in §3 |
 | a genuinely suspicious report leaking onto the public map | 4.2 #4 and 4.7 |
+| a DTO that throws at **import** time | no unit import loads a controller — so `src/app.bootstrap.spec.ts` imports them all, and was verified to fail when the declaration order is reverted |
+| a `import type` dependency Nest cannot inject | the same bootstrap spec now constructs every controller, which forces the DI metadata to exist |
+| a `Prisma.join([])` on an unfiltered list | the admin list with no filters, in both the unit spec and the e2e |
+| a response built from a row written **before** its children | the trust checks come back `ok: null` — asserted in `cases.service.spec.ts` by returning different rows on the two reads |
 
 ---
 
@@ -278,22 +291,44 @@ failure — but "not verified here" belongs in the report, not in a footnote.
 
 ## 9. Sign-off
 
-Copy into the phase report, fill in, and do not mark a row green until the command has been run.
+Do not mark a row green until the command has been run.
+
+Run on a throwaway PostgreSQL 17.5 + PostGIS 3.5.2 container, recreated and re-seeded for this
+phase. Every row below is the output of the command in the second column.
 
 | Criterion | Command | Result |
 |---|---|---|
-| builds clean | `npm run build` | |
-| lint clean | `npm run lint` | |
-| types clean (incl. `scripts/`) | `npx tsc --noEmit` | |
-| unit tests green | `npm test` | |
-| e2e green with a DB | `npm run test:e2e` (Tier A) | |
-| migration applies, no drift | §3 | |
-| seed still runs, counts unchanged | §3 | |
-| `POST /cases` returns `ai` + `trust` | §4.2 | |
-| the created case appears in the bbox | §4.2 #2 | |
-| a suspicious case is hidden | §4.2 #4, §4.7 | |
-| safety rules override in 4 languages | §4.5 #1 | |
-| the 3 fallbacks validate | §4.5 #3 | |
-| realtime emits all 4 events | §4.6 | |
-| `/docs` lists every route | §4.8 | |
-| no secret in any log line | grep the boot log | |
+| builds clean | `npm run build` | ✅ exit 0 |
+| lint clean | `npm run lint` | ✅ exit 0 |
+| types clean (incl. `scripts/`) | `npx tsc --noEmit` | ✅ exit 0 |
+| unit tests green | `npm test` | ✅ **278/278** (18 suites) |
+| e2e green with a DB | `npm run test:e2e` (Tier A) | ✅ **53/53** — 21 Phase 1 + 32 Phase 2, 0 skipped |
+| migration applies, no drift | §3 | ✅ 2 migrations applied · "Database schema is up to date!" · "No difference detected" (exit 0) |
+| seed still runs, counts unchanged | §3 | ✅ users:11 zones:1 cases:27 helpers:13 trustChecks:189 services:14 reviews:5 adoptions:6 |
+| `POST /cases` returns `ai` + `trust` | §4.2 | ✅ both present; `trust.level: "verified"`, `moderation` null |
+| the created case appears in the bbox | §4.2 #2 | ✅ present in `bbox=3.9,36.5,4.4,36.9`, absent from an Algiers-only bbox |
+| a suspicious case is hidden | §4.2 #4, §4.7 | ✅ Paris pin → `pending`, absent from the public bbox, present in `GET /admin/cases`; reused photo → `duplicate: false` + detail → `pending` |
+| safety rules override in 4 languages | §4.5 #1 | ✅ FR, EN, **AR** and **Darija** keywords each force `urgent` + `forcedUrgentByRule: true` |
+| the 3 fallbacks validate | §4.5 #3 | ✅ all three parse against `AIAnalysis`, all carry `model: "gemini-flash (fallback)"`; a network failure and an invalid answer both fall back |
+| realtime emits all 4 events | §4.6 | ✅ `case.created` · `case.updated` · `help.offered` · `notification`, all observed by a connected socket; a held case emits **none** |
+| `/docs` lists every route | §4.8 | ✅ **23 routes**, each with request and response schemas |
+| no secret in any log line | grep the boot log | ✅ no secret, token, password, API key or full phone number |
+
+**What only running it caught** — eight bugs, none of which `tsc` or any unit test could see. The
+full table is in `README.md` § "What only running it caught"; the short version:
+
+- `Cannot access 'PointDto' before initialization` — nested DTO classes must be declared **first**,
+  because `emitDecoratorMetadata` evaluates `design:type` while the class is being defined.
+- `Nest can't resolve dependencies of the RealtimeGateway (?)` — `TokensService` was an
+  `import type`, so the DI metadata was erased.
+- `GeoService` unresolvable — a `@Global()` module still has to be imported once.
+- `POST /cases` answered with eight `ok: null` trust checks — the transaction's return value is
+  written **before** the `trust_checks`.
+- `GET /admin/cases` → 500 — `Prisma.join([])` throws on an empty array.
+- `TRUST_RATE_LIMITED` was unreachable — the per-IP throttler had the same limit as the account
+  check, so it always fired first.
+- `photos` never validated — `@MaxLength` on an array always fails; it needs `@ArrayMaxSize`.
+
+Tier B (Supabase session pooler, real Gemini vision, a valid Cloudinary signature, Twilio
+delivery) remains **unproven** — no credentials here. Every one of them degrades gracefully by
+design, so their absence is not a failure, but it is stated rather than dropped.

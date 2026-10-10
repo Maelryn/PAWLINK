@@ -8,6 +8,10 @@ import { AuthModule } from './auth/auth.module';
 import { MeModule } from './me/me.module';
 import { SmsModule } from './sms/sms.module';
 import { UsersModule } from './users/users.module';
+import { GeoModule } from './geo/geo.module';
+import { UploadsModule } from './uploads/uploads.module';
+import { AiModule } from './ai/ai.module';
+import { CasesModule } from './cases/cases.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -16,14 +20,21 @@ import { RolesGuard } from './auth/guards/roles.guard';
     // Loads .env from apps/backend/.env (never committed; see .env.example)
     ConfigModule.forRoot({ isGlobal: true }),
     // Baseline abuse protection (§2). Per-route limits (register, login, …) are
-    // `@Throttle` decorators; the 5 reports/hour limit arrives in Phase 2.
+    // `@Throttle` decorators; `POST /cases` carries the 5-per-hour per-IP half
+    // of the trust rate limit.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
     UsersModule,
+    // `@Global()`, so `GeoService` is injectable anywhere — but a global module
+    // still has to be imported once for its exports to register.
+    GeoModule,
     SmsModule,
     HealthModule,
     AuthModule,
     MeModule,
+    UploadsModule,
+    AiModule,
+    CasesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

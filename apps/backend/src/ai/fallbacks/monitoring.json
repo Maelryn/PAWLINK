@@ -1,0 +1,25 @@
+{
+  "triage": "monitoring",
+  "confidence": 0.81,
+  "summary": "This cat needs attention soon, but the situation looks under control for now.",
+  "observedSigns": [
+    "Discharge from the eyes",
+    "Reduced appetite"
+  ],
+  "safetyAdvice": [
+    "Approach slowly and keep a safe distance. A scared animal may bite or kick.",
+    "Don't give human medication or force food.",
+    "Contact a veterinarian as soon as possible."
+  ],
+  "possiblyContagious": true,
+  "contagionAdvice": [
+    "Separate the animal from other animals if you can.",
+    "Don't share food or water bowls with other animals.",
+    "Wash your hands after any contact and wear gloves if possible."
+  ],
+  "recommendedHelp": ["medical", "foster"],
+  "suggestedServices": [],
+  "forcedUrgentByRule": false,
+  "disclaimer": "PawLink AI does not diagnose. Always contact a veterinarian.",
+  "model": "gemini-flash (fallback)"
+}

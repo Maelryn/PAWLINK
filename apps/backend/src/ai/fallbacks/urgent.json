@@ -1,0 +1,21 @@
+{
+  "triage": "urgent",
+  "confidence": 0.92,
+  "summary": "This dog appears to be in immediate danger. Getting a vet or rescue team on site is the priority.",
+  "observedSigns": [
+    "Animal cannot move away by itself",
+    "Active bleeding reported"
+  ],
+  "safetyAdvice": [
+    "Approach slowly and keep a safe distance. A scared animal may bite or kick.",
+    "If bleeding, press a clean cloth gently on the wound.",
+    "Don't give human medication or force food.",
+    "Contact a veterinarian as soon as possible."
+  ],
+  "possiblyContagious": false,
+  "recommendedHelp": ["medical", "transport", "search"],
+  "suggestedServices": [],
+  "forcedUrgentByRule": true,
+  "disclaimer": "PawLink AI does not diagnose. Always contact a veterinarian.",
+  "model": "gemini-flash (fallback)"
+}
