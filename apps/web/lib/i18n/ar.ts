@@ -236,6 +236,7 @@ const ar: Dict = {
   },
   adopt: {
     title: "اعثر على صديق",
+    notFound: "هذا الحيوان لم يعد متاحًا.",
     save: "حفظ",
     saved: "تم الحفظ",
     removed: "أزيل من المحفوظات",
@@ -554,6 +555,12 @@ const ar: Dict = {
     or: "أو",
     soon: "متاح مع الخادم الحقيقي",
     terms: "بالمتابعة، أنت توافق على شروط الاستخدام وسياسة الخصوصية.",
+  },
+  share: {
+    copy: "نسخ الرابط",
+    copied: "تم نسخ الرابط",
+    caseText: (title) => `حيوان يحتاج إلى مساعدة على PawLink: ${title}`,
+    adoptText: (name) => `${name} يبحث عن عائلة على PawLink 🐾`,
   },
   geo: {
     demoTitle: "تريد التجربة فقط؟",

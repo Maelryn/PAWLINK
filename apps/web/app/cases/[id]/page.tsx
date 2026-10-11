@@ -5,7 +5,8 @@ import { canResolve, resolveCase } from "@/lib/cases";
 import { cn } from "@/lib/utils";
 
 import { motion } from "motion/react";
-import { ArrowLeft, Share2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { ShareButton } from "@/components/ui/ShareButton";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
@@ -56,39 +57,19 @@ export default function CasePage() {
     ...c.helpers.map((h) => ({ label: `${t.case.helperJoined(h.user.name)} · ${t.common.help[h.helpType]}`, at: c.updatedAt, icon: HELP_EMOJI[h.helpType] })),
   ];
 
-  const share = () => {
-    const url = window.location.href;
-    if (navigator.share) navigator.share({ title: c.title, url }).catch(() => {});
-    else {
-      navigator.clipboard?.writeText(url);
-      toast.success(t.common.share, { description: url });
-    }
-  };
-
   return (
     <div className="min-h-[100svh] pb-32">
       {party && <Burst />}
       <TopNav
         back={{ href: "/map", label: t.nav.map }}
-        actions={
-          <button type="button" onClick={share} className="flex h-11 w-11 items-center justify-center rounded-full bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.08)] transition-transform active:scale-90" aria-label={t.common.share}>
-            <Share2 className="h-[18px] w-[18px]" />
-          </button>
-        }
+        actions={<ShareButton title={c.title} text={t.share.caseText(c.title)} size="lg" className="bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.08)]" />}
       />
       <div className="mx-auto max-w-[1180px] px-4 pt-[76px] sm:pt-24">
         <div className="mb-4 hidden items-center justify-between md:flex">
           <Link href="/map" className="glass flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
             <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t.nav.map}
           </Link>
-          <button
-            type="button"
-            onClick={share}
-            className="glass flex h-10 w-10 items-center justify-center rounded-full"
-            aria-label={t.common.share}
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
+          <ShareButton title={c.title} text={t.share.caseText(c.title)} className="glass" />
         </div>
 
         {/* Photo stays clean; details live in a sheet under it (iOS detail-view pattern) */}

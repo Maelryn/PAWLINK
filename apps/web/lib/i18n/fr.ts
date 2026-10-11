@@ -239,6 +239,7 @@ const fr: Dict = {
   },
   adopt: {
     title: "Trouvez un ami",
+    notFound: "Cet animal n'est plus disponible.",
     save: "Enregistrer",
     saved: "Enregistré",
     removed: "Retiré des favoris",
@@ -557,6 +558,12 @@ const fr: Dict = {
     or: "ou",
     soon: "Disponible avec le vrai serveur",
     terms: "En continuant, vous acceptez les conditions d'utilisation et la politique de confidentialité.",
+  },
+  share: {
+    copy: "Copier le lien",
+    copied: "Lien copié",
+    caseText: (title) => `Un animal a besoin d'aide sur PawLink : ${title}`,
+    adoptText: (name) => `${name} cherche une famille sur PawLink 🐾`,
   },
   geo: {
     demoTitle: "Juste pour essayer ?",

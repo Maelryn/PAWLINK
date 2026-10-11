@@ -237,6 +237,7 @@ const en = {
   },
   adopt: {
     title: "Find a friend",
+    notFound: "This animal is no longer available.",
     save: "Save",
     saved: "Saved",
     removed: "Removed from saved",
@@ -555,6 +556,12 @@ const en = {
     or: "or",
     soon: "Coming soon with the real backend",
     terms: "By continuing you accept the terms of use and the privacy policy.",
+  },
+  share: {
+    copy: "Copy link",
+    copied: "Link copied",
+    caseText: (title: string) => `An animal needs help on PawLink: ${title}`,
+    adoptText: (name: string) => `${name} is looking for a home on PawLink 🐾`,
   },
   geo: {
     demoTitle: "Just trying it out?",

@@ -1,5 +1,7 @@
 "use client";
 
+import { ShareButton } from "@/components/ui/ShareButton";
+
 import { motion } from "motion/react";
 import { ArrowLeft, Check, Syringe, Heart } from "lucide-react";
 import Image from "next/image";
@@ -32,7 +34,19 @@ export default function AdoptionProfilePage() {
   const [msg, setMsg] = useState("");
   const [housing, setHousing] = useState<"apartment" | "house" | "farm">("house");
   const [exp, setExp] = useState(true);
-  if (!a) return null;
+  // listings waiting for moderation (or refused) are only visible to their owner and admins
+  const visible = !!a && (a.status === "approved" || a.ownerId === me?.id || me?.role === "admin");
+  if (!a || !visible)
+    return (
+      <>
+        <TopNav back={{ href: "/adopt", label: t.nav.adopt }} />
+        <div className="flex min-h-[80svh] flex-col items-center justify-center gap-4 px-6 text-center text-label-2">
+          <Emoji3D src="/3d/paw.png" size={90} />
+          {t.adopt.notFound}
+          <ButtonLink href="/adopt">{t.adopt.title}</ButtonLink>
+        </div>
+      </>
+    );
   const mine = !!me && a.ownerId === me.id;
   const phone = (a.ownerPhone ?? "").replace(/\s/g, "");
 
@@ -40,11 +54,14 @@ export default function AdoptionProfilePage() {
 
   return (
     <div className="min-h-[100svh] pb-36">
-      <TopNav back={{ href: "/adopt", label: t.nav.adopt }} />
+      <TopNav back={{ href: "/adopt", label: t.nav.adopt }} actions={<ShareButton title={a.name} text={t.share.adoptText(a.name)} size="lg" className="bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.08)]" />} />
       <div className="mx-auto max-w-[1080px] px-4 pt-[76px] sm:pt-24">
-        <Link href="/adopt" className="glass mb-4 hidden md:inline-flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
-          <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t.nav.adopt}
-        </Link>
+        <div className="mb-4 hidden items-center justify-between md:flex">
+          <Link href="/adopt" className="glass inline-flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
+            <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t.nav.adopt}
+          </Link>
+          <ShareButton title={a.name} text={t.share.adoptText(a.name)} className="glass" />
+        </div>
 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
           <motion.div
