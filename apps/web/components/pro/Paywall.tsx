@@ -10,7 +10,7 @@ import { Segmented } from "@/components/ui/primitives";
 import { Burst, Sparkles } from "@/components/ui/Sparkles";
 import { useSession } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { proActive, store } from "@/lib/store";
+import { proActive, store, useStore } from "@/lib/store";
 import { paywallStartTier } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +31,7 @@ export function Paywall({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   // what this business already has: Pro+ is the top plan, a Pro business is offered the upgrade
   const current: Tier | null = proActive(me) ? me!.pro!.plan : null;
+  const myService = useStore((s) => s.services).find((x) => x.id === me?.serviceId);
   // the plan picked by the person; until they pick, the best next step for them (the account loads after this screen)
   const [picked, setTier] = useState<Tier | null>(() => paywallStartTier());
   const tier: Tier = picked ?? (current === "pro" ? "plus" : "pro");
@@ -50,7 +51,12 @@ export function Paywall({ onClose }: { onClose: () => void }) {
       onClose();
       return router.push("/login?mode=up&next=/pro");
     }
-    if (!me.serviceId) return toast(t.pro.needBiz);
+    if (!me.serviceId) {
+      toast(t.pro.needBiz);
+      onClose();
+      return router.push("/account?tab=profile#business");
+    }
+    if (myService?.status !== "approved") return toast(t.pro.pendingBiz);
     if (isCurrent || current === "plus") return; // can't buy the plan you already have
     setStep("pay");
   };

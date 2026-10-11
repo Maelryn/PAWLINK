@@ -135,7 +135,7 @@ export function MapView({
     );
 
   return (
-    <div className={cn("relative h-full w-full", className)}>
+    <div className={cn("relative isolate h-full w-full", className)}>
       <Map
         ref={(r) => {
           mapRef.current = r;

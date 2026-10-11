@@ -7,6 +7,7 @@ import { Emoji3D } from "@/components/ui/primitives";
 import { Sparkles } from "@/components/ui/Sparkles";
 import { useSession } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { useStore } from "@/lib/store";
 import { openPaywall, usePaywallOpen } from "@/lib/ui";
 import { Paywall } from "./Paywall";
 import { ProShowcase } from "./ProShowcase";
@@ -22,7 +23,8 @@ export function ProHost() {
   const path = usePathname();
   const [promo, setPromo] = useState(false);
 
-  const eligible = !!me?.serviceId && !(me.pro && new Date(me.pro.until) > new Date());
+  const myService = useStore((s) => s.services).find((x) => x.id === me?.serviceId);
+  const eligible = myService?.status === "approved" && !(me?.pro && new Date(me.pro.until) > new Date());
   const quietPage = ["/pro", "/login", "/map", "/report"].some((p) => path.startsWith(p));
 
   useEffect(() => {

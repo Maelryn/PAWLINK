@@ -1,5 +1,7 @@
 "use client";
 
+import { SERVICE_EMOJI } from "@/lib/species";
+
 import { motion } from "motion/react";
 import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, Home, MapPin, Settings, User as UserIcon, PlusCircle } from "lucide-react";
 import Link from "next/link";
@@ -18,7 +20,7 @@ import { useSession, saveProfile } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, store, useStore } from "@/lib/store";
-import type { HelpType, User } from "@/lib/types";
+import type { HelpType, User, ServiceType } from "@/lib/types";
 import { cn, distanceKm } from "@/lib/utils";
 
 type Tab = "home" | "profile" | "reports" | "adoption" | "pro" | "notifications" | "settings";
@@ -248,7 +250,57 @@ function Profile({ me }: { me: User }) {
         </div>
       </section>
       <Button type="submit" size="lg" className="w-full sm:w-auto">{t.acct.save}</Button>
+      {!me.serviceId && me.role !== "admin" && <BecomeBusiness me={me} />}
     </form>
+  );
+}
+
+const BIZ_TYPES: ServiceType[] = ["vet", "shelter", "transport", "boarding", "training", "store"];
+
+/** Regular accounts ask to become a professional; an admin verifies it before Pro is possible. */
+function BecomeBusiness({ me }: { me: User }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [b, setB] = useState({ name: "", type: "vet" as ServiceType, city: me.city ?? "", phone: me.phone ?? "" });
+  const input = "h-12 w-full rounded-[16px] bg-surface-2 px-4 text-[15px] outline-none ring-accent/40 placeholder:text-label-2 focus:ring-2";
+  return (
+    <section id="business" className={cn(card, "scroll-mt-28 space-y-3")}>
+      <div className="flex items-start gap-3">
+        <Emoji3D src="/3d/home.png" size={36} className="shrink-0" />
+        <div>
+          <h2 className="text-[18px] font-bold">{t.biz.requestTitle}</h2>
+          <p className="text-[13.5px] text-label-2">{t.biz.requestBody}</p>
+        </div>
+      </div>
+      {!open ? (
+        <Button type="button" variant="tinted" onClick={() => setOpen(true)}>{t.biz.requestCta}</Button>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {BIZ_TYPES.map((ty) => (
+              <button key={ty} type="button" onClick={() => setB({ ...b, type: ty })} className={cn("flex h-10 items-center gap-1.5 rounded-full pe-3.5 ps-2 text-[13.5px] font-semibold transition-colors", b.type === ty ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}>
+                <Emoji3D src={SERVICE_EMOJI[ty]} size={22} /> {t.common.service[ty]}
+              </button>
+            ))}
+          </div>
+          <input value={b.name} onChange={(e) => setB({ ...b, name: e.target.value })} placeholder={t.biz.bizName} className={input} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input value={b.city} onChange={(e) => setB({ ...b, city: e.target.value })} placeholder={t.acct.city} className={input} />
+            <input type="tel" value={b.phone} onChange={(e) => setB({ ...b, phone: e.target.value })} placeholder="+213 5XX XX XX XX" className={input} dir="ltr" />
+          </div>
+          <Button
+            type="button"
+            disabled={b.name.trim().length < 2 || !b.city.trim() || b.phone.replace(/\D/g, "").length < 8}
+            onClick={() => {
+              store.requestBusiness(me.id, { name: b.name.trim(), type: b.type, city: b.city.trim(), phone: b.phone.trim(), location: me.location });
+              toast.success(t.biz.requestSent);
+            }}
+          >
+            {t.biz.requestCta}
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }
 

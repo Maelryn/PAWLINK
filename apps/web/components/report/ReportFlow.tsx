@@ -19,6 +19,7 @@ import { computeTrust, inAlgeria } from "@/lib/trust";
 import { useDemoPosition, useDevicePosition } from "@/components/layout/GeoGate";
 import { analyze, analyzeAsync } from "@/lib/ai/analyze";
 import { casesFromApi, createCaseRemote } from "@/lib/cases";
+import { activeZoneAt } from "@/lib/zones";
 import { useI18n } from "@/lib/i18n";
 import { ALL_SPECIES, LIVESTOCK, SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
@@ -98,7 +99,7 @@ export function ReportFlow() {
     const title = `${t.common.species[species!]} — ${tags.slice(0, 2).map((x) => t.common.tags[x]).join(", ") || t.report.title}`;
     const category = LIVESTOCK.includes(species!) ? "livestock" : "companion";
     const description = desc || tags.map((x) => t.common.tags[x]).join(", ");
-    const emergencyZoneId = Math.abs(location.lat - 36.632) < 0.07 && Math.abs(location.lng - 4.205) < 0.11 ? "z1" : undefined;
+    const emergencyZoneId = activeZoneAt(location, store.get().zones)?.id;
 
     // Real API (backend Phase 2): the server uploads/checks the photo, runs the AI and the trust checks
     if (casesFromApi()) {

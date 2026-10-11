@@ -82,6 +82,8 @@ NEXT_PUBLIC_API_FEATURES=auth,cases,uploads
 - **Adoption:** `AdoptionProfile.status` can be `"adopted"` (owner confirms the animal found its family, it leaves the public list). `AdoptionRequest.fromPhone` = the adopter's phone, returned to the owner only once the request is `accepted` (both sides get each other's number).
 - **Pro:** `User.pro.plan` is `"pro" | "plus"` (the Pro+ tier). Paying again while active **extends** `until` (days left are kept); upgrading Pro → Pro+ keeps them too; the same plan can't be bought twice. A listing is featured (`service.pro`) only while its owner's subscription is active, so expiry must turn it off.
 - **Favorites:** saved adoption profiles per user (`PUT/DELETE /me/favorites/:adoptionId`, `GET /me/favorites`).
+- **Emergency zones:** admins declare (type, name, centre, radius → polygon) and end them (`active: false`, `endedAt`). New reports inside an active zone get its `emergencyZoneId`. The website also *suggests* a zone to admins when ≥ 4 open cases (≥ 3 urgent) sit within 10 km in 48 h outside any active zone (`apps/web/lib/zones.ts`); a human always confirms.
+- **Becoming a professional:** a regular account creates a listing with `status: "pending"` (`POST /services`); approving it makes a vet listing's owner `role: "vet"`; refusing it frees the account (`serviceId` removed). Pro can only be bought once the listing is approved.
 - **Notifications:** two more kinds: `resolved` (a case you reported or helped on was resolved) and `nearbyCase` (a case near an available helper).
 
 ### Before deploying the API (important for the judges)

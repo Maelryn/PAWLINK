@@ -1,13 +1,16 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { ADOPTIONS, CASES, REVIEWS, SERVICES, USERS } from "./mock/data";
+import { ADOPTIONS, CASES, EMERGENCY_ZONES, REVIEWS, SERVICES, USERS } from "./mock/data";
+import { circlePolygon, inZone } from "./zones";
 import type {
   AdoptionProfile,
   AdoptionRequest,
   AppNotification,
   Booking,
   Case,
+  EmergencyZone,
+  GeoPoint,
   HelpType,
   NotificationKind,
   Review,
@@ -31,6 +34,8 @@ export interface DB {
   notifications: AppNotification[];
   /** Saved adoption profiles (the heart), per user. API: PUT/DELETE /me/favorites/:adoptionId */
   favorites: Record<string, string[]>;
+  /** Emergency zones (wildfire, flood…), declared and ended by admins. API: /emergency-zones */
+  zones: EmergencyZone[];
 }
 
 interface State extends DB {
@@ -54,6 +59,7 @@ const seed = (): DB => ({
   bookings: [],
   notifications: [],
   favorites: {},
+  zones: EMERGENCY_ZONES,
 });
 
 let state: State = { ...seed(), hydrated: false, lastCreatedId: null, authChecked: false };
@@ -65,7 +71,7 @@ const emit = () => listeners.forEach((l) => l());
 
 function persist() {
   try {
-    const db: DB = { users: state.users, sessionId: state.sessionId, cases: state.cases, reviews: state.reviews, adoptions: state.adoptions, requests: state.requests, services: state.services, bookings: state.bookings, notifications: state.notifications, favorites: state.favorites };
+    const db: DB = { users: state.users, sessionId: state.sessionId, cases: state.cases, reviews: state.reviews, adoptions: state.adoptions, requests: state.requests, services: state.services, bookings: state.bookings, notifications: state.notifications, favorites: state.favorites, zones: state.zones };
     localStorage.setItem(KEY, JSON.stringify(db));
   } catch {
     // quota exceeded (big photos): keep working in memory
@@ -199,6 +205,31 @@ export const store = {
   moderate(caseId: string, decision: "approved" | "hidden") {
     updateCase(caseId, (c) => ({ ...c, moderation: decision }));
   },
+  /* ── emergency zones ── POST /emergency-zones · PATCH /emergency-zones/:id */
+  declareZone(input: { type: EmergencyZone["type"]; name: string; region: string; center: GeoPoint; radiusKm: number }) {
+    const z: EmergencyZone = {
+      id: uid("z"),
+      name: input.name,
+      region: input.region,
+      type: input.type,
+      center: input.center,
+      radiusKm: input.radiusKm,
+      polygon: circlePolygon(input.center, input.radiusKm),
+      active: true,
+      startedAt: now(),
+      stats: { cases: 0, urgent: 0, helpers: 0 },
+    };
+    // open cases inside the new zone join it (they show up in emergency mode)
+    set({
+      zones: [z, ...state.zones],
+      cases: state.cases.map((c) => (!c.emergencyZoneId && c.status !== "resolved" && inZone(c.location, z) ? { ...c, emergencyZoneId: z.id } : c)),
+    });
+    return z;
+  },
+  endZone(id: string) {
+    set({ zones: state.zones.map((z) => (z.id === id ? { ...z, active: false, endedAt: now() } : z)) });
+  },
+
   /** Cases coming from the API (GET /cases, POST responses, realtime): replace by id or add. */
   upsertCase(c: Case, opts: { justCreated?: boolean } = {}) {
     const exists = state.cases.some((x) => x.id === c.id);
@@ -265,11 +296,35 @@ export const store = {
   updateService(id: string, patch: Partial<Service>) {
     set({ services: state.services.map((s) => (s.id === id ? { ...s, ...patch } : s)) });
   },
+  /** A regular account asks to become a professional: the listing waits for an admin. POST /services */
+  requestBusiness(userId: string, b: { name: string; type: Service["type"]; city: string; phone: string; location?: GeoPoint }) {
+    const id = uid("s");
+    const s: Service = {
+      id,
+      type: b.type,
+      name: b.name,
+      location: { ...(b.location ?? { lat: 36.7538, lng: 3.0588 }), address: b.city },
+      phone: b.phone,
+      rating: 0,
+      reviewCount: 0,
+      ownerId: userId,
+      status: "pending",
+      verified: false,
+    };
+    set({ services: [...state.services, s], users: state.users.map((u) => (u.id === userId ? { ...u, serviceId: id } : u)) });
+  },
+  /** Admin decision. Approving a vet makes the owner a vet; refusing frees the account to ask again. */
   moderateService(id: string, approve: boolean) {
     const s = state.services.find((x) => x.id === id);
     set({
       services: state.services.map((x) => (x.id === id ? { ...x, status: approve ? "approved" : "rejected", verified: approve } : x)),
-      notifications: approve ? [...notify(s?.ownerId, "serviceApproved", s?.name ?? "", `/services/${id}`), ...state.notifications] : state.notifications,
+      users: state.users.map((u) =>
+        u.id !== s?.ownerId ? u : approve ? (s.type === "vet" ? { ...u, role: "vet", licenseVerified: true } : u) : { ...u, serviceId: undefined },
+      ),
+      notifications: [
+        ...notify(s?.ownerId, approve ? "serviceApproved" : "listingRejected", s?.name ?? "", approve ? "/account?tab=pro" : "/account?tab=profile"),
+        ...state.notifications,
+      ],
     });
   },
   /** One review per user per service; the rating average is recomputed. POST /services/:id/reviews */

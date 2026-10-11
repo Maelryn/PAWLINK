@@ -16,13 +16,14 @@ import { CountUp } from "@/components/motion";
 import { Button } from "@/components/ui/Button";
 import { Avatar, CasePhoto, Emoji3D, TimeAgo, TriageBadge } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
-import { EMERGENCY_ZONES, USERS } from "@/lib/mock/data";
+import { USERS } from "@/lib/mock/data";
+import { suggestZones, zoneStats, ZONE_PLACES } from "@/lib/zones";
 import { SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
-import { useStore } from "@/lib/store";
+import { store, useStore } from "@/lib/store";
 import { TrustBadge } from "@/components/cases/Trust";
 import { AdoptionQueue, ServiceQueue } from "@/components/adopt/AdoptionPanels";
-import type { Triage } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import type { EmergencyZone, Triage } from "@/lib/types";
+import { cn, minutesSince } from "@/lib/utils";
 
 type Tab = "overview" | "cases" | "zones" | "users";
 
@@ -113,6 +114,7 @@ function Kpi({ e, n, label, suffix, delay }: { e: string; n: number | null; labe
 function Overview() {
   const { t, locale } = useI18n();
   const cases = useStore((s) => s.cases);
+  const zones = useStore((s) => s.zones);
   const byTriage = (["urgent", "monitoring", "stable"] as Triage[]).map((tr) => ({ tr, n: cases.filter((c) => c.triage === tr).length }));
   const total = cases.length;
   const urgentOpen = cases.filter((c) => c.triage === "urgent" && c.status !== "resolved").length;
@@ -141,7 +143,7 @@ function Overview() {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi e="/3d/fire.png" n={EMERGENCY_ZONES.length} label={t.admin.activeZones} delay={0} />
+        <Kpi e="/3d/fire.png" n={zones.filter((z) => z.active).length} label={t.admin.activeZones} delay={0} />
         <Kpi e="/3d/paw.png" n={total} label={t.admin.totalCases} delay={0.05} />
         <Kpi e="/3d/warning.png" n={urgentOpen} label={t.admin.urgentOpen} delay={0.1} />
         <Kpi e="/3d/ambulance.png" n={avgResponse} suffix=" min" label={t.admin.avgResponse} delay={0.15} />
@@ -315,39 +317,143 @@ function Moderation() {
 }
 
 function Zones() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const cases = useStore((s) => s.cases);
-  const z = EMERGENCY_ZONES[0];
+  const zones = useStore((s) => s.zones);
+  const active = zones.filter((z) => z.active);
+  const past = zones.filter((z) => !z.active);
+  const suggestions = suggestZones(cases, zones);
+  const [form, setForm] = useState(false);
+  const [f, setF] = useState({ type: "wildfire" as EmergencyZone["type"], name: "", place: ZONE_PLACES[1].name, radius: 8 });
+  const fmt = (iso: string) => new Date(iso).toLocaleString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const declare = (input: { type: EmergencyZone["type"]; name: string; region: string; center: { lat: number; lng: number }; radiusKm: number }) => {
+    store.declareZone(input);
+    toast.success(t.admin.declared, { icon: <Emoji3D src="/3d/fire.png" size={20} /> });
+  };
+  const field = "h-11 w-full rounded-[14px] bg-surface-2 px-3.5 text-[15px] outline-none ring-accent/40 focus:ring-2";
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h2 className="text-[22px] font-bold tracking-[-0.02em]">{t.admin.zones}</h2>
-        <Button size="sm" variant="danger" onClick={() => toast(t.admin.newZone, { description: t.common.demo, icon: <Emoji3D src="/3d/fire.png" size={20} /> })}>
+        <Button size="sm" variant="danger" onClick={() => setForm((v) => !v)}>
           <Plus className="h-4 w-4" /> {t.admin.newZone}
         </Button>
       </div>
-      <section className="card overflow-hidden rounded-[28px]">
-        <div className="h-[380px]">
-          <MapView cases={cases.filter((c) => c.emergencyZoneId === z.id)} zone={z} interactive={false} initialView={{ longitude: z.center.lng, latitude: z.center.lat, zoom: 10.6, pitch: 40 }} />
-        </div>
-        <div className="flex flex-wrap items-center gap-4 p-5">
-          <Emoji3D src="/3d/fire.png" size={40} />
-          <div className="flex-1">
-            <div className="text-[17px] font-semibold">{z.name}</div>
-            <div className="text-[13px] text-label-2">{z.region}</div>
-          </div>
-          {[
-            { n: z.stats.cases, l: t.map.zoneStats.cases },
-            { n: z.stats.urgent, l: t.map.zoneStats.urgent },
-            { n: z.stats.helpers, l: t.map.zoneStats.helpers },
-          ].map((s) => (
-            <div key={s.l} className="text-center">
-              <div className="text-[22px] font-bold tabular-nums">{s.n}</div>
-              <div className="text-[11.5px] text-label-2">{s.l}</div>
+
+      {/* declare by hand */}
+      <AnimatePresence initial={false}>
+        {form && (
+          <motion.form
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            className="card overflow-hidden rounded-[28px]"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const p = ZONE_PLACES.find((x) => x.name === f.place)!;
+              declare({ type: f.type, name: f.name.trim() || `${t.admin.zoneTypes[f.type]} — ${p.name}`, region: p.name, center: { lat: p.lat, lng: p.lng }, radiusKm: f.radius });
+              setForm(false);
+              setF((x) => ({ ...x, name: "" }));
+            }}
+          >
+            <div className="space-y-3 p-5">
+              <div className="flex flex-wrap gap-1.5">
+                {(["wildfire", "flood", "earthquake", "other"] as const).map((ty) => (
+                  <button key={ty} type="button" onClick={() => setF({ ...f, type: ty })} className={cn("h-10 rounded-full px-4 text-[14px] font-semibold transition-colors", f.type === ty ? "bg-urgent text-white" : "bg-surface-2")}>
+                    {t.admin.zoneTypes[ty]}
+                  </button>
+                ))}
+              </div>
+              <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder={t.admin.zoneName} className={field} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1.5 block ps-1 text-[13px] font-semibold text-label-2">{t.admin.zonePlace}</span>
+                  <select value={f.place} onChange={(e) => setF({ ...f, place: e.target.value })} className={field}>
+                    {ZONE_PLACES.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block ps-1 text-[13px] font-semibold text-label-2">{t.admin.zoneRadius(f.radius)}</span>
+                  <input type="range" min={2} max={40} value={f.radius} onChange={(e) => setF({ ...f, radius: Number(e.target.value) })} className="h-11 w-full accent-[var(--urgent)]" />
+                </label>
+              </div>
+              <Button type="submit" variant="danger" className="w-full">{t.admin.declare}</Button>
             </div>
-          ))}
-        </div>
-      </section>
+          </motion.form>
+        )}
+      </AnimatePresence>
+
+      {/* PawLink noticed a cluster: a human decides */}
+      {suggestions.map((sg) => (
+        <section key={sg.caseIds.join()} className="flex flex-wrap items-center gap-4 rounded-[28px] bg-monitor-soft p-5">
+          <Emoji3D src="/3d/warning.png" size={40} />
+          <div className="min-w-0 flex-1">
+            <div className="text-[17px] font-bold">{t.admin.suggestTitle}</div>
+            <p className="text-[14px]">{t.admin.suggestBody(sg.count, sg.urgent, sg.place)}</p>
+            <p className="text-[12.5px] text-label-2">{t.admin.suggestNote}</p>
+          </div>
+          <Button size="sm" variant="danger" onClick={() => declare({ type: sg.type, name: `${t.admin.zoneTypes[sg.type]} — ${sg.place}`, region: sg.place, center: sg.center, radiusKm: sg.radiusKm })}>
+            {t.admin.declare}
+          </Button>
+        </section>
+      ))}
+
+      {active.length === 0 && suggestions.length === 0 && <div className="card rounded-[28px] p-6 text-[15px] text-label-2">{t.admin.noActive}</div>}
+
+      {active.map((z) => {
+        const live = zoneStats(z, cases);
+        return (
+          <section key={z.id} className="card overflow-hidden rounded-[28px]">
+            <div className="h-[300px]">
+              <MapView cases={cases.filter((c) => c.emergencyZoneId === z.id)} zone={z} interactive={false} initialView={{ longitude: z.center.lng, latitude: z.center.lat, zoom: 10.4, pitch: 40 }} />
+            </div>
+            <div className="flex flex-wrap items-center gap-4 p-5">
+              <Emoji3D src="/3d/fire.png" size={40} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[17px] font-semibold">{z.name}</div>
+                <div className="text-[13px] text-label-2">{z.region} · {t.map.zoneType[z.type]} · {t.map.sinceMin(minutesSince(z.startedAt))}</div>
+              </div>
+              {[
+                { n: live.cases, l: t.map.zoneStats.cases },
+                { n: live.urgent, l: t.map.zoneStats.urgent },
+                { n: live.helpers, l: t.map.zoneStats.helpers },
+              ].map((x) => (
+                <div key={x.l} className="text-center">
+                  <div className="text-[22px] font-bold tabular-nums">{x.n}</div>
+                  <div className="text-[11.5px] text-label-2">{x.l}</div>
+                </div>
+              ))}
+              <Button
+                size="sm"
+                variant="glass"
+                onClick={() => {
+                  if (!confirm(t.admin.endConfirm)) return;
+                  store.endZone(z.id);
+                  toast(t.admin.ended);
+                }}
+              >
+                {t.admin.endZone}
+              </Button>
+            </div>
+          </section>
+        );
+      })}
+
+      {past.length > 0 && (
+        <section className="card rounded-[28px] p-5">
+          <h3 className="text-[15px] font-semibold text-label-2">{t.admin.past}</h3>
+          <div className="mt-2 divide-y divide-separator">
+            {past.map((z) => (
+              <div key={z.id} className="flex items-center justify-between gap-3 py-2.5 text-[14px]">
+                <span className="min-w-0 truncate font-medium">{z.name}</span>
+                <span className="shrink-0 text-label-2">{fmt(z.startedAt)} → {z.endedAt ? fmt(z.endedAt) : ""}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

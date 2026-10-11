@@ -18,17 +18,16 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Avatar, CasePhoto, Chip, Emoji3D, Segmented, Stars, TimeAgo, TriageBadge } from "@/components/ui/primitives";
 import { useCaseAI } from "@/lib/ai/useCaseAI";
 import { useI18n } from "@/lib/i18n";
-import { EMERGENCY_ZONES } from "@/lib/mock/data";
 import { LIVESTOCK, SERVICE_EMOJI, SPECIES_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, store, useStore } from "@/lib/store";
 import { gmaps } from "@/lib/trust";
 import { TrustBadge } from "@/components/cases/Trust";
 import type { Case, GeoPoint, Triage } from "@/lib/types";
 import { cn, distanceKm, minutesSince } from "@/lib/utils";
-import { setTabBarHidden } from "@/lib/ui";
+import { useHideTabBar } from "@/lib/ui";
+import { zoneStats } from "@/lib/zones";
 import { ALGERIA_VIEW, MapView } from "./index";
 
-const ZONE = EMERGENCY_ZONES[0];
 const ALGIERS: GeoPoint = { lat: 36.7538, lng: 3.0588 };
 
 const PLACES: { name: string; lat: number; lng: number; zoom: number }[] = [
@@ -64,12 +63,16 @@ export function MapExperience() {
   const desktop = useIsDesktop();
   const allCases = useStore((s) => s.cases);
   const lastCreatedId = useStore((s) => s.lastCreatedId);
+  // the newest active emergency zone (declared by an admin); none = no emergency mode at all
+  const zones = useStore((s) => s.zones);
+  const zone = useMemo(() => [...zones].filter((z) => z.active).sort((a, b) => +new Date(b.startedAt) - +new Date(a.startedAt))[0] ?? null, [zones]);
 
   const mapRef = useRef<MapRef | null>(null);
   const [ready, setReady] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(params.get("case"));
   const [serviceId, setServiceId] = useState<string | null>(null);
-  const [emergency, setEmergency] = useState(params.get("mode") === "emergency");
+  const [emergencyWanted, setEmergency] = useState(params.get("mode") === "emergency");
+  const emergency = emergencyWanted && !!zone;
   const [triage, setTriage] = useState<"all" | Triage>("all");
   const [category, setCategory] = useState<"all" | "companion" | "livestock">("all");
   const [showServices, setShowServices] = useState(false);
@@ -79,7 +82,7 @@ export function MapExperience() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [dropId, setDropId] = useState<string | null>(null);
 
-  const ref = userLoc ?? (emergency ? ZONE.center : ALGIERS);
+  const ref = userLoc ?? (emergency ? zone!.center : ALGIERS);
   /** We only talk about "nearby" and distances when we know where the person (or the emergency) is. */
   const located = !!userLoc || emergency;
   const listTitle = located ? t.map.nearby : t.map.latest;
@@ -88,7 +91,7 @@ export function MapExperience() {
     const q = query.trim().toLowerCase();
     return allCases
       .filter(isPublic)
-      .filter((c) => (emergency ? c.emergencyZoneId === ZONE.id : true))
+      .filter((c) => (emergency ? c.emergencyZoneId === zone!.id : true))
       .filter((c) => triage === "all" || c.triage === triage)
       .filter((c) => category === "all" || (category === "livestock" ? LIVESTOCK.includes(c.species) : !LIVESTOCK.includes(c.species)))
       .filter((c) => !q || c.title.toLowerCase().includes(q) || ct(c).title.toLowerCase().includes(q) || (c.location.address ?? "").toLowerCase().includes(q))
@@ -100,7 +103,7 @@ export function MapExperience() {
             ? a.d - b.d
             : TRIAGE_ORDER[a.c.triage] - TRIAGE_ORDER[b.c.triage] || +new Date(b.c.createdAt) - +new Date(a.c.createdAt),
       );
-  }, [allCases, emergency, triage, category, query, ref, ct, located]);
+  }, [allCases, emergency, triage, category, query, ref, ct, located, zone]);
 
   const selected = allCases.find((c) => c.id === selectedId) ?? null;
   const SERVICES = useStore((s) => s.services).filter((s) => s.status === "approved");
@@ -129,7 +132,7 @@ export function MapExperience() {
     const m = mapRef.current;
     if (!m) return;
     if (emergency) {
-      m.flyTo({ center: [ZONE.center.lng, ZONE.center.lat], zoom: desktop ? 11.2 : 10.4, pitch: 55, bearing: -18, offset: desktop ? [180, 30] : [0, 0], duration: 2800, curve: 1.6, essential: true });
+      m.flyTo({ center: [zone!.center.lng, zone!.center.lat], zoom: desktop ? 11.2 : 10.4, pitch: 55, bearing: -18, offset: desktop ? [180, 30] : [0, 0], duration: 2800, curve: 1.6, essential: true });
       const orbit = () => m.easeTo({ bearing: m.getBearing() + 35, duration: 40000, easing: (x) => x });
       m.once("moveend", orbit);
       return () => {
@@ -199,8 +202,7 @@ export function MapExperience() {
     } else if (cases[0]) select(cases[0].c.id);
   };
 
-  const zoneCases = allCases.filter((c) => c.emergencyZoneId === ZONE.id);
-  const zoneUrgent = zoneCases.filter((c) => c.triage === "urgent").length;
+  const zoneLive = zone ? zoneStats(zone, allCases) : { cases: 0, urgent: 0, helpers: 0 };
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-bg">
@@ -209,7 +211,7 @@ export function MapExperience() {
       <MapView
         cases={cases.map((x) => x.c)}
         services={showServices ? SERVICES : undefined}
-        zone={emergency ? ZONE : null}
+        zone={emergency ? zone : null}
         selectedId={selectedId}
         selectedServiceId={serviceId}
         onSelectCase={select}
@@ -223,7 +225,7 @@ export function MapExperience() {
         onReady={(m) => {
           mapRef.current = m;
           // phones: the camera centres in the visible area, not under the top filters, the side buttons or the list bar
-          if (!desktop) m.setPadding({ top: 110, right: 0, bottom: 150, left: 0 });
+          if (!desktop) m.setPadding({ top: 60, right: 0, bottom: 150, left: 0 });
           setReady(true);
         }}
       />
@@ -254,7 +256,7 @@ export function MapExperience() {
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: -60, opacity: 0, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 260, damping: 24, delay: 0.2 }}
-            className="absolute left-1/2 top-[124px] z-20 w-[min(560px,calc(100%-24px))] -translate-x-1/2 lg:left-[calc(50%+205px)] lg:top-[84px]"
+            className="absolute left-1/2 top-[calc(max(10px,env(safe-area-inset-top))+52px)] z-20 w-[min(560px,calc(100%-24px))] -translate-x-1/2 lg:left-[calc(50%+205px)] lg:top-[84px]"
           >
             <div className="relative overflow-hidden rounded-[26px] p-[1.5px]" style={{ background: "linear-gradient(110deg,#ff2d55,#ff9500,#ff2d55)" }}>
               <div className="glass-strong flex items-center gap-3 rounded-[25px] px-3.5 py-2.5">
@@ -265,14 +267,14 @@ export function MapExperience() {
                       <span className="pulse-ring absolute inset-0 rounded-full bg-urgent" />
                       <span className="relative h-2 w-2 rounded-full bg-urgent" />
                     </span>
-                    {t.map.zoneActive} · {t.map.since(Math.round(minutesSince(ZONE.startedAt) / 60))}
+                    {t.map.zoneType[zone!.type]} · {t.map.sinceMin(minutesSince(zone!.startedAt))}
                   </div>
-                  <div className="truncate text-[15px] font-semibold">{ZONE.region}</div>
+                  <div className="truncate text-[15px] font-semibold">{zone!.region}</div>
                 </div>
                 <div className="hidden items-center gap-3 sm:flex">
-                  <Stat n={zoneCases.length} label={t.map.zoneStats.cases} />
-                  <Stat n={zoneUrgent} label={t.map.zoneStats.urgent} color="var(--urgent)" />
-                  <Stat n={ZONE.stats.helpers} label={t.map.zoneStats.helpers} color="var(--stable)" />
+                  <Stat n={zoneLive.cases} label={t.map.zoneStats.cases} />
+                  <Stat n={zoneLive.urgent} label={t.map.zoneStats.urgent} color="var(--urgent)" />
+                  <Stat n={zoneLive.helpers} label={t.map.zoneStats.helpers} color="var(--stable)" />
                 </div>
                 <a href="tel:14" className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-urgent px-3 text-[13px] font-semibold text-white">
                   <Phone className="h-3.5 w-3.5" /> 14
@@ -345,7 +347,7 @@ export function MapExperience() {
               >
                 <div className="space-y-3 p-4 pb-2">
                   <SearchBox value={query} onChange={setQuery} onSubmit={searchSubmit} />
-                  <EmergencyToggle on={emergency} onToggle={() => setEmergency((v) => !v)} count={zoneCases.length} urgent={zoneUrgent} />
+                  {zone && <EmergencyToggle on={emergency} onToggle={() => setEmergency((v) => !v)} region={zone.region} count={zoneLive.cases} urgent={zoneLive.urgent} />}
                   <div className="scroll-fade flex gap-1.5 overflow-x-auto no-scrollbar">
                     <TriageChips value={triage} onChange={setTriage} />
                   </div>
@@ -382,10 +384,12 @@ export function MapExperience() {
       {/* Mobile: chips on top, carousel at the bottom, sheet for details */}
       {!desktop && (
         <>
-          <div className="scroll-fade absolute inset-x-0 top-[72px] z-20 flex gap-2 overflow-x-auto px-3 py-1 pe-20 no-scrollbar">
-            <Chip active={emergency} color="#ff3b30" onClick={() => setEmergency((v) => !v)}>
-              <Flame className="h-4 w-4" /> {t.map.emergency}
-            </Chip>
+          <div className="scroll-fade absolute inset-x-0 top-[max(10px,env(safe-area-inset-top))] z-20 flex gap-2 overflow-x-auto px-3 py-1 no-scrollbar">
+            {zone && (
+              <Chip active={emergency} color="#ff3b30" onClick={() => setEmergency((v) => !v)}>
+                <Flame className="h-4 w-4" /> {t.map.emergency}
+              </Chip>
+            )}
             <TriageChips value={triage} onChange={setTriage} />
           </div>
           <AnimatePresence>
@@ -507,7 +511,7 @@ function SearchBox({ value, onChange, onSubmit }: { value: string; onChange: (v:
   );
 }
 
-function EmergencyToggle({ on, onToggle, count, urgent }: { on: boolean; onToggle: () => void; count: number; urgent: number }) {
+function EmergencyToggle({ on, onToggle, region, count, urgent }: { on: boolean; onToggle: () => void; region: string; count: number; urgent: number }) {
   const { t } = useI18n();
   return (
     <motion.button
@@ -536,7 +540,7 @@ function EmergencyToggle({ on, onToggle, count, urgent }: { on: boolean; onToggl
       <span className="relative min-w-0 flex-1">
         <span className={cn("block text-[15px] font-bold", !on && "text-urgent")}>{t.map.emergencyOn}</span>
         <span className={cn("block truncate text-[12.5px]", on ? "text-white/85" : "text-label-2")}>
-          {ZONE.region} · {count} · {urgent} {t.map.zoneStats.urgent}
+          {region} · {count} · {urgent} {t.map.zoneStats.urgent}
         </span>
       </span>
       <span className={cn("relative h-[31px] w-[51px] shrink-0 rounded-full p-[2px] transition-colors", on ? "bg-white/35" : "bg-label-3/40")}>
@@ -609,7 +613,7 @@ function CaseQuickView({
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2 [&>*]:whitespace-nowrap">
         <TriageBadge triage={c.triage} />
         <motion.span key={c.status} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} className={cn("rounded-full px-2.5 py-1 text-[12px] font-semibold", c.status === "resolved" ? "bg-stable-soft text-stable" : c.status === "in_progress" ? "bg-accent-soft text-accent" : "bg-surface-2 text-label-2")}>{c.status === "resolved" && "✓ "}{t.common.status[c.status]}</motion.span>
         {c.emergencyZoneId && <span className="rounded-full bg-urgent-soft px-2.5 py-1 text-[12px] font-semibold text-urgent">🔥 {t.case.inZone}</span>}
@@ -679,10 +683,7 @@ function MobileListSheet({ items, title, showDistance, onOpen }: { items: { c: C
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const urgent = items.filter((x) => x.c.triage === "urgent").length;
-  useEffect(() => {
-    setTabBarHidden(open);
-    return () => setTabBarHidden(false);
-  }, [open]);
+  useHideTabBar(open);
   return (
     <>
       <AnimatePresence>
@@ -733,10 +734,7 @@ function MobileListSheet({ items, title, showDistance, onOpen }: { items: { c: C
 function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   const [full, setFull] = useState(false);
   const controls = useDragControls();
-  useEffect(() => {
-    setTabBarHidden(true);
-    return () => setTabBarHidden(false);
-  }, []);
+  useHideTabBar();
   return (
     <motion.div
       initial={{ y: "100%" }}

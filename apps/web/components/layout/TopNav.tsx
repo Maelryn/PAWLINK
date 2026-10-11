@@ -86,7 +86,7 @@ export function TopNav({
         initial={{ y: -40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 28, delay: 0.1 }}
-        className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-3 pt-[max(12px,env(safe-area-inset-top))]"
+        className={cn("pointer-events-none fixed inset-x-0 top-0 z-50 justify-center px-3 pt-[max(12px,env(safe-area-inset-top))]", floating ? "hidden md:flex" : "flex")}
       >
         {/* phones: iOS scroll-edge effect, content softly blurs under the floating buttons instead of colliding with them */}
         <div
@@ -146,8 +146,11 @@ export function TopNav({
               <Plus className="h-4 w-4" strokeWidth={2.6} />
               {t.nav.report}
             </ButtonLink>
-            <NotificationBell />
-            <AccountMenu />
+            {/* phones: notifications and the account are in the bottom tab bar ("My space") */}
+            <div className="hidden items-center gap-0.5 md:flex">
+              <NotificationBell />
+              <AccountMenu />
+            </div>
           </div>
         </nav>
       </motion.header>
@@ -225,6 +228,7 @@ function MobileTabBar() {
   const hidden = useTabBarHidden();
   const pathname = usePathname();
   const user = useSession();
+  const unread = useStore((s) => s.notifications.filter((n) => n.userId === user?.id && !n.read).length);
   const tabs = [
     { href: "/map", label: t.nav.map, icon: Map },
     { href: "/adopt", label: t.nav.adopt, icon: Heart },
@@ -250,7 +254,12 @@ function MobileTabBar() {
             );
           return (
             <Link key={tab.href} href={tab.href} className={cn("relative flex w-16 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition-opacity active:opacity-60", active ? "text-accent" : "text-label-2")}>
-              <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 1.9} />
+              <span className="relative">
+                <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 1.9} />
+                {tab.href === "/account" && unread > 0 && (
+                  <span className="absolute -end-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-urgent px-1 text-[10px] font-bold text-white">{unread}</span>
+                )}
+              </span>
               <span className="max-w-full truncate">{tab.label}</span>
             </Link>
           );

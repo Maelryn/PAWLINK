@@ -120,15 +120,21 @@ function Login() {
       />
     );
 
-  const field = "h-11 w-full rounded-[14px] bg-surface-2 px-3.5 text-[15px] outline-none ring-accent/40 placeholder:text-label-2 focus:ring-2";
+  const field = "h-[50px] w-full bg-transparent px-4 text-[17px] outline-none placeholder:text-label-3 sm:h-12 sm:text-[16px]";
+  const group = "overflow-hidden rounded-[18px] bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.04)] divide-y divide-separator dark:shadow-none";
   const shortRole: Record<SignUpRole, string> = { reporter: t.dashboard.roles.reporter, volunteer: t.dashboard.roles.volunteer, vet: t.dashboard.roles.vet, pro: t.pay.tiers.pro };
 
   return (
-    <div className="relative h-[100svh] overflow-hidden bg-bg">
+    <div className="relative h-[100svh] overflow-y-auto overflow-x-clip bg-bg">
       <Aurora />
-      <TopNav noTabBar />
-      {/* one screen, no scroll: photos on the left (desktop), compact form on the right */}
-      <div className="relative mx-auto flex h-full max-w-[1080px] flex-col items-center justify-end px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-[68px] lg:flex-row lg:justify-center lg:gap-16 lg:pb-4 lg:pt-16">
+      <div className="hidden lg:block">
+        <TopNav noTabBar />
+      </div>
+      {/* phones: iOS back button floating top-left */}
+      <button type="button" onClick={() => setStep("choose")} className="glass fixed start-4 top-[max(12px,env(safe-area-inset-top))] z-30 flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90 lg:hidden" aria-label={t.common.back}>
+        <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
+      </button>
+      <div className="relative mx-auto flex min-h-full max-w-[1080px] flex-col items-center justify-end px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-[max(56px,env(safe-area-inset-top))] lg:flex-row lg:justify-center lg:gap-16 lg:pb-4 lg:pt-16">
         <div className="relative hidden h-[440px] w-[440px] shrink-0 lg:block">
           <PhotoStack />
         </div>
@@ -139,18 +145,20 @@ function Login() {
           </div>
         </div>
 
-        <div className="flex max-h-full w-full max-w-[420px] shrink-0 flex-col">
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setStep("choose")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm transition-transform active:scale-90" aria-label={t.common.back}>
-              <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
+        <div className="flex w-full max-w-[400px] shrink-0 flex-col">
+          {/* centered iOS header */}
+          <div className="flex flex-col items-center text-center">
+            <button type="button" onClick={() => setStep("choose")} className="mb-4 hidden h-10 items-center gap-1 self-start rounded-full pe-4 ps-2 text-[15px] font-semibold text-accent transition-opacity hover:opacity-70 lg:flex" aria-label={t.common.back}>
+              <ChevronLeft className="h-5 w-5 rtl:rotate-180" /> {t.common.back}
             </button>
-            <AppIcon className="hidden h-10 w-10 shrink-0 sm:block" />
-            <h1 className="truncate text-[22px] font-black sm:text-[26px]">{t.auth.title}</h1>
+            <AppIcon className={cn("h-14 w-14 rounded-[16px] shadow-[0_10px_24px_-10px_rgba(10,124,255,0.6)]", mode === "up" && "lg:hidden")} />
+            <h1 className="mt-3 text-[30px] font-black leading-tight tracking-[-0.03em]">{mode === "in" ? t.account.signIn : t.account.signUp}</h1>
+            {mode === "in" && <p className="mt-1 max-w-[300px] text-[15px] leading-snug text-label-2">{t.auth.subtitle}</p>}
           </div>
 
           <Segmented
             layoutId="auth-seg"
-            className="mt-3 w-full [&>button]:flex-1"
+            className="mt-5 w-full [&>button]:h-9 [&>button]:flex-1 [&>button]:text-[15px]"
             value={mode}
             onChange={(m) => {
               setMode(m);
@@ -163,14 +171,14 @@ function Login() {
             ]}
           />
 
-          <form onSubmit={submit} className="glass-strong mt-3 w-full space-y-2.5 rounded-[26px] p-4">
+          <form onSubmit={submit} className="mt-4 w-full space-y-3">
             <AnimatePresence mode="wait" initial={false}>
               {mode === "up" && otpStep ? (
                 <motion.div key="otp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-3 py-2 text-center">
                   <Emoji3D src="/3d/phone.png" size={52} className="mx-auto" />
                   <p className="text-[13.5px] text-label-2">{t.account.phoneNote}</p>
                   <div className="text-[15px] font-semibold" dir="ltr">{f.phone}</div>
-                  <input autoFocus inputMode="numeric" autoComplete="one-time-code" enterKeyHint="done" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="• • • • • •" className={cn(field, "h-12 text-center text-[22px] tracking-[0.5em]")} dir="ltr" />
+                  <input autoFocus inputMode="numeric" autoComplete="one-time-code" enterKeyHint="done" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="• • • • • •" className={cn(field, "h-14 rounded-[18px] bg-surface text-center text-[24px] tracking-[0.5em]")} dir="ltr" />
                   {devCode && (
                     <button type="button" onClick={() => setOtp(devCode)} className="mx-auto block rounded-full bg-accent-soft px-3 py-1.5 text-[12.5px] font-semibold text-accent" dir="ltr">
                       {t.auth.devCode(devCode)}
@@ -190,7 +198,7 @@ function Login() {
                             key={r}
                             type="button"
                             onClick={() => setRole(r)}
-                            className={cn("flex flex-col items-center gap-0.5 rounded-[16px] px-1 py-2 text-[11px] font-semibold leading-tight transition-colors", role === r ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}
+                            className={cn("flex flex-col items-center gap-1 rounded-[16px] px-1 py-2.5 text-[12px] font-semibold leading-tight transition-colors", role === r ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface")}
                           >
                             <Emoji3D src={e} size={26} />
                             <span className="max-w-full truncate">{shortRole[r]}</span>
@@ -199,11 +207,11 @@ function Login() {
                       </div>
                       {(role === "vet" || role === "pro") && (
                         <>
-                          <input required value={f.bizName} onChange={(e) => up("bizName", e.target.value)} placeholder={t.biz.bizName} className={field} />
+                          <div className={group}><input required value={f.bizName} onChange={(e) => up("bizName", e.target.value)} placeholder={t.biz.bizName} className={field} /></div>
                           {role === "pro" && (
                             <div className="scroll-fade -mx-1 flex gap-1.5 overflow-x-auto px-1 no-scrollbar">
                               {BIZ_TYPES.map((ty) => (
-                                <button key={ty} type="button" onClick={() => setBizType(ty)} className={cn("flex shrink-0 items-center gap-1 rounded-full py-1 pe-2.5 ps-1 text-[12px] font-semibold", bizType === ty ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}>
+                                <button key={ty} type="button" onClick={() => setBizType(ty)} className={cn("flex shrink-0 items-center gap-1 rounded-full py-1 pe-2.5 ps-1 text-[12px] font-semibold", bizType === ty ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface")}>
                                   <Emoji3D src={SERVICE_EMOJI[ty]} size={20} /> {t.common.service[ty]}
                                 </button>
                               ))}
@@ -211,25 +219,21 @@ function Login() {
                           )}
                         </>
                       )}
-                      <input required value={f.name} onChange={(e) => up("name", e.target.value)} placeholder={t.account.name} className={field} autoComplete="name" />
                     </>
                   )}
-                  <div className={cn("grid gap-2.5", mode === "up" && "grid-cols-2")}>
-                    <input required type="email" value={f.email} onChange={(e) => up("email", e.target.value)} placeholder={t.account.email} className={field} dir="ltr" autoComplete="email" />
-                    <input required type="password" minLength={mode === "up" ? 8 : 1} value={f.password} onChange={(e) => up("password", e.target.value)} placeholder={t.account.password} className={field} autoComplete={mode === "up" ? "new-password" : "current-password"} />
+                  <div className={group}>
+                    {mode === "up" && <input required value={f.name} onChange={(e) => up("name", e.target.value)} placeholder={t.account.name} className={field} autoComplete="name" />}
+                    <input required type="email" value={f.email} onChange={(e) => up("email", e.target.value)} placeholder={t.account.email} className={field} dir="ltr" autoComplete="email" autoCapitalize="none" autoCorrect="off" enterKeyHint="next" />
+                    <input required type="password" minLength={mode === "up" ? 8 : 1} value={f.password} onChange={(e) => up("password", e.target.value)} placeholder={t.account.password} className={field} autoComplete={mode === "up" ? "new-password" : "current-password"} enterKeyHint={mode === "in" ? "go" : "next"} />
+                    {mode === "up" && <input required type="tel" value={f.phone} onChange={(e) => up("phone", e.target.value)} placeholder="+213 5XX XX XX XX" className={field} dir="ltr" autoComplete="tel" />}
+                    {mode === "up" && <input required value={f.city} onChange={(e) => up("city", e.target.value)} placeholder={t.acct.city} className={field} autoComplete="address-level2" />}
                   </div>
-                  {mode === "up" && (
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <input required type="tel" value={f.phone} onChange={(e) => up("phone", e.target.value)} placeholder="+213 5XX XX XX XX" className={field} dir="ltr" autoComplete="tel" />
-                      <input required value={f.city} onChange={(e) => up("city", e.target.value)} placeholder={t.acct.city} className={field} />
-                    </div>
-                  )}
                   {mode === "up" && (role === "vet" || role === "pro") && <p className="text-[11.5px] leading-snug text-label-2">{role === "vet" ? t.account.vetNote : t.biz.pending}</p>}
                 </motion.div>
               )}
             </AnimatePresence>
             {error && <p className="text-[13px] font-medium text-urgent">{error}</p>}
-            <Button type="submit" className="h-12 w-full text-[16px]" disabled={busy || (mode === "up" && otpStep && otp.length < 6)}>
+            <Button type="submit" className="h-[52px] w-full text-[17px]" disabled={busy || (mode === "up" && otpStep && otp.length < 6)}>
               {busy && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />}
               {mode === "in" ? t.account.signIn : otpStep ? t.common.next : t.account.signUp}
             </Button>

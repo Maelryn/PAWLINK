@@ -2,14 +2,30 @@
 
 import { useSyncExternalStore } from "react";
 
-/* Tiny UI state shared across components: the phone tab bar slides away when a map sheet is open. */
+import { useEffect } from "react";
+
+/* Tiny UI state shared across components: the phone tab bar slides away while a map sheet is open.
+   It's a counter, not a boolean: when one sheet closes while another opens (list → animal), the
+   closing one must not bring the bar back. */
+let hideRequests = 0;
 let tabBarHidden = false;
 const listeners = new Set<() => void>();
 
-export function setTabBarHidden(v: boolean) {
-  if (tabBarHidden === v) return;
-  tabBarHidden = v;
+function changeHide(delta: number) {
+  hideRequests = Math.max(0, hideRequests + delta);
+  const next = hideRequests > 0;
+  if (next === tabBarHidden) return;
+  tabBarHidden = next;
   listeners.forEach((l) => l());
+}
+
+/** Keeps the phone tab bar hidden while `active` is true and this component is mounted. */
+export function useHideTabBar(active = true) {
+  useEffect(() => {
+    if (!active) return;
+    changeHide(1);
+    return () => changeHide(-1);
+  }, [active]);
 }
 
 export function useTabBarHidden() {

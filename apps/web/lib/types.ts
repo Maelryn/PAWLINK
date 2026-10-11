@@ -120,6 +120,10 @@ export interface EmergencyZone {
   center: GeoPoint;
   active: boolean;
   startedAt: string;
+  /** set when an admin ends the alert */
+  endedAt?: string;
+  radiusKm?: number;
+  /** demo seed numbers; live numbers come from lib/zones.ts zoneStats() */
   stats: { cases: number; urgent: number; helpers: number };
 }
 

@@ -21,7 +21,6 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Avatar, CasePhoto, Emoji3D, TimeAgo, TriageBadge } from "@/components/ui/primitives";
 import { useCaseAI } from "@/lib/ai/useCaseAI";
 import { useI18n } from "@/lib/i18n";
-import { EMERGENCY_ZONES } from "@/lib/mock/data";
 import { HELP_EMOJI, SPECIES_EMOJI } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
 import { Burst } from "@/components/ui/Sparkles";
@@ -40,6 +39,7 @@ export default function CasePage() {
   const user = useSession();
   const [party, setParty] = useState(false);
   const ct = useCaseText();
+  const zones = useStore((s) => s.zones);
 
   if (!c)
     return (
@@ -53,7 +53,7 @@ export default function CasePage() {
       </>
     );
 
-  const zone = c.emergencyZoneId ? EMERGENCY_ZONES.find((z) => z.id === c.emergencyZoneId) : null;
+  const zone = c.emergencyZoneId ? zones.find((z) => z.id === c.emergencyZoneId && z.active) : null;
   const timeline = [
     { label: t.case.created, at: c.createdAt, icon: "/3d/camera.png" },
     { label: t.case.aiDone, at: c.createdAt, icon: "/3d/sparkles.png" },
@@ -90,7 +90,7 @@ export default function CasePage() {
             </span>
           </div>
           <div className="relative -mt-7 rounded-t-[30px] bg-surface p-5 sm:p-7">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 [&>*]:whitespace-nowrap">
               <TriageBadge triage={c.triage} size="lg" />
               <motion.span key={c.status} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} className={cn("rounded-full px-3 py-1.5 text-[13px] font-semibold", c.status === "resolved" ? "bg-stable-soft text-stable" : c.status === "in_progress" ? "bg-accent-soft text-accent" : "bg-surface-2 text-label-2")}>{c.status === "resolved" && "✓ "}{t.common.status[c.status]}</motion.span>
               {zone && <span className="rounded-full bg-urgent-soft px-3 py-1.5 text-[13px] font-semibold text-urgent">🔥 {t.case.inZone}</span>}
