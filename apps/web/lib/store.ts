@@ -79,6 +79,20 @@ function set(patch: Partial<State>) {
 }
 
 const now = () => new Date().toISOString();
+
+/** Is this user's Pro / Pro+ subscription running right now? */
+export const proActive = (u?: User | null) => !!u?.pro && new Date(u.pro.until).getTime() > Date.now();
+
+/** A listing owned by an account is "featured" exactly while its owner's subscription runs (expiry included). */
+function syncFeatured(services: Service[], users: User[]): Service[] {
+  return services.map((s) => {
+    if (!s.ownerId) return s;
+    const owner = users.find((u) => u.id === s.ownerId);
+    if (!owner) return s;
+    const pro = proActive(owner);
+    return s.pro === pro ? s : { ...s, pro };
+  });
+}
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const lite = (u: User) => ({ id: u.id, name: u.name, avatar: u.avatar });
 
@@ -107,6 +121,7 @@ export const store = {
       saved = JSON.parse(localStorage.getItem(KEY) ?? "{}");
     } catch {}
     state = { ...state, ...saved, hydrated: true, authChecked: !opts.realAuth };
+    state = { ...state, services: syncFeatured(state.services, state.users) };
     emit();
   },
   setAuthChecked() {
@@ -279,10 +294,13 @@ export const store = {
     });
   },
   /** Demo payment: activates Pro for 30 days. Real: Chargily (CIB / Edahabia) webhook → PATCH /me/pro */
+  /** Pays for Pro / Pro+. Days left on an active subscription are kept (renewing or upgrading never loses time). */
   activatePro(userId: string, days = 30, plan: "pro" | "plus" = "pro") {
     const u = state.users.find((x) => x.id === userId);
-    const since = now();
-    const until = new Date(Date.now() + days * 86_400_000).toISOString();
+    const active = proActive(u);
+    const since = active ? u!.pro!.since : now();
+    const from = active ? new Date(u!.pro!.until).getTime() : Date.now();
+    const until = new Date(from + days * 86_400_000).toISOString();
     set({
       users: state.users.map((x) => (x.id === userId ? { ...x, pro: { plan, since, until } } : x)),
       services: state.services.map((s) => (s.id === u?.serviceId ? { ...s, pro: true } : s)),

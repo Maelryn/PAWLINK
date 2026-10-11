@@ -58,6 +58,9 @@ export function BusinessPanel({ me }: { me: User }) {
         ))}
       </div>
 
+      {/* Pro+ suggestion: only for Pro businesses that are actually busy, at most once a week */}
+      <PlusSuggestion me={me} busy={bookings.length >= 3 || reviews.length >= 5} />
+
       {/* Pro */}
       {isPro ? (
         <div className="flex items-center gap-3 rounded-[24px] bg-gradient-to-r from-[#0a7cff] to-[#5e5ce6] p-4 text-white">
@@ -170,6 +173,41 @@ function ReviewReply({ r, canReply }: { r: Review; canReply: boolean }) {
           </form>
         )
       )}
+    </div>
+  );
+}
+
+const PLUS_KEY = "pawlink.plusHint";
+const WEEK = 7 * 86_400_000;
+
+function PlusSuggestion({ me, busy }: { me: User; busy: boolean }) {
+  const { t } = useI18n();
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return Date.now() - Number(localStorage.getItem(`${PLUS_KEY}.${me.id}`) ?? 0) < WEEK;
+    } catch {
+      return false;
+    }
+  });
+  const onPro = !!me.pro && me.pro.plan === "pro" && new Date(me.pro.until) > new Date();
+  if (!onPro || !busy || hidden) return null;
+  const dismiss = () => {
+    setHidden(true);
+    try {
+      localStorage.setItem(`${PLUS_KEY}.${me.id}`, String(Date.now()));
+    } catch {}
+  };
+  return (
+    <div className="flex items-start gap-3 rounded-[24px] bg-accent-soft p-4">
+      <Emoji3D src="/3d/sparkles.png" size={34} className="shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="font-bold">{t.pay.plusTitle}</div>
+        <p className="text-[13.5px] text-label-2">{t.pay.plusBody}</p>
+        <div className="mt-2.5 flex gap-2">
+          <Button size="sm" onClick={() => { dismiss(); openPaywall(true, "plus"); }}>{t.pay.plusCta}</Button>
+          <Button size="sm" variant="plain" onClick={dismiss}>{t.pay.later}</Button>
+        </div>
+      </div>
     </div>
   );
 }

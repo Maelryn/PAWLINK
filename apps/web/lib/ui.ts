@@ -25,11 +25,15 @@ export function useTabBarHidden() {
 
 /* Paywall (PawLink Pro) opened as a sheet from anywhere: openPaywall() */
 let paywallOpen = false;
+let paywallTier: "pro" | "plus" | null = null;
 const pwListeners = new Set<() => void>();
-export function openPaywall(v = true) {
+export function openPaywall(v = true, tier: "pro" | "plus" | null = null) {
   paywallOpen = v;
+  if (v) paywallTier = tier;
   pwListeners.forEach((l) => l());
 }
+/** The plan the paywall should show first (set by openPaywall). */
+export const paywallStartTier = () => paywallTier;
 export function usePaywallOpen() {
   return useSyncExternalStore(
     (l) => {

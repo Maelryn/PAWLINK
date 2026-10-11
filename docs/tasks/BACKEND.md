@@ -80,7 +80,7 @@ NEXT_PUBLIC_API_FEATURES=auth,cases,uploads
 ### Shapes the website added since (please mirror them in `apps/web/lib/types.ts` terms)
 
 - **Adoption:** `AdoptionProfile.status` can be `"adopted"` (owner confirms the animal found its family, it leaves the public list). `AdoptionRequest.fromPhone` = the adopter's phone, returned to the owner only once the request is `accepted` (both sides get each other's number).
-- **Pro:** `User.pro.plan` is `"pro" | "plus"` (the Pro+ tier).
+- **Pro:** `User.pro.plan` is `"pro" | "plus"` (the Pro+ tier). Paying again while active **extends** `until` (days left are kept); upgrading Pro → Pro+ keeps them too; the same plan can't be bought twice. A listing is featured (`service.pro`) only while its owner's subscription is active, so expiry must turn it off.
 - **Favorites:** saved adoption profiles per user (`PUT/DELETE /me/favorites/:adoptionId`, `GET /me/favorites`).
 - **Notifications:** two more kinds: `resolved` (a case you reported or helped on was resolved) and `nearbyCase` (a case near an available helper).
 

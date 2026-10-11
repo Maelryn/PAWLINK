@@ -612,6 +612,16 @@ const en = {
     promoCta: "Discover Pro",
     later: "Later",
     locked: "Pro",
+    current: "Your current plan",
+    currentUntil: (d: string) => `Active until ${d}`,
+    upgrade: "Upgrade to Pro+",
+    daysKept: "The days left on your subscription are kept.",
+    allSet: "You have PawLink Pro+",
+    allSetBody: (d: string) => `Everything is already included until ${d}. Thanks for helping PawLink grow!`,
+    manage: "Manage my business",
+    plusTitle: "You're getting a lot of requests",
+    plusBody: "Pro+ adds a badge on the map and puts you first for nearby emergencies.",
+    plusCta: "See Pro+",
   },
 };
 

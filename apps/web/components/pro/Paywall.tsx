@@ -10,7 +10,8 @@ import { Segmented } from "@/components/ui/primitives";
 import { Burst, Sparkles } from "@/components/ui/Sparkles";
 import { useSession } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
-import { store } from "@/lib/store";
+import { proActive, store } from "@/lib/store";
+import { paywallStartTier } from "@/lib/ui";
 import { cn } from "@/lib/utils";
 
 /* PawLink Pro paywall — iOS subscription-sheet style, fits one phone screen.
@@ -28,7 +29,12 @@ export function Paywall({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
   const me = useSession();
   const router = useRouter();
-  const [tier, setTier] = useState<Tier>("pro");
+  // what this business already has: Pro+ is the top plan, a Pro business is offered the upgrade
+  const current: Tier | null = proActive(me) ? me!.pro!.plan : null;
+  // the plan picked by the person; until they pick, the best next step for them (the account loads after this screen)
+  const [picked, setTier] = useState<Tier | null>(() => paywallStartTier());
+  const tier: Tier = picked ?? (current === "pro" ? "plus" : "pro");
+  const isCurrent = current === tier;
   const [period, setPeriod] = useState<Period>("month");
   const [step, setStep] = useState<"plans" | "pay">("plans");
   const [method, setMethod] = useState<"edahabia" | "cib">("edahabia");
@@ -45,6 +51,7 @@ export function Paywall({ onClose }: { onClose: () => void }) {
       return router.push("/login?mode=up&next=/pro");
     }
     if (!me.serviceId) return toast(t.pro.needBiz);
+    if (isCurrent || current === "plus") return; // can't buy the plan you already have
     setStep("pay");
   };
 
@@ -103,6 +110,16 @@ export function Paywall({ onClose }: { onClose: () => void }) {
         <p className="mt-1 max-w-[320px] text-[14.5px] text-label-2 [@media(max-height:800px)]:hidden">{t.pay.sub}</p>
       </div>
 
+      {current === "plus" ? (
+        <div className="relative mt-auto flex flex-col items-center gap-3 pt-4 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-stable text-white"><Check className="h-7 w-7" strokeWidth={3} /></span>
+          <div className="text-[20px] font-bold">{t.pay.allSet}</div>
+          <p className="max-w-[300px] text-[14px] text-label-2">{t.pay.allSetBody(new Date(me!.pro!.until).toLocaleDateString())}</p>
+          <button type="button" onClick={() => { onClose(); router.push("/account?tab=pro"); }} className="mt-2 h-12 w-full rounded-full bg-[#1d1d1f] text-[15px] font-semibold text-white dark:bg-white dark:text-black">
+            {t.pay.manage}
+          </button>
+        </div>
+      ) : (
       <AnimatePresence mode="wait" initial={false}>
         {step === "plans" ? (
           <motion.div key="plans" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="relative mt-auto flex flex-col gap-3 pt-4">
@@ -165,16 +182,22 @@ export function Paywall({ onClose }: { onClose: () => void }) {
             <motion.button
               type="button"
               onClick={subscribe}
-              whileTap={{ scale: 0.97 }}
-              className="relative mt-1 overflow-hidden rounded-full bg-gradient-to-r from-[#0a7cff] via-[#5e5ce6] to-[#ff2d78] px-4 py-3 text-white shadow-[0_14px_34px_-12px_rgba(94,92,230,0.9)]"
+              disabled={isCurrent}
+              whileTap={{ scale: isCurrent ? 1 : 0.97 }}
+              className={cn(
+                "relative mt-1 overflow-hidden rounded-full px-4 py-3 text-white",
+                isCurrent ? "bg-label-3" : "bg-gradient-to-r from-[#0a7cff] via-[#5e5ce6] to-[#ff2d78] shadow-[0_14px_34px_-12px_rgba(94,92,230,0.9)]",
+              )}
             >
               <motion.span
                 className="pointer-events-none absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"
                 animate={{ left: ["-40%", "140%"] }}
                 transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 1.2 }}
               />
-              <span className="relative block text-[17px] font-bold">{free ? `${t.pay.cta} · 0 DA` : t.pay.cta}</span>
-              <span className="relative block text-[11.5px] text-white/85">{t.pay.renew(priceLabel)}</span>
+              <span className="relative block text-[17px] font-bold">
+                {isCurrent ? t.pay.current : current === "pro" ? t.pay.upgrade : free ? `${t.pay.cta} · 0 DA` : t.pay.cta}
+              </span>
+              <span className="relative block text-[11.5px] text-white/85">{isCurrent ? t.pay.currentUntil(new Date(me!.pro!.until).toLocaleDateString()) : current ? t.pay.daysKept : t.pay.renew(priceLabel)}</span>
             </motion.button>
 
             {code === null ? (
@@ -219,6 +242,7 @@ export function Paywall({ onClose }: { onClose: () => void }) {
           </motion.div>
         )}
       </AnimatePresence>
+      )}
       {burst && <Burst count={48} />}
     </div>
   );

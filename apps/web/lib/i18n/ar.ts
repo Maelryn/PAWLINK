@@ -611,6 +611,16 @@ const ar: Dict = {
     promoCta: "اكتشف Pro",
     later: "لاحقًا",
     locked: "Pro",
+    current: "خطتك الحالية",
+    currentUntil: (d) => `مفعّلة حتى ${d}`,
+    upgrade: "الترقية إلى Pro+",
+    daysKept: "تُحتسب الأيام المتبقية من اشتراكك.",
+    allSet: "لديك PawLink Pro+",
+    allSetBody: (d) => `كل شيء مشمول حتى ${d}. شكرًا لمساعدتك PawLink على النمو!`,
+    manage: "إدارة مؤسستي",
+    plusTitle: "تصلك طلبات كثيرة",
+    plusBody: "يضيف Pro+ شارة على الخريطة ويمنحك الأولوية في الحالات الطارئة القريبة.",
+    plusCta: "اكتشف Pro+",
   },
 };
 

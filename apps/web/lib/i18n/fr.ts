@@ -614,6 +614,16 @@ const fr: Dict = {
     promoCta: "Découvrir Pro",
     later: "Plus tard",
     locked: "Pro",
+    current: "Votre forfait actuel",
+    currentUntil: (d: string) => `Actif jusqu'au ${d}`,
+    upgrade: "Passer à Pro+",
+    daysKept: "Les jours restants de votre abonnement sont conservés.",
+    allSet: "Vous avez PawLink Pro+",
+    allSetBody: (d: string) => `Tout est déjà inclus jusqu'au ${d}. Merci de faire grandir PawLink !`,
+    manage: "Gérer mon établissement",
+    plusTitle: "Vous recevez beaucoup de demandes",
+    plusBody: "Pro+ ajoute un badge sur la carte et vous place en priorité sur les urgences proches.",
+    plusCta: "Voir Pro+",
   },
 };
 
