@@ -1,5 +1,7 @@
 "use client";
 
+import { useCaseText } from "@/lib/i18n/content";
+
 import { motion } from "motion/react";
 import Image from "next/image";
 import { SERVICE_COLOR, SERVICE_EMOJI, SPECIES_EMOJI, TRIAGE_HEX } from "@/lib/species";
@@ -18,6 +20,7 @@ export function CasePin({
   dropIn?: boolean;
   showLabel?: boolean;
 }) {
+  const ct = useCaseText();
   const color = TRIAGE_HEX[c.triage];
   const photo = c.photos[0];
   return (
@@ -72,7 +75,7 @@ export function CasePin({
           className="pointer-events-none absolute top-full mt-1 max-w-[160px] truncate whitespace-nowrap text-center text-[12px] font-semibold text-[#1d1d1f] dark:text-white"
           style={{ textShadow: "0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg)" }}
         >
-          {c.title}
+          {ct(c).title}
         </span>
       )}
     </motion.div>

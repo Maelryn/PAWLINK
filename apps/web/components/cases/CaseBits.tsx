@@ -1,5 +1,7 @@
 "use client";
 
+import { useCaseText } from "@/lib/i18n/content";
+
 import { offerHelp } from "@/lib/cases";
 
 import { AnimatePresence, motion } from "motion/react";
@@ -17,6 +19,7 @@ import type { Case, HelpType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function CaseRow({ c, distance, active, onClick }: { c: Case; distance?: number; active?: boolean; onClick?: () => void }) {
+  const ct = useCaseText();
   const { t } = useI18n();
   return (
     <motion.button
@@ -35,7 +38,7 @@ export function CaseRow({ c, distance, active, onClick }: { c: Case; distance?: 
           <TriageBadge triage={c.triage} size="sm" />
           {(c.count ?? 1) > 1 && <span className="text-[11px] font-semibold text-label-2">×{c.count}</span>}
         </div>
-        <div className="mt-1 truncate text-[15px] font-semibold tracking-[-0.01em]">{c.title}</div>
+        <div className="mt-1 truncate text-[15px] font-semibold tracking-[-0.01em]">{ct(c).title}</div>
         <div className="mt-0.5 flex items-center gap-2 truncate text-[12.5px] text-label-2">
           <span className="flex items-center gap-1 truncate">
             <MapPin className="h-3 w-3 shrink-0" />
@@ -61,6 +64,7 @@ export function CaseRow({ c, distance, active, onClick }: { c: Case; distance?: 
 
 /** Horizontal card used in the mobile map carousel (travel-app style). */
 export function CaseCard({ c, distance, onClick, active }: { c: Case; distance?: number; onClick?: () => void; active?: boolean }) {
+  const ct = useCaseText();
   const { t } = useI18n();
   return (
     <motion.button
@@ -74,7 +78,7 @@ export function CaseCard({ c, distance, onClick, active }: { c: Case; distance?:
       <CasePhoto photo={c.photos[0]} emoji={SPECIES_EMOJI[c.species]} emojiSize={40} sizes="80px" className="h-[76px] w-[76px] shrink-0 rounded-[18px]" />
       <div className="min-w-0 flex-1">
         <TriageBadge triage={c.triage} size="sm" />
-        <div className="mt-1 line-clamp-2 text-[14.5px] font-semibold leading-tight">{c.title}</div>
+        <div className="mt-1 line-clamp-2 text-[14.5px] font-semibold leading-tight">{ct(c).title}</div>
         <div className="mt-1 truncate text-[12px] text-label-2">
           {distance !== undefined ? t.common.km(distance) : c.location.address} · <TimeAgo iso={c.createdAt} />
         </div>

@@ -37,7 +37,7 @@ export function MyAdoptions({ me }: { me: User }) {
         <Link key={a.id} href={`/adopt/${a.id}`} className="flex items-center gap-3 rounded-[20px] p-2.5 hover:bg-surface-2">
           <Thumb src={a.photos[0]} />
           <span className="flex-1 font-semibold">{a.name}</span>
-          <span className={cn("rounded-full px-2.5 py-1 text-[12px] font-semibold", a.status === "approved" ? "bg-stable-soft text-stable" : a.status === "pending" ? "bg-monitor-soft text-monitor" : "bg-urgent-soft text-urgent")}>
+          <span className={cn("rounded-full px-2.5 py-1 text-[12px] font-semibold", a.status === "approved" || a.status === "adopted" ? "bg-stable-soft text-stable" : a.status === "pending" ? "bg-monitor-soft text-monitor" : "bg-urgent-soft text-urgent")}>
             {t.market[a.status]}
           </span>
         </Link>
@@ -64,6 +64,21 @@ export function MyAdoptions({ me }: { me: User }) {
               </div>
             ) : (
               <div className={cn("mt-2 text-[13px] font-semibold", r.status === "accepted" ? "text-stable" : "text-urgent")}>{t.market.status[r.status]}</div>
+            )}
+            {r.status === "accepted" && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {r.fromPhone && (
+                  <>
+                    <a href={`tel:${r.fromPhone.replace(/\s/g, "")}`} className="flex h-9 items-center gap-1.5 rounded-full bg-accent px-3.5 text-[13.5px] font-semibold text-white" dir="ltr"><Phone className="h-4 w-4" /> {r.fromPhone}</a>
+                    <a href={`https://wa.me/${r.fromPhone.replace(/[\s+]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full bg-stable text-white" aria-label={t.market.whatsapp}><MessageCircle className="h-4 w-4" /></a>
+                  </>
+                )}
+                {a.status === "approved" && (
+                  <button type="button" onClick={() => store.markAdopted(a.id)} className="ms-auto flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13.5px] font-semibold text-stable">
+                    🎉 {t.market.markAdopted}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         );

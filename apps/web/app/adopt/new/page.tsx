@@ -29,6 +29,8 @@ export default function NewAdoptionPage() {
   );
 }
 
+const DEMO_PHOTOS = ["/mock/dog-white.jpg", "/mock/dog-jack.jpg", "/mock/cat-orange.jpg", "/mock/cat-tabby.jpg"];
+
 function NewAdoption() {
   const { t } = useI18n();
   const me = useSession()!;
@@ -82,7 +84,7 @@ function NewAdoption() {
       story: f.story,
       shelter: { id: me.id, name: me.name },
       ownerId: me.id,
-      ownerPhone: f.phone,
+      ownerPhone: f.phone || me.phone,
       location: { lat: 36.75, lng: 3.06, address: f.city },
       status: "pending",
       createdAt: now,
@@ -119,6 +121,19 @@ function NewAdoption() {
           </div>
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => add(e.target.files)} />
           <p className="text-[12.5px] text-label-2">📸 {t.market.photosRule}</p>
+          {/* Lets judges / testers on a computer try the flow. Every listing is still checked by an admin before it's public. */}
+          {photos.length === 0 && (
+            <div className="rounded-[18px] bg-surface-2 p-3">
+              <p className="text-[12.5px] text-label-2">{t.market.demoPhotos}</p>
+              <div className="mt-2 flex gap-2">
+                {DEMO_PHOTOS.map((p) => (
+                  <button key={p} type="button" onClick={() => setPhotos([p])} className="relative h-14 w-14 overflow-hidden rounded-[14px] transition-transform active:scale-95">
+                    <Image src={p} alt="" fill sizes="56px" className="object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="card mt-4 space-y-3 rounded-[30px] p-5">

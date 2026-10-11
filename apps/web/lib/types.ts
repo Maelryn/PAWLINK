@@ -213,8 +213,8 @@ export interface AdoptionProfile {
   ownerId: string;
   ownerPhone?: string;
   location: GeoPoint;
-  /** Every listing is reviewed by an admin before it's public. */
-  status: "pending" | "approved" | "rejected";
+  /** Reviewed by an admin before it is public; "adopted" once the owner confirms it found its family (then it leaves the list). */
+  status: "pending" | "approved" | "rejected" | "adopted";
   createdAt: string;
 }
 
@@ -222,6 +222,8 @@ export interface AdoptionRequest {
   id: string;
   adoptionId: string;
   from: UserLite;
+  /** Adopter phone, shown to the owner only once they accept (both sides get each other number). */
+  fromPhone?: string;
   message: string;
   housing: "apartment" | "house" | "farm";
   experience: boolean;

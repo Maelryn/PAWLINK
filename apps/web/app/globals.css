@@ -162,6 +162,13 @@ html[dir="rtl"] h3 {
   font-family: var(--font-arabic);
 }
 
+/* In Arabic, names written in Latin script (clinics, cities, people) keep their own direction,
+   so "Clinique Vétérinaire des Oliviers" is cut at its end, not its start */
+html[dir="rtl"] .truncate,
+html[dir="rtl"] [class*="line-clamp-"] {
+  unicode-bidi: plaintext;
+}
+
 html[dir="rtl"] body {
   font-family: var(--font-arabic);
   letter-spacing: 0;

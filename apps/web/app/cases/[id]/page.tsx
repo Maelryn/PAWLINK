@@ -1,5 +1,7 @@
 "use client";
 
+import { useCaseText } from "@/lib/i18n/content";
+
 import { canResolve, resolveCase } from "@/lib/cases";
 
 import { cn } from "@/lib/utils";
@@ -37,6 +39,7 @@ export default function CasePage() {
   const ai = useCaseAI(c);
   const user = useSession();
   const [party, setParty] = useState(false);
+  const ct = useCaseText();
 
   if (!c)
     return (
@@ -62,14 +65,14 @@ export default function CasePage() {
       {party && <Burst />}
       <TopNav
         back={{ href: "/map", label: t.nav.map }}
-        actions={<ShareButton title={c.title} text={t.share.caseText(c.title)} size="lg" className="bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.08)]" />}
+        actions={<ShareButton title={ct(c).title} text={t.share.caseText(ct(c).title)} size="lg" className="bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.08)]" />}
       />
       <div className="mx-auto max-w-[1180px] px-4 pt-[76px] sm:pt-24">
         <div className="mb-4 hidden items-center justify-between md:flex">
           <Link href="/map" className="glass flex h-10 items-center gap-1.5 rounded-full pe-4 ps-3 text-[14px] font-semibold">
             <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t.nav.map}
           </Link>
-          <ShareButton title={c.title} text={t.share.caseText(c.title)} className="glass" />
+          <ShareButton title={ct(c).title} text={t.share.caseText(ct(c).title)} className="glass" />
         </div>
 
         {/* Photo stays clean; details live in a sheet under it (iOS detail-view pattern) */}
@@ -93,9 +96,9 @@ export default function CasePage() {
               {zone && <span className="rounded-full bg-urgent-soft px-3 py-1.5 text-[13px] font-semibold text-urgent">🔥 {t.case.inZone}</span>}
               {c.trust && <TrustBadge level={c.trust.level} />}
             </div>
-            <h1 className="mt-3 text-[28px] font-extrabold leading-[1.1] sm:text-[40px]">{c.title}</h1>
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <a href={gmaps(c.location)} target="_blank" rel="noopener noreferrer" className="col-span-2 flex items-center gap-3 rounded-[18px] bg-surface-2 p-3 transition-colors hover:bg-surface-3 sm:col-span-1">
+            <h1 className="mt-3 text-[28px] font-extrabold leading-[1.1] sm:text-[40px]">{ct(c).title}</h1>
+            <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3">
+              <a href={gmaps(c.location)} target="_blank" rel="noopener noreferrer" className="col-span-2 hidden items-center gap-3 rounded-[18px] bg-surface-2 p-3 transition-colors hover:bg-surface-3 sm:col-span-1 lg:flex">
                 <Emoji3D src="/3d/pin.png" size={30} />
                 <span className="min-w-0">
                   <span className="block text-[11.5px] font-semibold uppercase tracking-wide text-label-2">{t.case.location}</span>
@@ -124,7 +127,7 @@ export default function CasePage() {
             <Reveal>
               <section className="card rounded-[32px] p-6">
                 <h2 className="text-[20px] font-bold tracking-[-0.02em]">{t.case.description}</h2>
-                <p className="mt-2 text-[16px] leading-relaxed">{c.description}</p>
+                <p className="mt-2 text-[16px] leading-relaxed">{ct(c).description}</p>
                 <div className="mt-4 flex flex-wrap gap-1.5">
                   {c.conditionTags.map((tag) => (
                     <span key={tag} className="rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-medium">

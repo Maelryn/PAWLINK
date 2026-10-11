@@ -115,7 +115,7 @@ export function BusinessPanel({ me }: { me: User }) {
                 <Avatar name={b.from.name} size={34} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{b.from.name} · {b.animal}</div>
-                  <div className="text-[12.5px] text-label-2" dir="ltr">{b.date} · {b.time}</div>
+                  <div className="text-[12.5px] text-label-2">{new Date(`${b.date}T12:00`).toLocaleDateString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { weekday: "short", day: "numeric", month: "short" })} · <span dir="ltr">{b.time}</span></div>
                 </div>
                 {b.status === "sent" ? (
                   <div className="flex gap-1.5">

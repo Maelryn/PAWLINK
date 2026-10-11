@@ -14,10 +14,19 @@ const DEFAULT: Locale = "fr";
 
 /* Locale lives in localStorage; useSyncExternalStore keeps SSR ("fr") and the client in sync. */
 const listeners = new Set<() => void>();
+/** First visit: follow the browser language (Arabic, French, otherwise English). After that, the choice made in Settings. */
+function browserLocale(): Locale {
+  for (const l of navigator.languages ?? [navigator.language]) {
+    const code = l.toLowerCase().slice(0, 2);
+    if (code === "ar" || code === "fr" || code === "en") return code;
+  }
+  return "en";
+}
 function readLocale(): Locale {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved && saved in DICTS) return saved as Locale;
+    return browserLocale();
   } catch {}
   return DEFAULT;
 }

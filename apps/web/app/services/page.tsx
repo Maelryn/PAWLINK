@@ -97,7 +97,7 @@ export default function ServicesPage() {
             className={cn("flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-semibold transition-[background,transform] active:scale-95", origin ? "bg-accent text-white" : "bg-surface-2")}
           >
             <MapPin className={cn("h-4 w-4", origin ? "text-white" : "text-accent", locating && "animate-pulse")} />
-            {locating ? t.svc.locating : origin ? t.svc.nearMe : "Alger"}
+            {locating ? t.svc.locating : origin ? t.svc.nearMe : t.svc.algiers}
           </button>
         </div>
 

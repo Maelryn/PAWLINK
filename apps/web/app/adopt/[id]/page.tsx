@@ -221,7 +221,7 @@ export default function AdoptionProfilePage() {
                 className="space-y-3 overflow-hidden p-3"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  store.sendRequest({ id: `rq${Date.now()}`, adoptionId: a.id, from: { id: me!.id, name: me!.name, avatar: "" }, message: msg, housing, experience: exp, status: "sent", createdAt: new Date().toISOString() });
+                  store.sendRequest({ id: `rq${Date.now()}`, adoptionId: a.id, from: { id: me!.id, name: me!.name, avatar: "" }, fromPhone: me!.phone, message: msg, housing, experience: exp, status: "sent", createdAt: new Date().toISOString() });
                   toast.success(t.market.sent, { icon: <Emoji3D src="/3d/love.png" size={22} /> });
                 }}
               >

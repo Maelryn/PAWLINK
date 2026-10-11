@@ -160,7 +160,8 @@ export default function ServicePage() {
               </div>
             </section>
           </Reveal>
-          <div className="lg:sticky lg:top-24 lg:self-start">
+          {/* phones: booking (the main action) comes before the reviews */}
+          <div className="max-lg:order-first lg:sticky lg:top-24 lg:self-start">
             <BookingCard s={s} />
           </div>
         </div>
@@ -170,12 +171,14 @@ export default function ServicePage() {
 }
 
 function BookingCard({ s }: { s: Service }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const me = useSession();
   const router = useRouter();
   const [f, setF] = useState({ date: "", time: "", animal: "", reason: "" });
   const mine = useStore((st) => st.bookings).find((b) => b.serviceId === s.id && b.from.id === me?.id && b.status !== "declined");
 
+  const today = new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd in local time
+  const fmtDay = (d: string) => new Date(`${d}T12:00`).toLocaleDateString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { weekday: "short", day: "numeric", month: "short" });
   return (
     <section className="card rounded-[30px] p-5">
       <h2 className="flex items-center gap-2 text-[18px] font-bold"><Emoji3D src="/3d/bell.png" size={26} /> {t.svc.book}</h2>
@@ -183,8 +186,10 @@ function BookingCard({ s }: { s: Service }) {
         <p className="mt-2 text-[14px] text-label-2">{t.svc.onlyPro}</p>
       ) : mine ? (
         <div className="mt-3 rounded-[18px] bg-surface-2 p-4 text-[14px]">
-          <div className="font-semibold" dir="ltr">{mine.date} · {mine.time}</div>
-          <div className={cn("mt-1 font-semibold", mine.status === "confirmed" ? "text-stable" : "text-monitor")}>{mine.status === "confirmed" ? `${t.biz.confirm} ✓` : t.market.status.sent}</div>
+          <div className="font-semibold">{fmtDay(mine.date)} · <span dir="ltr">{mine.time}</span></div>
+          <div className={cn("mt-1 font-semibold", mine.status === "confirmed" ? "text-stable" : mine.status === "declined" ? "text-urgent" : "text-monitor")}>
+            {mine.status === "confirmed" ? `${t.biz.confirm} ✓` : mine.status === "declined" ? t.svc.declined : t.market.status.sent}
+          </div>
         </div>
       ) : (
         <form
@@ -192,12 +197,13 @@ function BookingCard({ s }: { s: Service }) {
           onSubmit={(e) => {
             e.preventDefault();
             if (!me) return router.push(`/login?next=/services/${s.id}`);
+            if (new Date(`${f.date}T${f.time || "23:59"}`).getTime() < Date.now()) return toast.error(t.svc.pastDate);
             store.book({ id: `b${Date.now()}`, serviceId: s.id, from: { id: me.id, name: me.name, avatar: "" }, ...f, status: "sent", createdAt: new Date().toISOString() });
             toast.success(t.svc.sent);
           }}
         >
           <div className="grid grid-cols-2 gap-2">
-            <input required type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} className={field} aria-label={t.svc.date} />
+            <input required type="date" min={today} value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} className={field} aria-label={t.svc.date} />
             <input required type="time" value={f.time} onChange={(e) => setF({ ...f, time: e.target.value })} className={field} aria-label={t.svc.time} />
           </div>
           <input required value={f.animal} onChange={(e) => setF({ ...f, animal: e.target.value })} placeholder={t.svc.animal} className={field} />

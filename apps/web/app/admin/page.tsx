@@ -1,5 +1,7 @@
 "use client";
 
+import { useCaseText } from "@/lib/i18n/content";
+
 import { moderateCase } from "@/lib/cases";
 
 import { RequireAuth } from "@/components/layout/RequireAuth";
@@ -236,6 +238,7 @@ function BarChart({ data }: { data: { label: string; v: number }[] }) {
 }
 
 function Moderation() {
+  const ct = useCaseText();
   const { t } = useI18n();
   const cases = useStore((s) => s.cases);
   const queue = [...cases].sort((a, b) => (a.moderation === "pending" ? -1 : 0) - (b.moderation === "pending" ? -1 : 0) || (a.trust?.score ?? 1) - (b.trust?.score ?? 1));
@@ -263,7 +266,7 @@ function Moderation() {
                   <Link href={`/cases/${c.id}`} className="flex items-center gap-3">
                     <CasePhoto photo={c.photos[0]} emoji={SPECIES_EMOJI[c.species]} emojiSize={24} sizes="44px" className="h-11 w-11 shrink-0 rounded-[12px]" />
                     <div className="min-w-0">
-                      <div className="max-w-[260px] truncate font-semibold">{c.title}</div>
+                      <div className="max-w-[260px] truncate font-semibold">{ct(c).title}</div>
                       <div className="text-[12.5px] text-label-2">{c.location.address}</div>
                     </div>
                   </Link>

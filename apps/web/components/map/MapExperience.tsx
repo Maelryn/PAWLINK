@@ -1,5 +1,7 @@
 "use client";
 
+import { useCaseText } from "@/lib/i18n/content";
+
 import { AnimatePresence, motion, useDragControls, type PanInfo } from "motion/react";
 import { ArrowLeft, ChevronRight, Globe2, Layers, Navigation, Phone, Search, X, Camera, Flame, HandHeart, PawPrint, Tractor } from "lucide-react";
 import Link from "next/link";
@@ -52,6 +54,7 @@ function useIsDesktop() {
 }
 
 export function MapExperience() {
+  const ct = useCaseText();
   const { t } = useI18n();
   const params = useSearchParams();
   const router = useRouter();
@@ -82,10 +85,10 @@ export function MapExperience() {
       .filter((c) => (emergency ? c.emergencyZoneId === ZONE.id : true))
       .filter((c) => triage === "all" || c.triage === triage)
       .filter((c) => category === "all" || (category === "livestock" ? LIVESTOCK.includes(c.species) : !LIVESTOCK.includes(c.species)))
-      .filter((c) => !q || c.title.toLowerCase().includes(q) || (c.location.address ?? "").toLowerCase().includes(q))
+      .filter((c) => !q || c.title.toLowerCase().includes(q) || ct(c).title.toLowerCase().includes(q) || (c.location.address ?? "").toLowerCase().includes(q))
       .map((c) => ({ c, d: distanceKm(ref, c.location) }))
       .sort((a, b) => (emergency ? TRIAGE_ORDER[a.c.triage] - TRIAGE_ORDER[b.c.triage] || a.d - b.d : a.d - b.d));
-  }, [allCases, emergency, triage, category, query, ref]);
+  }, [allCases, emergency, triage, category, query, ref, ct]);
 
   const selected = allCases.find((c) => c.id === selectedId) ?? null;
   const SERVICES = useStore((s) => s.services).filter((s) => s.status === "approved");
@@ -582,6 +585,7 @@ function CaseQuickView({
   distance: number;
   sheet?: boolean;
 }) {
+  const ct = useCaseText();
   const { t } = useI18n();
   const ai = useCaseAI(c);
   return (
@@ -605,7 +609,7 @@ function CaseQuickView({
         <motion.span key={c.status} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} className={cn("rounded-full px-2.5 py-1 text-[12px] font-semibold", c.status === "resolved" ? "bg-stable-soft text-stable" : c.status === "in_progress" ? "bg-accent-soft text-accent" : "bg-surface-2 text-label-2")}>{c.status === "resolved" && "✓ "}{t.common.status[c.status]}</motion.span>
         {c.emergencyZoneId && <span className="rounded-full bg-urgent-soft px-2.5 py-1 text-[12px] font-semibold text-urgent">🔥 {t.case.inZone}</span>}
       </div>
-      <h2 className="mt-2 text-[24px] font-bold leading-tight tracking-[-0.025em]">{c.title}</h2>
+      <h2 className="mt-2 text-[24px] font-bold leading-tight tracking-[-0.025em]">{ct(c).title}</h2>
       <div className="mt-1 text-[13.5px] text-label-2">
         <a href={gmaps(c.location)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline-offset-2 hover:underline">
           📍 {c.location.address}
@@ -613,7 +617,7 @@ function CaseQuickView({
         · {t.common.km(distance)} · <TimeAgo iso={c.createdAt} />
       </div>
       {c.trust && <TrustBadge level={c.trust.level} className="mt-2" />}
-      <p className="mt-3 text-[15px] leading-relaxed">{c.description}</p>
+      <p className="mt-3 text-[15px] leading-relaxed">{ct(c).description}</p>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {c.conditionTags.map((tag) => (

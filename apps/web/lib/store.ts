@@ -222,11 +222,15 @@ export const store = {
       notifications: [...notify(a?.ownerId, status === "approved" ? "listingApproved" : "listingRejected", a?.name ?? "", `/adopt/${id}`), ...state.notifications],
     });
   },
+  /** PATCH /adoptions/:id { status: "adopted" } — the owner confirms the animal found its family. */
+  markAdopted(id: string) {
+    set({ adoptions: state.adoptions.map((x) => (x.id === id ? { ...x, status: "adopted" } : x)) });
+  },
   sendRequest(r: AdoptionRequest) {
     const a = state.adoptions.find((x) => x.id === r.adoptionId);
     set({
       requests: [r, ...state.requests.filter((x) => !(x.adoptionId === r.adoptionId && x.from.id === r.from.id))],
-      notifications: [...notify(a?.ownerId, "adoptRequest", r.from.name, "/account?tab=requests"), ...state.notifications],
+      notifications: [...notify(a?.ownerId, "adoptRequest", r.from.name, "/account?tab=adoption"), ...state.notifications],
     });
   },
   /** Owner answers. Accepting shares the owner's phone; the others stay private. */

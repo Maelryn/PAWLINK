@@ -62,7 +62,7 @@ function Account() {
             <h1 className="truncate text-[28px] font-bold tracking-[-0.035em] sm:text-[34px]">{me.name}</h1>
             <div className="flex flex-wrap items-center gap-x-2 text-[13.5px] text-label-2">
               <span className="font-semibold text-accent">{me.serviceId && me.role !== "vet" ? t.biz.signupAs.split(" (")[0] : t.dashboard.roles[me.role]}</span>
-              {me.city && <span>· {me.city}</span>}
+              {me.city && <span className="flex min-w-0 items-center gap-1"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{me.city}</span></span>}
               {me.pro && <span className="rounded-full bg-gradient-to-r from-[#0a7cff] to-[#5e5ce6] px-2 py-0.5 text-[11px] font-bold text-white">PRO</span>}
             </div>
           </div>
