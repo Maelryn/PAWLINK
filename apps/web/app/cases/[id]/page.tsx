@@ -1,6 +1,6 @@
 "use client";
 
-import { resolveCase } from "@/lib/cases";
+import { canResolve, resolveCase } from "@/lib/cases";
 
 import { cn } from "@/lib/utils";
 
@@ -276,8 +276,7 @@ function ResolveButton({ c, onResolved }: { c: NonNullable<ReturnType<typeof sto
   const { t } = useI18n();
   const user = useSession();
   if (!user) return null;
-  const allowed = user.id === c.reporter.id || c.helpers.some((h) => h.user.id === user.id) || user.role === "vet" || user.role === "admin";
-  if (!allowed) return null;
+  if (!canResolve(c, user)) return null;
   return (
     <div className="mt-5 border-t border-separator pt-4">
       <p className="text-[13.5px] text-label-2">{t.case.resolveBody}</p>

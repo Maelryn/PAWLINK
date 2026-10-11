@@ -53,32 +53,33 @@ Every response must match `apps/web/lib/types.ts` **exactly** (field names and e
 - [ ] `apps/backend/README.md`: how to run, env vars, seed, what's not finished
 - [ ] `npm run build`, lint and tests pass
 
-## 5. The website is ready for the API (from Maelryn)
+## 5. The website is connected to the API (from Maelryn)
 
-The website now talks to the API through `apps/web/lib/api/` and switches each part on with an env var, so nothing breaks while a phase is being built:
+The website talks to the API through `apps/web/lib/api/` and switches each part on with an env var, so the live site never breaks while something is being built:
 
 ```
 # apps/web/.env.local
 NEXT_PUBLIC_API_URL=http://localhost:4000
-NEXT_PUBLIC_API_FEATURES=auth            # add cases,uploads,ai when Phase 2 is live
+NEXT_PUBLIC_API_FEATURES=auth,cases,uploads
 ```
 
-- **auth (Phase 1) is wired**: login, register → SMS code (the `code` you return outside production is shown as "Test code" so we can sign up without SMS), verify-phone, resend-code, refresh cookie on load, logout, `PATCH /me`, `DELETE /me`. Your error codes are shown as real messages (`AUTH_INVALID_CREDENTIALS`, `AUTH_EMAIL_TAKEN`, `AUTH_OTP_INVALID`, `RATE_LIMITED`…).
-- **cases (Phase 2) is pre-wired** to the routes in your `PHASE2_PLAN.md` §5: `GET /cases` (polled every 20 s), `POST /cases`, `/help`, `/confirm`, `/flag`, `PATCH /cases/:id/status`, `PATCH /admin/cases/:id/moderation`. When they exist, we just add `cases` to the env var.
+| Part | Status on the website |
+|---|---|
+| **auth** (Phase 1) | ✅ login, register → SMS code (the dev `code` is shown as "Test code"), verify-phone, resend-code, session restored from the refresh cookie, logout, `PATCH /me`, `DELETE /me`, error codes shown as real messages |
+| **cases** (Phase 2) | ✅ `GET /cases` (refreshed every 20 s), `POST /cases`, `/help`, `/confirm`, `/flag`, `PATCH /cases/:id/status`, `PATCH /admin/cases/:id/moderation` |
+| **uploads** (Phase 2) | ✅ `POST /uploads/probe` (original file), then direct Cloudinary upload with your `{ cloudName, apiKey, folder, timestamp, signature }`, then `photos` + `probeIds`. If you answer `UPLOADS_NOT_CONFIGURED`, the report is still sent without the photo |
+| **AI** | ⏳ apps/Ai service (Katia). Until it's connected, the website runs its rule-based triage and sends it as the `triage` baseline |
 
-### Answers to your open questions (PHASE2_PLAN §12)
+### Still needed from the API
 
-- **R1 photo probe: yes, option A works for the web.** The website sends the original file to `POST /uploads/probe` (multipart field `file`) and gets `{ probeId }`, then uploads to the URL from `POST /uploads/signature`, then sends `photos` + `probeIds` in `POST /cases`. Signature response the website expects: `{ url, fields }` (`url` = where to POST the file, `fields` = the signed form fields). Storage answer read: `secure_url` (Cloudinary). If you prefer Supabase Storage, keep the same `{ url, fields }` shape and tell me.
-- **R9 `GET /cases`: public.** Browsing the map is open to everyone; only actions need an account.
-
-### Small things the website needs from Phase 2
-
-1. **Resolving a case:** the reporter and the people helping on that case must be able to `PATCH /cases/:id/status` → `resolved` (not only volunteer/vet/admin). The website has a "Mark as resolved" button for them.
-2. **Nearby helpers:** when a public case is created, create a `nearbyCase` notification for the helpers in `ai.suggestedHelpers` (the website does this in demo mode and the video shows it).
-3. **Demo reports:** when `reporterOnSite: false`, the `onSite` trust check must be `false` (it's a judge/tester using the demo position), so it can never be "verified".
+1. **Resolving a case:** the reporter and the people helping on that case should be able to set `resolved` (today it's volunteer / vet / admin only, so the website only shows the button to them when the API is on).
+2. **Nearby helpers:** when a public case is created, a `nearbyCase` notification for nearby available volunteers / vets (the website does it in demo mode and the video shows it).
+3. **Demo reports:** when `reporterOnSite: false`, the `onSite` check must be `false` so it can never be "verified".
+4. **Cloudinary credentials** in the API env, otherwise reports have no photo.
 
 ### Before deploying the API (important for the judges)
 
-- **Refresh cookie across domains:** the website is on Vercel and the API will be on another domain, so in production the refresh cookie needs `sameSite: 'none'` + `secure: true`. With `lax` the browser won't send it from Vercel, and users get logged out on every reload.
+- **Refresh cookie across domains:** the website is on Vercel and the API on another domain, so in production the refresh cookie needs `sameSite: 'none'` + `secure: true`. With `lax` the browser won't send it from Vercel and users are logged out on every reload.
 - **CORS:** add the Vercel production domain to `CORS_ORIGINS`.
-- **SMS for the jury:** with `NODE_ENV=production` and no real SMS provider, nobody can finish sign-up. Either return the code in a demo build (an env flag like `OTP_DEMO=true`), or the judges only use the demo accounts. Tell me which one.
+- **SMS for the jury:** with `NODE_ENV=production` and no real SMS provider nobody can finish sign-up. Either return the code in a demo build (an env flag like `OTP_DEMO=true`), or the judges only use the demo accounts. Tell me which one.
+- Send me the API URL when it's online and I connect the live website to it.

@@ -5,7 +5,7 @@ import { api, type Page } from "./client";
 
 /* Every endpoint the website uses, typed like apps/web/lib/types.ts (the API mirrors these
    shapes field for field). Grouped by backend phase so it's clear what is live:
-     Phase 1 ✅ auth + /me     Phase 2 ⏳ cases, uploads, AI     Phase 3 ⏳ adoptions, services…   */
+     Phase 1 ✅ auth + /me     Phase 2 ✅ cases, uploads     AI ⏳ apps/Ai service     Phase 3 ⏳ adoptions, services…   */
 
 /* ─────────────── Phase 1 — auth + profile ─────────────── */
 
@@ -37,7 +37,7 @@ export const me = {
   remove: () => api<void>("/me", { method: "DELETE" }),
 };
 
-/* ─────────────── Phase 2 — cases, uploads, AI (apps/backend/PHASE2_PLAN.md §5) ─────────────── */
+/* ─────────────── Phase 2 ✅ — cases, uploads (apps/backend/PHASE2_PLAN.md §5) ─────────────── */
 
 export interface CaseQuery {
   bbox?: [number, number, number, number];
@@ -72,23 +72,25 @@ export interface PhotoProbe {
   duplicate?: boolean;
 }
 
+/** Cloudinary signed-upload params (POST /uploads/signature). The secret never leaves the server. */
 export interface UploadSignature {
-  /** where to POST the file (Cloudinary upload URL) */
-  url: string;
-  /** form fields to send with it (api_key, timestamp, signature, folder…) */
-  fields: Record<string, string>;
+  cloudName: string;
+  apiKey: string;
+  folder: string;
+  timestamp: number;
+  signature: string;
 }
 
 export const cases = {
   list: (q: CaseQuery = {}) =>
     api<Page<Case>>("/cases", { auth: false, query: { ...q, bbox: q.bbox?.join(",") } }),
-  nearby: (p: GeoPoint, radiusKm = 25) => api<Case[]>("/cases/nearby", { query: { lat: p.lat, lng: p.lng, radiusKm } }),
+  nearby: (p: GeoPoint, radiusKm = 25) => api<Page<Case & { distanceKm: number }>>("/cases/nearby", { query: { lat: p.lat, lng: p.lng, radiusKm } }),
   get: (id: string) => api<Case>(`/cases/${encodeURIComponent(id)}`, { auth: false }),
   create: (c: NewCase) => api<Case>("/cases", { body: c }),
   setStatus: (id: string, status: CaseStatus) => api<Case>(`/cases/${encodeURIComponent(id)}/status`, { method: "PATCH", body: { status } }),
   help: (id: string, helpType: HelpType, message?: string) => api<Case>(`/cases/${encodeURIComponent(id)}/help`, { body: { helpType, message } }),
-  confirm: (id: string) => api<Case>(`/cases/${encodeURIComponent(id)}/confirm`, { method: "POST" }),
-  flag: (id: string) => api<Case>(`/cases/${encodeURIComponent(id)}/flag`, { method: "POST" }),
+  confirm: (id: string) => api<Case>(`/cases/${encodeURIComponent(id)}/confirm`, { body: {} }),
+  flag: (id: string, reason?: string) => api<Case>(`/cases/${encodeURIComponent(id)}/flag`, { body: { reason } }),
   moderate: (id: string, decision: "approved" | "hidden") => api<Case>(`/admin/cases/${encodeURIComponent(id)}/moderation`, { method: "PATCH", body: { decision } }),
 };
 
@@ -113,6 +115,8 @@ export interface AnalyzeInput {
   lang: "fr" | "en" | "ar";
 }
 
+/* AI: a separate service in apps/Ai (Katia). The backend has no AI link until it is delivered;
+   until then the website shows its own rule-based triage (lib/ai/analyze.ts). */
 export const ai = {
   analyze: (b: AnalyzeInput) => api<AIAnalysis & { animalDetected?: boolean; isRealPhoto?: boolean }>("/ai/analyze", { body: b }),
 };

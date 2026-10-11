@@ -103,8 +103,10 @@ export function ReportFlow() {
     // Real API (backend Phase 2): the server uploads/checks the photo, runs the AI and the trust checks
     if (casesFromApi()) {
       const started = Date.now();
+      // until the AI service (apps/Ai) is connected, the safety rules run here and give the server its baseline triage
+      const local = analyze({ species: species!, count, description: desc, conditionTags: tags, location }, t);
       const r = await createCaseRemote(
-        { title, species: species!, category, count: count > 1 ? count : undefined, location, description, conditionTags: tags, device: demoPosition ? undefined : device, emergencyZoneId, reporterOnSite: !demoPosition },
+        { title, species: species!, category, count: count > 1 ? count : undefined, triage: local.triage, location, description, conditionTags: tags, device: demoPosition ? undefined : device, emergencyZoneId, reporterOnSite: !demoPosition },
         photo,
       );
       // keep the "analyzing" moment long enough to read, even when the server is fast
@@ -113,7 +115,7 @@ export function ReportFlow() {
         setPhase("form");
         return toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
       }
-      setAi(r.case.ai ?? analyze({ species: species!, count, description: desc, conditionTags: tags, location }, t));
+      setAi(r.case.ai ?? local);
       setCreated(r.case);
       setPhase("result");
       return;

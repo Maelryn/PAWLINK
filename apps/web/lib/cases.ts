@@ -31,6 +31,13 @@ async function run(apiCall: () => Promise<Case>, local: () => void): Promise<Act
 export const offerHelp = (c: Case, helpType: HelpType, me: User) =>
   run(() => casesApi.help(c.id, helpType), () => store.offerHelp(c.id, helpType, me));
 
+/** Who may close a case. The API (Phase 2) allows volunteers, vets and admins; the demo also lets
+    the reporter and the people helping close it (requested from the backend, see docs/tasks/BACKEND.md). */
+export const canResolve = (c: Case, me: User) =>
+  real()
+    ? me.role === "volunteer" || me.role === "vet" || me.role === "admin"
+    : me.id === c.reporter.id || c.helpers.some((h) => h.user.id === me.id) || me.role === "vet" || me.role === "admin";
+
 export const resolveCase = (c: Case, me: User) =>
   run(() => casesApi.setStatus(c.id, "resolved"), () => store.resolveCase(c.id, me));
 
@@ -53,11 +60,21 @@ async function uploadPhoto(photo: string): Promise<{ url: string; probeId?: stri
   if (!apiOn("uploads")) return { url: photo };
   const blob = await toBlob(photo);
   const { probeId } = await uploads.probe(blob);
-  const sig = await uploads.signature();
+  let sig;
+  try {
+    sig = await uploads.signature();
+  } catch (e) {
+    // no photo storage configured on this server yet: the EXIF/duplicate checks still count, the photo isn't stored
+    if (e instanceof ApiError && e.code === "UPLOADS_NOT_CONFIGURED") return { url: "", probeId };
+    throw e;
+  }
   const form = new FormData();
-  for (const [k, v] of Object.entries(sig.fields)) form.append(k, v);
   form.append("file", blob);
-  const r = await fetch(sig.url, { method: "POST", body: form });
+  form.append("api_key", sig.apiKey);
+  form.append("timestamp", String(sig.timestamp));
+  form.append("signature", sig.signature);
+  form.append("folder", sig.folder);
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, { method: "POST", body: form });
   if (!r.ok) throw new ApiError(r.status, "UPLOAD_FAILED", "Photo upload failed");
   const body = (await r.json()) as { secure_url?: string; url?: string };
   return { url: body.secure_url ?? body.url ?? "", probeId };
@@ -68,7 +85,7 @@ async function uploadPhoto(photo: string): Promise<{ url: string; probeId?: stri
 export async function createCaseRemote(draft: Omit<NewCase, "photos" | "probeIds">, photo: string | null): Promise<{ ok: true; case: Case } | { ok: false; code: string; message?: string }> {
   try {
     const up = photo ? await uploadPhoto(photo) : null;
-    const created = await casesApi.create({ ...draft, photos: up ? [up.url] : [], probeIds: up?.probeId ? [up.probeId] : [] });
+    const created = await casesApi.create({ ...draft, photos: up?.url ? [up.url] : [], probeIds: up?.probeId ? [up.probeId] : [] });
     store.upsertCase(created, { justCreated: true });
     return { ok: true, case: created };
   } catch (e) {
