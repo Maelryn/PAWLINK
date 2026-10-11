@@ -4,6 +4,7 @@ import { getPosition } from "@/lib/geo";
 
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
@@ -284,6 +285,10 @@ function Welcome({ onEmail, onPhone }: { onEmail: () => void; onPhone: () => voi
     <div className="relative h-[100svh] overflow-hidden bg-[linear-gradient(165deg,#d8ebff_0%,#ece3ff_50%,#ffe1ec_100%)] dark:bg-[linear-gradient(165deg,#0b1830_0%,#1a1236_50%,#2a0f1f_100%)]">
       <Aurora intensity={0.8} />
       <TopNav noTabBar />
+      {/* phones: a way back to the home page (the top bar only has settings here) */}
+      <Link href="/" className="glass fixed start-4 top-[max(12px,env(safe-area-inset-top))] z-[60] flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90 md:hidden" aria-label={t.common.back}>
+        <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
+      </Link>
       <div className="relative mx-auto flex h-full max-w-[440px] flex-col justify-end px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-20 lg:max-w-[1080px] lg:flex-row lg:items-center lg:justify-center lg:gap-20 lg:pb-8">
         {/* photo stack */}
         <div className="relative mx-auto w-full max-w-[340px] flex-1 lg:max-w-[460px] lg:flex-none lg:basis-[460px] lg:self-stretch">
