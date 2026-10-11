@@ -10,8 +10,10 @@ import type { AIAnalysis, Triage } from './types';
  * `undefined`, which the UI already knows how to render, instead of a silently
  * wrong card.
  *
- * Shared by the row mapper (`cases/serialize.ts`) and the AI service, which
- * validates its own answer with the same rule before storing it.
+ * Shared by the row mapper (`cases/serialize.ts`). The AI service that would
+ * validate its own answer with the same rule lives in `apps/Ai/`; until the
+ * backend↔AI link is wired in, this guard only reads whatever is already
+ * stored.
  */
 
 const TRIAGE_VALUES: readonly string[] = ['urgent', 'monitoring', 'stable'];

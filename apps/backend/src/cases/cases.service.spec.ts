@@ -2,7 +2,6 @@ import { describe, expect, it, jest } from '@jest/globals';
 import type { PrismaService } from '../common/prisma/prisma.service';
 import type { UsersService } from '../users/users.service';
 import type { GeoService } from '../geo/geo.service';
-import type { AiService } from '../ai/ai.service';
 import type { UploadsService } from '../uploads/uploads.service';
 import type { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ExifService } from '../uploads/exif.service';
@@ -188,7 +187,7 @@ function prismaStub(options: {
   return { prisma: prisma as unknown as PrismaService, statements, written, delegates };
 }
 
-function service(prisma: unknown, overrides: { ai?: unknown; geo?: unknown; uploads?: unknown } = {}) {
+function service(prisma: unknown, overrides: { geo?: unknown; uploads?: unknown } = {}) {
   const realtime = {
     caseCreated: jest.fn(),
     caseUpdated: jest.fn(),
@@ -202,23 +201,6 @@ function service(prisma: unknown, overrides: { ai?: unknown; geo?: unknown; uplo
       prisma as PrismaService,
       { findById: async () => ({ id: 'u1', phoneVerified: true, passwordHash: 'hash' }) } as unknown as UsersService,
       (overrides.geo as GeoService) ?? { inAlgeria: async () => ({ ok: true, detail: 'en Algérie' }) },
-      (overrides.ai as AiService) ?? {
-        analyze: async () => ({
-          triage: 'urgent',
-          confidence: 0.9,
-          summary: 'résumé',
-          observedSigns: [],
-          safetyAdvice: [],
-          possiblyContagious: false,
-          recommendedHelp: ['medical'],
-          suggestedServices: [],
-          suggestedHelpers: [],
-          forcedUrgentByRule: false,
-          disclaimer: 'un vétérinaire',
-          model: 'gemini-flash (mock)',
-          animalDetected: null,
-        }),
-      },
       new TrustService(new ExifService()),
       (overrides.uploads as UploadsService) ?? { consume: async () => [] },
       { hashOrNull: async () => null } as never,
@@ -339,7 +321,7 @@ describe('create — the trust pipeline wiring', () => {
     expect(created.trust?.checks.find((c) => c.id === 'account')?.ok).toBe(true);
   });
 
-  it('broadcasts case.created for a public case and returns ai + trust', async () => {
+  it('broadcasts case.created for a public case and returns trust', async () => {
     const stub = prismaStub({ rows: [row()] });
     const { service: svc, realtime } = service(stub.prisma);
     const created = await svc.create(dto(), USER);
@@ -365,51 +347,6 @@ describe('create — the trust pipeline wiring', () => {
     expect(realtime.caseCreated).not.toHaveBeenCalled();
     // the pin outside Algeria is what held it
     expect(created.trust?.checks.find((c) => c.id === 'inAlgeria')?.ok).toBe(false);
-  });
-
-  it('stays silent about animalDetected and isRealPhoto on the stored ai', async () => {
-    // what the service stores: the AIAnalysis part of the provider's answer
-    const stored = {
-      triage: 'urgent',
-      confidence: 0.9,
-      summary: 'résumé',
-      observedSigns: [],
-      safetyAdvice: [],
-      possiblyContagious: false,
-      recommendedHelp: ['medical'],
-      suggestedServices: [],
-      suggestedHelpers: [],
-      forcedUrgentByRule: true,
-      disclaimer: 'un vétérinaire',
-      model: 'gemini-flash (mock)',
-    };
-    const stub = prismaStub({ rows: [row({ ai: stored })] });
-    const { service: svc } = service(stub.prisma, {
-      ai: {
-        analyze: async () => ({
-          triage: 'urgent',
-          confidence: 0.9,
-          summary: 'résumé',
-          observedSigns: [],
-          safetyAdvice: [],
-          possiblyContagious: false,
-          recommendedHelp: ['medical'],
-          suggestedServices: [],
-          suggestedHelpers: [],
-          forcedUrgentByRule: true,
-          disclaimer: 'vétérinaire',
-          model: 'gemini-flash (mock)',
-          animalDetected: true,
-          isRealPhoto: true,
-        }),
-      } as unknown as AiService,
-    });
-
-    const result = await svc.create(dto(), USER);
-    // the two internal facts are consumed by the trust check, not stored
-    expect(result.ai).toEqual(stored);
-    expect(JSON.stringify(result.ai)).not.toContain('animalDetected');
-    expect(JSON.stringify(result.ai)).not.toContain('isRealPhoto');
   });
 });
 

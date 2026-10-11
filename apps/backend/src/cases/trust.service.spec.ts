@@ -30,7 +30,6 @@ function check(overrides: Partial<Parameters<TrustService['check']>[0]> = {}) {
     hasPhoto: true,
     recentReports: 0,
     inAlgeria: true,
-    animalDetected: true,
     ...overrides,
   });
 }
@@ -237,19 +236,14 @@ describe('TrustService.check — the eight checks', () => {
   });
 
   describe('animalDetected', () => {
-    it('is null without a photo', async () => {
-      expect((await check({ hasPhoto: false })).checks.find((c) => c.id === 'animalDetected')?.ok).toBeNull();
-    });
-
-    it('mirrors the AI answer when there is one', async () => {
-      expect((await check({ animalDetected: true })).checks.find((c) => c.id === 'animalDetected')?.ok).toBe(true);
-      expect((await check({ animalDetected: false })).checks.find((c) => c.id === 'animalDetected')?.ok).toBe(false);
-    });
-
-    it('is null when the AI could not tell', async () => {
-      const result = await check({ animalDetected: null });
-      expect(result.checks.find((c) => c.id === 'animalDetected')?.ok).toBeNull();
-      expect(result.checks.find((c) => c.id === 'animalDetected')?.detail).toMatch(/indisponible/);
+    // The AI service (apps/Ai/) is not delivered yet, so this check has no
+    // signal to read: it is always "not enough data". When the backend↔AI
+    // link is wired in, these tests regain their real pass/fail assertions.
+    it('is null and explains itself as unavailable', async () => {
+      const result = await check({ hasPhoto: true });
+      const animal = result.checks.find((c) => c.id === 'animalDetected');
+      expect(animal?.ok).toBeNull();
+      expect(animal?.detail).toMatch(/indisponible/);
     });
   });
 

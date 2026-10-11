@@ -8,13 +8,12 @@ import type { Case, Trust, UserLite } from '../shared/types';
  * every response, so the typed client the frontend generates from Swagger can
  * never drift from the contract.
  *
- * `Case.ai` is `Json` in the database and holds the `AIAnalysis` part of what
- * `POST /ai/analyze` returned — `animalDetected` and `isRealPhoto` are internal
- * facts used by the trust pipeline and are deliberately not stored. It is passed
- * through untouched rather than reshaped — reshaping here would silently rewrite
- * the AI contract — but it is validated on the way out with
- * `isAIAnalysis()` (`src/shared/ai-analysis.ts`), because a Json column accepts
- * anything and the frontend's generated client trusts the Swagger type.
+ * `Case.ai` is `Json` in the database. Until the AI service (`apps/Ai/`) is
+ * delivered, the backend never writes it — the field stays `null` and comes
+ * back `undefined`. When the backend↔AI link is wired in, this is where the
+ * `AIAnalysis` the AI service returns gets stored, and it is validated on the
+ * way out with `isAIAnalysis()` (`src/shared/ai-analysis.ts`), because a Json
+ * column accepts anything and the frontend's generated client trusts Swagger.
  */
 
 /** What the row must carry for the mapper to work: the row plus its relations. */

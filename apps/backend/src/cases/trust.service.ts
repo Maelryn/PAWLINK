@@ -61,8 +61,6 @@ export interface TrustCheckInput {
   recentReports: number;
   /** Whether `ST_Within` placed the pin inside Algeria. */
   inAlgeria: boolean;
-  /** Whether the AI provider saw an animal (null when it could not tell). */
-  animalDetected?: boolean | null;
   /** Overrides "now", so the freshness check stays testable. */
   now?: Date;
 }
@@ -122,9 +120,13 @@ export class TrustService {
           : {}),
       },
       {
+        // Until the AI service (apps/Ai/) is delivered there is no
+        // `animalDetected` signal, so this check is always "not enough data".
+        // It stays in the order because the web UI renders it; it flips back to
+        // a real pass/fail when the backend↔AI link is wired in.
         id: 'animalDetected',
-        ok: !input.hasPhoto ? null : (input.animalDetected ?? null),
-        ...(input.hasPhoto && input.animalDetected == null ? { detail: 'Analyse IA indisponible' } : {}),
+        ok: null,
+        detail: 'Analyse IA indisponible',
       },
       {
         id: 'duplicate',
@@ -161,9 +163,10 @@ export class TrustService {
 }
 
 /**
- * Raises the triage after the safety-rule layer, never lowering it
- * (docs/BACKEND_PROMPT.md §3.4 rule 3). Kept here because both the AI service and
- * the case service need the same ordering.
+ * Raises the triage, never lowering it (docs/BACKEND_PROMPT.md §3.4 rule 3).
+ * Kept here so the case service and any future AI integration share the same
+ * ordering. Exported for the safety-rule contract; the AI service in
+ * `apps/Ai/` is the intended consumer once the backend↔AI link is wired in.
  */
 export function raiseTriage(current: Triage, requested: Triage): Triage {
   const ORDER: Triage[] = ['stable', 'monitoring', 'urgent'];

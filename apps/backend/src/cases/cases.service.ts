@@ -6,8 +6,6 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../common/decorators/auth.decorators';
 import { GeoService } from '../geo/geo.service';
 import { UsersService } from '../users/users.service';
-import { AiService } from '../ai/ai.service';
-import { raiseTriage } from '../ai/safety-rules';
 import { TrustService } from './trust.service';
 import { DHashService, DUPLICATE_THRESHOLD } from '../uploads/dhash.service';
 import { UploadsService } from '../uploads/uploads.service';
@@ -23,9 +21,9 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
  * Cases — the whole Phase 2 surface.
  *
  * The one rule that shapes the file: **nothing the client sends is trusted**.
- * Every field of the trust object is recomputed here, the triage goes through
- * the safety rules, the moderation state comes from those two and never from the
- * body, and `POST /cases` is the only writer of a case.
+ * Every field of the trust object is recomputed here, the moderation state
+ * comes from that and never from the body, and `POST /cases` is the only
+ * writer of a case.
  *
  * Reads are split by who may see them:
  *   - the public list is one raw PostGIS statement on the GIST index, gated on
@@ -75,7 +73,6 @@ export class CasesService {
     private readonly prisma: PrismaService,
     private readonly users: UsersService,
     private readonly geo: GeoService,
-    private readonly ai: AiService,
     private readonly trust: TrustService,
     private readonly uploads: UploadsService,
     private readonly dhash: DHashService,
@@ -182,8 +179,8 @@ export class CasesService {
    *
    * The order is the contract: read the reporter from the row, count their
    * reports, consume the probes (which is what proves the EXIF is real), check
-   * the duplicate, ask the polygon, ask the AI, and only then score the trust.
-   * Everything the body said about trust, moderation or the AI is ignored.
+   * the duplicate, ask the polygon, and only then score the trust.
+   * Everything the body said about trust or moderation is ignored.
    *
    * A `suspicious` result is stored with `moderation: "pending"` and never
    * broadcast — it waits for an admin in `PATCH /admin/cases/:id/moderation`.
@@ -225,17 +222,6 @@ export class CasesService {
     const duplicate = await this.findsDuplicateHash(probes.map((p) => p.dHash));
     const inAlgeria = await this.geo.inAlgeria({ lat: dto.location.lat, lng: dto.location.lng });
 
-    const ai = await this.ai.analyze({
-      photoUrls: photos,
-      description: dto.description,
-      species: dto.species,
-      conditionTags: dto.conditionTags ?? [],
-      location: { lat: dto.location.lat, lng: dto.location.lng },
-      count: dto.count,
-      // The caller's urgency guess is a baseline; the rules may raise it.
-      baseline: dto.triage,
-    });
-
     const trust = await this.trust.check({
       user: { phoneVerified: reporter.phoneVerified === true },
       location: { lat: dto.location.lat, lng: dto.location.lng },
@@ -245,12 +231,12 @@ export class CasesService {
       duplicatePhoto: duplicate,
       recentReports,
       inAlgeria: inAlgeria.ok,
-      animalDetected: ai.animalDetected,
     });
 
-    // The stored triage is the AI's, raised by the caller's baseline and never
-    // lowered by either.
-    const triage = raiseTriage(dto.triage ?? 'stable', ai.triage);
+    // Until the AI service (apps/Ai/) is delivered, the triage is the caller's
+    // own baseline. The AI's animalDetected/triage/safety rules are wired back
+    // in when that service lands — there is intentionally no backend↔AI link yet.
+    const triage = dto.triage ?? 'stable';
 
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.case.create({
@@ -275,9 +261,6 @@ export class CasesService {
           trustScore: trust.score,
           trustConfirmations: trust.confirmations,
           trustFlags: trust.flags,
-          // The AIAnalysis part only: `animalDetected` and `isRealPhoto` are
-          // internal facts the frontend never sees on a case.
-          ai: stripInternal(ai) as Prisma.InputJsonValue,
         },
         include: CASE_INCLUDE,
       });
@@ -647,17 +630,6 @@ function mergeExif(
   const withDate = probes.find((p) => p.exif.takenAt);
   if (withDate?.exif.takenAt) out.takenAt = withDate.exif.takenAt;
   return out;
-}
-
-/** Drops the two internal photo facts before the answer is stored on the case. */
-function stripInternal(answer: {
-  animalDetected: boolean | null;
-  isRealPhoto?: boolean;
-}): Record<string, unknown> {
-  const { animalDetected: _animalDetected, isRealPhoto: _isRealPhoto, ...rest } = answer;
-  void _animalDetected;
-  void _isRealPhoto;
-  return rest;
 }
 
 

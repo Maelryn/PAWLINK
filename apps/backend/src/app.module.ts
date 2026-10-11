@@ -10,7 +10,6 @@ import { SmsModule } from './sms/sms.module';
 import { UsersModule } from './users/users.module';
 import { GeoModule } from './geo/geo.module';
 import { UploadsModule } from './uploads/uploads.module';
-import { AiModule } from './ai/ai.module';
 import { CasesModule } from './cases/cases.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
@@ -33,7 +32,6 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AuthModule,
     MeModule,
     UploadsModule,
-    AiModule,
     CasesModule,
   ],
   providers: [
