@@ -1,5 +1,7 @@
 "use client";
 
+import { getPosition } from "@/lib/geo";
+
 import { AnimatePresence, motion } from "motion/react";
 import { BadgeCheck, LayoutGrid, Map as MapIcon, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
@@ -41,21 +43,12 @@ export default function ServicesPage() {
   const [locating, setLocating] = useState(false);
   const locate = () => {
     if (origin) return setOrigin(null);
-    if (!navigator.geolocation) return toast(t.svc.locFail);
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setLocating(false);
-        const here = { lat: p.coords.latitude, lng: p.coords.longitude };
-        if (inAlgeria(here)) setOrigin(here);
-        else toast(t.svc.locFail);
-      },
-      () => {
-        setLocating(false);
-        toast(t.svc.locFail);
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300_000 },
-    );
+    getPosition(8000).then((here) => {
+      setLocating(false);
+      if (here && inAlgeria(here)) setOrigin(here);
+      else toast(t.svc.locFail);
+    });
   };
   const query = q.trim().toLowerCase();
 
@@ -102,7 +95,7 @@ export default function ServicesPage() {
         </div>
 
         {/* categories as round icon tiles */}
-        <div className="-mx-4 mt-3 flex gap-4 overflow-x-auto px-4 py-2 no-scrollbar">
+        <div className="scroll-fade -mx-4 mt-3 flex gap-4 overflow-x-auto px-4 py-2 no-scrollbar">
           {(["all", ...TYPES] as const).map((ty) => {
             const on = type === ty;
             return (

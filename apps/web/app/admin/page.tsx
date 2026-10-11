@@ -55,7 +55,7 @@ function AdminPage() {
               <Emoji3D src="/3d/shield.png" size={30} />
               <h1 className="text-[22px] font-bold tracking-[-0.03em]">{t.admin.title}</h1>
             </div>
-            <nav className="flex gap-1 overflow-x-auto no-scrollbar lg:flex-col">
+            <nav className="scroll-fade lg-no-fade flex gap-1 overflow-x-auto no-scrollbar lg:flex-col">
               {tabs.map((x) => {
                 const Icon = x.icon;
                 const active = tab === x.id;
@@ -97,13 +97,13 @@ function AdminPage() {
   );
 }
 
-function Kpi({ e, n, label, suffix, delay }: { e: string; n: number; label: string; suffix?: string; delay: number }) {
+function Kpi({ e, n, label, suffix, delay }: { e: string; n: number | null; label: string; suffix?: string; delay: number }) {
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }} className="card rounded-[24px] p-5">
       <Emoji3D src={e} size={34} />
       <div className="mt-3 text-[32px] font-bold leading-none tracking-[-0.03em]">
-        <CountUp to={n} />
-        {suffix && <span className="text-[18px] text-label-2">{suffix}</span>}
+        {n === null ? "—" : <CountUp to={n} />}
+        {suffix && n !== null && <span className="text-[18px] text-label-2">{suffix}</span>}
       </div>
       <div className="mt-1 text-[13px] text-label-2">{label}</div>
     </motion.div>
@@ -117,17 +117,26 @@ function Overview() {
   const total = cases.length;
   const urgentOpen = cases.filter((c) => c.triage === "urgent" && c.status !== "resolved").length;
 
+  // Everything below is computed from the real cases (no made-up numbers)
+  const dayKey = (d: Date) => d.toLocaleDateString("en-CA");
   const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(Date.UTC(2026, 8, 25 + i));
-    return { label: d.toLocaleDateString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { weekday: "short", timeZone: "UTC" }), v: [9, 12, 8, 15, 11, 31, 46][i] };
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const key = dayKey(d);
+    return {
+      label: d.toLocaleDateString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { weekday: "short" }),
+      v: cases.filter((c) => dayKey(new Date(c.createdAt)) === key).length,
+    };
   });
-  const wilayas = [
-    { name: "Tizi Ouzou", v: 46 },
-    { name: "Alger", v: 31 },
-    { name: "Béjaïa", v: 18 },
-    { name: "Oran", v: 14 },
-    { name: "Djelfa", v: 9 },
-  ];
+  const byCity = new Map<string, number>();
+  for (const c of cases) {
+    const city = (c.location.address ?? "").split(",").pop()?.trim();
+    if (city) byCity.set(city, (byCity.get(city) ?? 0) + 1);
+  }
+  const wilayas = [...byCity].map(([name, v]) => ({ name, v })).sort((a, b) => b.v - a.v).slice(0, 5);
+  // time from the report to the first change (someone helping / resolving), for cases that moved
+  const moved = cases.filter((c) => c.status !== "open" && c.updatedAt && c.updatedAt !== c.createdAt);
+  const avgResponse = moved.length ? Math.round(moved.reduce((sum, c) => sum + (+new Date(c.updatedAt) - +new Date(c.createdAt)) / 60000, 0) / moved.length) : null;
 
   return (
     <div className="space-y-5">
@@ -135,7 +144,7 @@ function Overview() {
         <Kpi e="/3d/fire.png" n={EMERGENCY_ZONES.length} label={t.admin.activeZones} delay={0} />
         <Kpi e="/3d/paw.png" n={total} label={t.admin.totalCases} delay={0.05} />
         <Kpi e="/3d/warning.png" n={urgentOpen} label={t.admin.urgentOpen} delay={0.1} />
-        <Kpi e="/3d/ambulance.png" n={14} suffix=" min" label={t.admin.avgResponse} delay={0.15} />
+        <Kpi e="/3d/ambulance.png" n={avgResponse} suffix=" min" label={t.admin.avgResponse} delay={0.15} />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
@@ -150,7 +159,7 @@ function Overview() {
               <motion.div
                 key={b.tr}
                 initial={{ width: 0 }}
-                animate={{ width: `${(b.n / total) * 100}%` }}
+                animate={{ width: `${total ? (b.n / total) * 100 : 0}%` }}
                 transition={{ duration: 0.9, delay: 0.1 * i, ease: [0.16, 1, 0.3, 1] }}
                 style={{ background: TRIAGE_COLOR[b.tr] }}
                 title={`${t.common.triage[b.tr]}: ${b.n}`}
@@ -163,7 +172,7 @@ function Overview() {
                 <TriageBadge triage={b.tr} size="sm" />
                 <span className="flex-1" />
                 <span className="font-semibold tabular-nums">{b.n}</span>
-                <span className="w-12 text-end tabular-nums text-label-2">{Math.round((b.n / total) * 100)}%</span>
+                <span className="w-12 text-end tabular-nums text-label-2">{total ? Math.round((b.n / total) * 100) : 0}%</span>
               </div>
             ))}
           </div>
@@ -176,7 +185,7 @@ function Overview() {
                   <motion.span
                     className="absolute inset-y-0 start-0 rounded-e-[4px] bg-accent transition-opacity group-hover:opacity-80"
                     initial={{ width: 0 }}
-                    animate={{ width: `${(w.v / wilayas[0].v) * 100}%` }}
+                    animate={{ width: `${(w.v / (wilayas[0]?.v || 1)) * 100}%` }}
                     transition={{ duration: 0.8, delay: 0.08 * i, ease: [0.16, 1, 0.3, 1] }}
                   />
                 </span>
@@ -286,10 +295,10 @@ function Moderation() {
                       </span>
                     ) : (
                       <>
-                        <button type="button" onClick={() => moderateCase(c, "approved")} className="flex h-8 w-8 items-center justify-center rounded-full bg-stable-soft text-stable" title={t.admin.approve}>
+                        <button type="button" onClick={() => moderateCase(c, "approved")} className="flex h-10 w-10 items-center justify-center rounded-full bg-stable-soft text-stable" title={t.admin.approve}>
                           <Check className="h-4 w-4" strokeWidth={2.6} />
                         </button>
-                        <button type="button" onClick={() => moderateCase(c, "hidden")} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-label-2" title={t.admin.reject}>
+                        <button type="button" onClick={() => moderateCase(c, "hidden")} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-label-2" title={t.admin.reject}>
                           <EyeOff className="h-4 w-4" />
                         </button>
                       </>

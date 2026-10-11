@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { TopNav } from "@/components/layout/TopNav";
-import { GeoGate } from "@/components/layout/GeoGate";
+import { GeoGate, useDevicePosition } from "@/components/layout/GeoGate";
 import { Button } from "@/components/ui/Button";
 import { Emoji3D, Segmented } from "@/components/ui/primitives";
 import { useSession } from "@/lib/auth";
@@ -35,6 +35,7 @@ function NewAdoption() {
   const { t } = useI18n();
   const me = useSession()!;
   const router = useRouter();
+  const here = useDevicePosition(); // checked to be in Algeria by <GeoGate>
   const fileRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [checking, setChecking] = useState(false);
@@ -85,7 +86,7 @@ function NewAdoption() {
       shelter: { id: me.id, name: me.name },
       ownerId: me.id,
       ownerPhone: f.phone || me.phone,
-      location: { lat: 36.75, lng: 3.06, address: f.city },
+      location: { lat: here?.lat ?? 36.75, lng: here?.lng ?? 3.06, address: f.city },
       status: "pending",
       createdAt: now,
     });

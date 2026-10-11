@@ -1,5 +1,8 @@
 "use client";
 
+import { getPosition } from "@/lib/geo";
+import { toast } from "sonner";
+
 import { useCaseText } from "@/lib/i18n/content";
 
 import { AnimatePresence, motion, useDragControls, type PanInfo } from "motion/react";
@@ -77,6 +80,9 @@ export function MapExperience() {
   const [dropId, setDropId] = useState<string | null>(null);
 
   const ref = userLoc ?? (emergency ? ZONE.center : ALGIERS);
+  /** We only talk about "nearby" and distances when we know where the person (or the emergency) is. */
+  const located = !!userLoc || emergency;
+  const listTitle = located ? t.map.nearby : t.map.latest;
 
   const cases = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -87,8 +93,14 @@ export function MapExperience() {
       .filter((c) => category === "all" || (category === "livestock" ? LIVESTOCK.includes(c.species) : !LIVESTOCK.includes(c.species)))
       .filter((c) => !q || c.title.toLowerCase().includes(q) || ct(c).title.toLowerCase().includes(q) || (c.location.address ?? "").toLowerCase().includes(q))
       .map((c) => ({ c, d: distanceKm(ref, c.location) }))
-      .sort((a, b) => (emergency ? TRIAGE_ORDER[a.c.triage] - TRIAGE_ORDER[b.c.triage] || a.d - b.d : a.d - b.d));
-  }, [allCases, emergency, triage, category, query, ref, ct]);
+      .sort((a, b) =>
+        emergency
+          ? TRIAGE_ORDER[a.c.triage] - TRIAGE_ORDER[b.c.triage] || a.d - b.d
+          : located
+            ? a.d - b.d
+            : TRIAGE_ORDER[a.c.triage] - TRIAGE_ORDER[b.c.triage] || +new Date(b.c.createdAt) - +new Date(a.c.createdAt),
+      );
+  }, [allCases, emergency, triage, category, query, ref, ct, located]);
 
   const selected = allCases.find((c) => c.id === selectedId) ?? null;
   const SERVICES = useStore((s) => s.services).filter((s) => s.status === "approved");
@@ -124,7 +136,7 @@ export function MapExperience() {
         m.off("moveend", orbit);
       };
     } else {
-      m.flyTo({ ...{ center: (desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [4.3, 36.1]) as [number, number] }, zoom: desktop ? 5.9 : 5.4, pitch: is3d ? 50 : 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 2000, essential: true });
+      m.flyTo({ ...{ center: (desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [4.4, 34.9]) as [number, number] }, zoom: desktop ? 5.9 : 5.4, pitch: is3d ? 50 : 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 2000, essential: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emergency, ready]);
@@ -169,21 +181,12 @@ export function MapExperience() {
   };
 
   const locate = () => {
-    const fallback = () => {
-      const p = { lat: 36.7538, lng: 3.0588 };
+    getPosition(8000).then((p) => {
+      // never invent a position: without one, say so and keep the map where it is
+      if (!p) return toast(t.map.locFail);
       setUserLoc(p);
       mapRef.current?.flyTo({ center: [p.lng, p.lat], zoom: 12, duration: 1600 });
-    };
-    if (!navigator.geolocation) return fallback();
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserLoc(p);
-        mapRef.current?.flyTo({ center: [p.lng, p.lat], zoom: 12, duration: 1600 });
-      },
-      fallback,
-      { timeout: 5000 },
-    );
+    });
   };
 
   const searchSubmit = () => {
@@ -214,11 +217,13 @@ export function MapExperience() {
           setServiceId(id);
           if (id) setSelectedId(null);
         }}
-        initialView={desktop ? { zoom: 5.2 } : { longitude: 4.3, latitude: 36.1, zoom: 5.4 }}
+        initialView={desktop ? { zoom: 5.2 } : { longitude: 4.4, latitude: 34.9, zoom: 5.4 }}
         dropInId={dropId}
         userLocation={userLoc}
         onReady={(m) => {
           mapRef.current = m;
+          // phones: the camera centres in the visible area, not under the top filters, the side buttons or the list bar
+          if (!desktop) m.setPadding({ top: 110, right: 0, bottom: 150, left: 0 });
           setReady(true);
         }}
       />
@@ -279,7 +284,7 @@ export function MapExperience() {
       </AnimatePresence>
 
       {/* Right control stack (Apple Maps style) */}
-      <div className={cn("absolute end-3 z-20 flex flex-col gap-2.5 transition-[top] duration-500 lg:end-4 lg:top-[84px]", emergency ? "top-[200px]" : "top-[128px]")}>
+      <div className={cn("absolute end-3 z-20 flex flex-col gap-2.5 max-lg:bottom-[164px] lg:end-4 lg:top-[84px]", emergency && "lg:top-[84px]")}>
         <div className="glass glass-sheen flex flex-col overflow-hidden rounded-full">
           <ControlBtn label={t.map.showServices} active={showServices} onClick={() => setShowServices((v) => !v)}>
             <Layers className="h-[19px] w-[19px]" />
@@ -301,7 +306,7 @@ export function MapExperience() {
           aria-label={t.map.allAlgeria}
           onClick={() => {
             setEmergency(false);
-            mapRef.current?.flyTo({ center: desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [4.3, 36.1], zoom: desktop ? 5.9 : 5.4, pitch: 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 1800 });
+            mapRef.current?.flyTo({ center: desktop ? [ALGERIA_VIEW.longitude, ALGERIA_VIEW.latitude] : [4.4, 34.9], zoom: desktop ? 5.9 : 5.4, pitch: 0, bearing: 0, offset: desktop ? [200, 0] : [0, 0], duration: 1800 });
           }}
           className="glass glass-sheen flex h-12 w-12 items-center justify-center rounded-full"
         >
@@ -327,7 +332,7 @@ export function MapExperience() {
                 transition={{ type: "spring", stiffness: 320, damping: 32 }}
                 className="flex h-full flex-col overflow-y-auto overscroll-contain no-scrollbar"
               >
-                <CaseQuickView c={selected} onBack={() => select(null)} helpOpen={helpOpen} setHelpOpen={setHelpOpen} distance={distanceKm(ref, selected.location)} />
+                <CaseQuickView c={selected} onBack={() => select(null)} helpOpen={helpOpen} setHelpOpen={setHelpOpen} distance={located ? distanceKm(ref, selected.location) : undefined} />
               </motion.div>
             ) : (
               <motion.div
@@ -341,7 +346,7 @@ export function MapExperience() {
                 <div className="space-y-3 p-4 pb-2">
                   <SearchBox value={query} onChange={setQuery} onSubmit={searchSubmit} />
                   <EmergencyToggle on={emergency} onToggle={() => setEmergency((v) => !v)} count={zoneCases.length} urgent={zoneUrgent} />
-                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                  <div className="scroll-fade flex gap-1.5 overflow-x-auto no-scrollbar">
                     <TriageChips value={triage} onChange={setTriage} />
                   </div>
                   <Segmented
@@ -357,13 +362,13 @@ export function MapExperience() {
                   />
                 </div>
                 <div className="flex items-center justify-between px-5 pb-1 pt-2">
-                  <span className="text-[17px] font-bold tracking-[-0.02em]">{t.map.nearby}</span>
+                  <span className="text-[17px] font-bold tracking-[-0.02em]">{listTitle}</span>
                   <span className="text-[13px] font-medium text-label-2">{t.map.results(cases.length)}</span>
                 </div>
                 <div className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-3 no-scrollbar">
                   {cases.map(({ c, d }, i) => (
                     <motion.div key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.4) }}>
-                      <CaseRow c={c} distance={d} onClick={() => select(c.id)} />
+                      <CaseRow c={c} distance={located ? d : undefined} onClick={() => select(c.id)} />
                     </motion.div>
                   ))}
                   {cases.length === 0 && <Empty label={t.map.noResults} />}
@@ -377,7 +382,7 @@ export function MapExperience() {
       {/* Mobile: chips on top, carousel at the bottom, sheet for details */}
       {!desktop && (
         <>
-          <div className="absolute inset-x-0 top-[72px] z-20 flex gap-2 overflow-x-auto px-3 py-1 pe-20 no-scrollbar">
+          <div className="scroll-fade absolute inset-x-0 top-[72px] z-20 flex gap-2 overflow-x-auto px-3 py-1 pe-20 no-scrollbar">
             <Chip active={emergency} color="#ff3b30" onClick={() => setEmergency((v) => !v)}>
               <Flame className="h-4 w-4" /> {t.map.emergency}
             </Chip>
@@ -385,13 +390,13 @@ export function MapExperience() {
           </div>
           <AnimatePresence>
             {!selected && (
-              <MobileListSheet items={cases} onOpen={(c) => select(c.id)} />
+              <MobileListSheet items={cases} title={listTitle} showDistance={located} onOpen={(c) => select(c.id)} />
             )}
           </AnimatePresence>
           <AnimatePresence>
             {selected && (
               <BottomSheet onClose={() => select(null)} key={selected.id}>
-                <CaseQuickView c={selected} onBack={() => select(null)} helpOpen={helpOpen} setHelpOpen={setHelpOpen} distance={distanceKm(ref, selected.location)} sheet />
+                <CaseQuickView c={selected} onBack={() => select(null)} helpOpen={helpOpen} setHelpOpen={setHelpOpen} distance={located ? distanceKm(ref, selected.location) : undefined} sheet />
               </BottomSheet>
             )}
           </AnimatePresence>
@@ -418,7 +423,7 @@ export function MapExperience() {
                   <Stars value={service.rating} /> {service.rating} · {t.services.reviews(service.reviewCount)}
                 </div>
               </div>
-              <button type="button" onClick={() => setServiceId(null)} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2">
+              <button type="button" onClick={() => setServiceId(null)} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -582,7 +587,7 @@ function CaseQuickView({
   onBack: () => void;
   helpOpen: boolean;
   setHelpOpen: (v: boolean) => void;
-  distance: number;
+  distance?: number;
   sheet?: boolean;
 }) {
   const ct = useCaseText();
@@ -614,7 +619,7 @@ function CaseQuickView({
         <a href={gmaps(c.location)} target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline-offset-2 hover:underline">
           📍 {c.location.address}
         </a>{" "}
-        · {t.common.km(distance)} · <TimeAgo iso={c.createdAt} />
+        {distance !== undefined && <>· {t.common.km(distance)} </>}· <TimeAgo iso={c.createdAt} />
       </div>
       {c.trust && <TrustBadge level={c.trust.level} className="mt-2" />}
       <p className="mt-3 text-[15px] leading-relaxed">{ct(c).description}</p>
@@ -670,7 +675,7 @@ function CaseQuickView({
 }
 
 /** Apple-Maps-style list: compact bar above the tab bar → full-width sheet (tab bar slides away). */
-function MobileListSheet({ items, onOpen }: { items: { c: Case; d: number }[]; onOpen: (c: Case) => void }) {
+function MobileListSheet({ items, title, showDistance, onOpen }: { items: { c: Case; d: number }[]; title: string; showDistance: boolean; onOpen: (c: Case) => void }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const urgent = items.filter((x) => x.c.triage === "urgent").length;
@@ -704,7 +709,7 @@ function MobileListSheet({ items, onOpen }: { items: { c: Case; d: number }[]; o
         <button type="button" onClick={() => setOpen((o) => !o)} className="flex shrink-0 touch-none flex-col items-center px-4 pt-2 text-start">
           <span className="block h-1.5 w-9 rounded-full bg-label-3/50" />
           <span className="mt-1.5 flex w-full items-center justify-between gap-2">
-            <span className="truncate font-display text-[17px] font-extrabold">{t.map.nearby}</span>
+            <span className="truncate font-display text-[17px] font-extrabold">{title}</span>
             <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold">
               {urgent > 0 && <span className="rounded-full bg-urgent-soft px-2 py-0.5 text-urgent">{urgent}</span>}
               <span className="text-label-2">{t.map.results(items.length)}</span>
@@ -715,7 +720,7 @@ function MobileListSheet({ items, onOpen }: { items: { c: Case; d: number }[]; o
         {open && (
           <div onPointerDownCapture={(e) => e.stopPropagation()} className="mt-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-[max(16px,env(safe-area-inset-bottom))] no-scrollbar">
             {items.map(({ c, d }) => (
-              <CaseRow key={c.id} c={c} distance={d} onClick={() => { setOpen(false); onOpen(c); }} />
+              <CaseRow key={c.id} c={c} distance={showDistance ? d : undefined} onClick={() => { setOpen(false); onOpen(c); }} />
             ))}
           </div>
         )}

@@ -63,14 +63,14 @@ function Account() {
             <div className="flex flex-wrap items-center gap-x-2 text-[13.5px] text-label-2">
               <span className="font-semibold text-accent">{me.serviceId && me.role !== "vet" ? t.biz.signupAs.split(" (")[0] : t.dashboard.roles[me.role]}</span>
               {me.city && <span className="flex min-w-0 items-center gap-1"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{me.city}</span></span>}
-              {me.pro && <span className="rounded-full bg-gradient-to-r from-[#0a7cff] to-[#5e5ce6] px-2 py-0.5 text-[11px] font-bold text-white">PRO</span>}
+              {me.pro && new Date(me.pro.until) > new Date() && <span className="rounded-full bg-gradient-to-r from-[#0a7cff] to-[#5e5ce6] px-2 py-0.5 text-[11px] font-bold text-white">{me.pro.plan === "plus" ? "PRO+" : "PRO"}</span>}
             </div>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[230px_minmax(0,1fr)]">
           {/* tabs: sidebar on desktop, scrollable pills on phones */}
-          <nav className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar lg:mx-0 lg:flex-col lg:self-start lg:px-0">
+          <nav className="scroll-fade lg-no-fade -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 no-scrollbar lg:mx-0 lg:flex-col lg:self-start lg:px-0">
             {tabs.map(({ id, label, Icon, badge }) => (
               <button
                 key={id}

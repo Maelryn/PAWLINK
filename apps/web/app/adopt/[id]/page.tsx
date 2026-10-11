@@ -1,5 +1,7 @@
 "use client";
 
+import { useDemoText } from "@/lib/i18n/content";
+
 import { ShareButton } from "@/components/ui/ShareButton";
 
 import { motion } from "motion/react";
@@ -28,6 +30,7 @@ export default function AdoptionProfilePage() {
   const { t, locale } = useI18n();
   const a = useStore((s) => s.adoptions).find((x) => x.id === id);
   const me = useSession();
+  const dt = useDemoText();
   const router = useRouter();
   const myReq = useStore((s) => s.requests).find((r) => r.adoptionId === id && r.from.id === me?.id);
   const [open, setOpen] = useState(false);
@@ -86,7 +89,7 @@ export default function AdoptionProfilePage() {
                 {a.name}
               </motion.div>
               <div className="mt-2 text-[16px] text-white/85">
-                {a.breed} · {t.adopt.age(a.ageMonths)} · {t.adopt.sex[a.sex]}
+                {dt(a.breed)} · {t.adopt.age(a.ageMonths)} · {t.adopt.sex[a.sex]}
               </div>
             </div>
           </motion.div>
@@ -110,7 +113,7 @@ export default function AdoptionProfilePage() {
             <Reveal delay={0.05}>
               <section className="card rounded-[30px] p-6">
                 <h2 className="text-[13px] font-semibold uppercase tracking-wide text-label-2">{t.adopt.story}</h2>
-                <p className="mt-2 text-[17px] leading-relaxed">{a.story}</p>
+                <p className="mt-2 text-[17px] leading-relaxed">{dt(a.story)}</p>
               </section>
             </Reveal>
 
@@ -118,7 +121,7 @@ export default function AdoptionProfilePage() {
               <section className="card rounded-[30px] p-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-[20px] font-bold tracking-[-0.02em]">{t.adopt.health}</h2>
-                  <span className="rounded-full bg-stable-soft px-3 py-1 text-[13px] font-semibold text-stable">{a.healthStatus}</span>
+                  <span className="rounded-full bg-stable-soft px-3 py-1 text-[13px] font-semibold text-stable">{dt(a.healthStatus)}</span>
                 </div>
                 <div className="mt-4 text-[13px] font-semibold text-label-2">{t.adopt.vaccines}</div>
                 <div className="mt-2 space-y-2">
@@ -134,7 +137,7 @@ export default function AdoptionProfilePage() {
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-stable text-white">
                         <Check className="h-4 w-4" strokeWidth={3} />
                       </span>
-                      <span className="flex-1 text-[15px] font-semibold">{v.name}</span>
+                      <span className="flex-1 text-[15px] font-semibold">{dt(v.name)}</span>
                       <span className="flex items-center gap-1 text-[13px] text-label-2">
                         <Syringe className="h-3.5 w-3.5" /> {fmt(v.date)}
                       </span>
@@ -147,7 +150,7 @@ export default function AdoptionProfilePage() {
                     <li key={m.date} className="relative">
                       <span className="absolute -start-[27px] top-1 h-3 w-3 rounded-full bg-accent ring-4 ring-surface" />
                       <div className="text-[12.5px] text-label-2">{fmt(m.date)}</div>
-                      <div className="text-[15px]">{m.note}</div>
+                      <div className="text-[15px]">{dt(m.note)}</div>
                     </li>
                   ))}
                 </ol>
@@ -161,7 +164,7 @@ export default function AdoptionProfilePage() {
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {a.behavior.map((b) => (
                       <span key={b} className="rounded-full bg-accent-soft px-3 py-1.5 text-[13.5px] font-medium text-accent">
-                        {b}
+                        {dt(b)}
                       </span>
                     ))}
                   </div>
@@ -171,7 +174,7 @@ export default function AdoptionProfilePage() {
                   <ul className="mt-2 space-y-1.5 text-[14.5px]">
                     {a.careNeeds.map((c) => (
                       <li key={c} className="flex gap-2">
-                        <span className="text-accent">•</span> {c}
+                        <span className="text-accent">•</span> {dt(c)}
                       </li>
                     ))}
                   </ul>

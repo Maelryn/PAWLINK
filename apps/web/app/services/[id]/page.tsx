@@ -1,5 +1,7 @@
 "use client";
 
+import { useDemoText } from "@/lib/i18n/content";
+
 import { motion } from "motion/react";
 import { ArrowLeft, BadgeCheck, Clock, Navigation, Phone } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +26,7 @@ const field = "h-11 w-full rounded-[14px] bg-surface px-3.5 text-[14.5px] outlin
 export default function ServicePage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useI18n();
+  const dt = useDemoText();
   const s = useStore((st) => st.services).find((x) => x.id === id);
   const allReviews = useStore((st) => st.reviews);
 
@@ -96,17 +99,17 @@ export default function ServicePage() {
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div>
                 <div className="text-[12.5px] font-semibold uppercase tracking-wide text-label-2">{t.svc.about}</div>
-                <p className="mt-1 text-[15px] leading-relaxed">{s.description}</p>
+                <p className="mt-1 text-[15px] leading-relaxed">{dt(s.description)}</p>
                 {s.tags && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {s.tags.map((tag) => <span key={tag} className="rounded-full bg-surface-2 px-2.5 py-1 text-[12.5px] font-medium">{tag}</span>)}
+                    {s.tags.map((tag) => <span key={tag} className="rounded-full bg-surface-2 px-2.5 py-1 text-[12.5px] font-medium">{dt(tag)}</span>)}
                   </div>
                 )}
               </div>
               <div>
                 <div className="text-[12.5px] font-semibold uppercase tracking-wide text-label-2">{t.svc.hours}</div>
                 <p className="mt-1 flex items-center gap-2 text-[15px]">
-                  <Clock className="h-4 w-4 text-label-2" /> {s.hours}
+                  <Clock className="h-4 w-4 text-label-2" /> {dt(s.hours)}
                   {s.openNow !== undefined && <span className={cn("font-semibold", s.openNow ? "text-stable" : "text-urgent")}>· {s.openNow ? t.services.open : t.services.closed}</span>}
                 </p>
               </div>

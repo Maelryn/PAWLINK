@@ -107,6 +107,8 @@ const ar: Dict = {
     zoneStats: { cases: "حيوان", urgent: "عاجل", helpers: "متطوّع" },
     civilProtection: "الحماية المدنية · 14",
     nearby: "حالات قريبة",
+    latest: "آخر البلاغات",
+    locFail: "الموقع غير متاح. اسمح بتحديد الموقع في متصفحك.",
     results: (n) => `${n} حالة`,
     layers: "الطبقات",
     showServices: "الخدمات",

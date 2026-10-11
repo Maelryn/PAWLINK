@@ -261,7 +261,7 @@ export const store = {
   addReview(r: Review) {
     const reviews = [r, ...state.reviews.filter((x) => !(x.serviceId === r.serviceId && x.author.id === r.author.id))];
     const s = state.services.find((x) => x.id === r.serviceId);
-    set({ reviews, notifications: [...notify(s?.ownerId, "review", r.author.name, `/services/${r.serviceId}`), ...state.notifications] });
+    set({ reviews, notifications: [...notify(s?.ownerId, "review", r.author.name, "/account?tab=pro"), ...state.notifications] });
   },
   replyReview(id: string, reply: string) {
     set({ reviews: state.reviews.map((r) => (r.id === id ? { ...r, reply } : r)) });
@@ -279,12 +279,12 @@ export const store = {
     });
   },
   /** Demo payment: activates Pro for 30 days. Real: Chargily (CIB / Edahabia) webhook → PATCH /me/pro */
-  activatePro(userId: string, days = 30) {
+  activatePro(userId: string, days = 30, plan: "pro" | "plus" = "pro") {
     const u = state.users.find((x) => x.id === userId);
     const since = now();
     const until = new Date(Date.now() + days * 86_400_000).toISOString();
     set({
-      users: state.users.map((x) => (x.id === userId ? { ...x, pro: { plan: "pro", since, until } } : x)),
+      users: state.users.map((x) => (x.id === userId ? { ...x, pro: { plan, since, until } } : x)),
       services: state.services.map((s) => (s.id === u?.serviceId ? { ...s, pro: true } : s)),
       notifications: [...notify(userId, "proActive", "PawLink Pro", "/account?tab=pro"), ...state.notifications],
     });

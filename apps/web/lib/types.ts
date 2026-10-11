@@ -48,7 +48,7 @@ export interface User extends UserLite {
   /** Business account: the service listing it manages. */
   serviceId?: string;
   /** PawLink Pro subscription (income). */
-  pro?: { plan: "pro"; since: string; until: string };
+  pro?: { plan: "pro" | "plus"; since: string; until: string };
   createdAt?: string;
 }
 

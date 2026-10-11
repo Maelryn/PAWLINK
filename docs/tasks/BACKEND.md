@@ -77,6 +77,13 @@ NEXT_PUBLIC_API_FEATURES=auth,cases,uploads
 3. **Demo reports:** when `reporterOnSite: false`, the `onSite` check must be `false` so it can never be "verified".
 4. **Cloudinary credentials** in the API env, otherwise reports have no photo.
 
+### Shapes the website added since (please mirror them in `apps/web/lib/types.ts` terms)
+
+- **Adoption:** `AdoptionProfile.status` can be `"adopted"` (owner confirms the animal found its family, it leaves the public list). `AdoptionRequest.fromPhone` = the adopter's phone, returned to the owner only once the request is `accepted` (both sides get each other's number).
+- **Pro:** `User.pro.plan` is `"pro" | "plus"` (the Pro+ tier).
+- **Favorites:** saved adoption profiles per user (`PUT/DELETE /me/favorites/:adoptionId`, `GET /me/favorites`).
+- **Notifications:** two more kinds: `resolved` (a case you reported or helped on was resolved) and `nearbyCase` (a case near an available helper).
+
 ### Before deploying the API (important for the judges)
 
 - **Refresh cookie across domains:** the website is on Vercel and the API on another domain, so in production the refresh cookie needs `sameSite: 'none'` + `secure: true`. With `lax` the browser won't send it from Vercel and users are logged out on every reload.

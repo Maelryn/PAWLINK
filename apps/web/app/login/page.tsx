@@ -1,5 +1,7 @@
 "use client";
 
+import { getPosition } from "@/lib/geo";
+
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -73,11 +75,10 @@ function Login() {
         return router.push(next);
       }
       if (!otpStep) {
-        // Sign-up is reserved for people in Algeria (backend re-checks with IP + GPS)
-        const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-        const pos = await new Promise<GeolocationPosition | null>((res) => (navigator.geolocation ? navigator.geolocation.getCurrentPosition(res, () => res(null), { timeout: 8000 }) : res(null)));
-        if (pos && !inAlgeria({ lat: pos.coords.latitude, lng: pos.coords.longitude })) return setError(t.geo.outside);
-        if (!pos && !local) return setError(t.geo.denied);
+        // PawLink is for Algeria: a position clearly outside it is refused (the backend re-checks).
+        // No position (refused / unavailable) doesn't block sign-up: reporting itself checks it.
+        const pos = await getPosition(6000);
+        if (pos && !inAlgeria(pos)) return setError(t.geo.outside);
         const r = await startSignUp(signUpInput()); // POST /auth/register → SMS code
         if ("error" in r) return setError(errText(r.error, r.message));
         setDevCode(r.sent.code ?? null);
@@ -200,7 +201,7 @@ function Login() {
                         <>
                           <input required value={f.bizName} onChange={(e) => up("bizName", e.target.value)} placeholder={t.biz.bizName} className={field} />
                           {role === "pro" && (
-                            <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 no-scrollbar">
+                            <div className="scroll-fade -mx-1 flex gap-1.5 overflow-x-auto px-1 no-scrollbar">
                               {BIZ_TYPES.map((ty) => (
                                 <button key={ty} type="button" onClick={() => setBizType(ty)} className={cn("flex shrink-0 items-center gap-1 rounded-full py-1 pe-2.5 ps-1 text-[12px] font-semibold", bizType === ty ? "bg-accent-soft text-accent ring-2 ring-accent" : "bg-surface-2")}>
                                   <Emoji3D src={SERVICE_EMOJI[ty]} size={20} /> {t.common.service[ty]}
@@ -229,6 +230,7 @@ function Login() {
             </AnimatePresence>
             {error && <p className="text-[13px] font-medium text-urgent">{error}</p>}
             <Button type="submit" className="h-12 w-full text-[16px]" disabled={busy || (mode === "up" && otpStep && otp.length < 6)}>
+              {busy && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />}
               {mode === "in" ? t.account.signIn : otpStep ? t.common.next : t.account.signUp}
             </Button>
           </form>

@@ -52,7 +52,7 @@ export function Paywall({ onClose }: { onClose: () => void }) {
     setPaying(true);
     setTimeout(() => {
       setBurst(true);
-      store.activatePro(me!.id, period === "year" ? 365 : 30);
+      store.activatePro(me!.id, period === "year" ? 365 : 30, tier);
       toast.success(t.pro.paid);
       setTimeout(() => {
         onClose();

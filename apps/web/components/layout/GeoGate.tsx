@@ -1,5 +1,7 @@
 "use client";
 
+import { getPosition } from "@/lib/geo";
+
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button } from "@/components/ui/Button";
@@ -28,16 +30,11 @@ export function GeoGate({ children, bare }: { children: React.ReactNode; bare?: 
   const [demo, setDemo] = useState(false);
 
   const locate = useCallback(() => {
-    if (!navigator.geolocation) return setStatus("denied");
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        const here = { lat: p.coords.latitude, lng: p.coords.longitude };
-        setPos(here);
-        setStatus(inAlgeria(here) ? "ok" : "outside");
-      },
-      () => setStatus("denied"),
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
+    getPosition(10000, true).then((here) => {
+      if (!here) return setStatus("denied");
+      setPos(here);
+      setStatus(inAlgeria(here) ? "ok" : "outside");
+    });
   }, []);
 
   const check = () => {

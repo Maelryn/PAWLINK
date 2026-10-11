@@ -63,7 +63,7 @@ export function BusinessPanel({ me }: { me: User }) {
         <div className="flex items-center gap-3 rounded-[24px] bg-gradient-to-r from-[#0a7cff] to-[#5e5ce6] p-4 text-white">
           <Emoji3D src="/3d/star.png" size={36} />
           <div className="flex-1">
-            <div className="font-bold">{t.biz.proTitle}</div>
+            <div className="font-bold">{me.pro?.plan === "plus" ? `PawLink ${t.pay.tiers.plus}` : t.biz.proTitle}</div>
             <div className="text-[13px] text-white/80">{t.biz.proActive} {fmt(me.pro!.until)}</div>
           </div>
         </div>
@@ -119,8 +119,8 @@ export function BusinessPanel({ me }: { me: User }) {
                 </div>
                 {b.status === "sent" ? (
                   <div className="flex gap-1.5">
-                    <button type="button" onClick={() => store.answerBooking(b.id, "confirmed")} className="flex h-8 w-8 items-center justify-center rounded-full bg-stable text-white" aria-label={t.biz.confirm}><Check className="h-4 w-4" /></button>
-                    <button type="button" onClick={() => store.answerBooking(b.id, "declined")} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface" aria-label={t.biz.decline}><X className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => store.answerBooking(b.id, "confirmed")} className="flex h-10 w-10 items-center justify-center rounded-full bg-stable text-white" aria-label={t.biz.confirm}><Check className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => store.answerBooking(b.id, "declined")} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface" aria-label={t.biz.decline}><X className="h-4 w-4" /></button>
                   </div>
                 ) : (
                   <span className={cn("text-[12.5px] font-semibold", b.status === "confirmed" ? "text-stable" : "text-urgent")}>{b.status === "confirmed" ? t.biz.confirm : t.biz.decline} ✓</span>

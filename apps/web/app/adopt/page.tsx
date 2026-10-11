@@ -1,5 +1,7 @@
 "use client";
 
+import { useDemoText } from "@/lib/i18n/content";
+
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -35,6 +37,7 @@ export default function AdoptPage() {
   const { t } = useI18n();
   const [filter, setFilter] = useState<Cat>("all");
   const user = useSession();
+  const dt = useDemoText();
   const router = useRouter();
   const allFavs = useStore((s) => s.favorites);
   const favs = (user && allFavs[user.id]) || [];
@@ -63,7 +66,7 @@ export default function AdoptPage() {
         <p className="mt-1 max-w-[560px] text-[15px] text-label-2">{t.adopt.subtitle}</p>
 
         {/* categories with real pet photos (same pattern as Services) */}
-        <div className="-mx-4 mt-3 flex gap-4 overflow-x-auto px-4 py-2 no-scrollbar">
+        <div className="scroll-fade -mx-4 mt-3 flex gap-4 overflow-x-auto px-4 py-2 no-scrollbar">
           {CATS.map((c) => {
             const on = filter === c.id;
             return (
@@ -118,7 +121,7 @@ export default function AdoptPage() {
                       <span className="truncate font-display text-[18px] font-extrabold">{a.name}</span>
                       <span className="shrink-0 text-[13px] font-semibold text-label-2">{a.sex === "male" ? "♂" : "♀"}</span>
                     </div>
-                    <div className="truncate text-[12.5px] text-label-2">{a.breed} · {a.location.address}</div>
+                    <div className="truncate text-[12.5px] text-label-2">{dt(a.breed)} · {a.location.address}</div>
                   </div>
                 </Link>
               </motion.div>

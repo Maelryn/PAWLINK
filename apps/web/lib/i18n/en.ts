@@ -105,6 +105,8 @@ const en = {
     zoneStats: { cases: "animals", urgent: "urgent", helpers: "helpers" },
     civilProtection: "Civil Protection · 14",
     nearby: "Cases nearby",
+    latest: "Latest reports",
+    locFail: "Location unavailable. Allow location in your browser.",
     results: (n: number) => (n === 1 ? "1 case" : `${n} cases`),
     layers: "Layers",
     showServices: "Services",

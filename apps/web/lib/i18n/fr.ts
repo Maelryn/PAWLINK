@@ -107,6 +107,8 @@ const fr: Dict = {
     zoneStats: { cases: "animaux", urgent: "urgents", helpers: "aidants" },
     civilProtection: "Protection civile · 14",
     nearby: "Cas à proximité",
+    latest: "Derniers signalements",
+    locFail: "Position indisponible. Autorisez la localisation dans votre navigateur.",
     results: (n) => (n <= 1 ? `${n} cas` : `${n} cas`),
     layers: "Calques",
     showServices: "Services",
