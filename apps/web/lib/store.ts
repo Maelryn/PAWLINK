@@ -188,11 +188,15 @@ export const store = {
     const people = [c.reporter.id, ...c.helpers.map((h) => h.user.id)].filter((id, i, a) => id !== me.id && a.indexOf(id) === i);
     set({ notifications: [...people.flatMap((id) => notify(id, "resolved", me.name, `/cases/${caseId}`)), ...state.notifications] });
   },
+  /** The reporter says the animal is still there: the case stays on the map for a new period. PATCH /cases/:id/renew */
+  renewCase(caseId: string) {
+    updateCase(caseId, (c) => ({ ...c, updatedAt: now() }));
+  },
   confirm(caseId: string) {
     updateCase(caseId, (c) => {
       if (!c.trust) return c;
       const confirmations = c.trust.confirmations + 1;
-      return { ...c, trust: { ...c.trust, confirmations, score: Math.min(1, c.trust.score + 0.08), level: c.trust.level === "unverified" && confirmations >= 2 ? "verified" : c.trust.level } };
+      return { ...c, updatedAt: now(), trust: { ...c.trust, confirmations, score: Math.min(1, c.trust.score + 0.08), level: c.trust.level === "unverified" && confirmations >= 2 ? "verified" : c.trust.level } };
     });
   },
   flag(caseId: string) {
@@ -385,7 +389,20 @@ export function useStore<T>(selector: (s: State) => T): T {
 }
 
 /** Cases visible to the public: moderation-pending and hidden reports stay out of the map. */
-export const isPublic = (c: Case) => c.moderation !== "pending" && c.moderation !== "hidden";
+/* How long a case stays on the map without any activity (help offered, confirmation, status change,
+   or the reporter saying it's still there). A resolved case leaves the map one day later. */
+const DAY = 86_400_000;
+export const LIFETIME_DAYS: Record<Case["triage"], number> = { urgent: 3, monitoring: 7, stable: 14 };
+export function caseExpiresAt(c: Case): number {
+  const last = +new Date(c.updatedAt || c.createdAt);
+  return c.status === "resolved" ? last + DAY : last + LIFETIME_DAYS[c.triage] * DAY;
+}
+export const isExpired = (c: Case, now = Date.now()) => now > caseExpiresAt(c);
+/** Milliseconds left before the case leaves the map (negative once expired). */
+export const msLeftOnMap = (c: Case) => caseExpiresAt(c) - Date.now();
+
+/** Cases on the public map: moderated in, and not expired. */
+export const isPublic = (c: Case) => c.moderation !== "pending" && c.moderation !== "hidden" && !isExpired(c);
 
 /** Average rating + count computed from the reviews actually stored. */
 export function ratingOf(s: Service, reviews: Review[]) {

@@ -1,5 +1,7 @@
 "use client";
 
+import { useSession } from "@/lib/auth";
+
 import { getPosition } from "@/lib/geo";
 import { toast } from "sonner";
 
@@ -595,6 +597,8 @@ function CaseQuickView({
   sheet?: boolean;
 }) {
   const ct = useCaseText();
+  const me = useSession();
+  const mine = !!me && me.id === c.reporter.id;
   const { t } = useI18n();
   const ai = useCaseAI(c);
   return (
@@ -660,9 +664,15 @@ function CaseQuickView({
           </motion.div>
         ) : (
           <motion.div key="cta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-4 flex gap-2">
-            <Button size="lg" className="flex-1" variant={c.triage === "urgent" ? "danger" : "filled"} onClick={() => setHelpOpen(true)}>
-              <HandHeart className="h-5 w-5" /> {t.map.helpCta}
-            </Button>
+            {mine ? (
+              <ButtonLink href={`/cases/${c.id}`} size="lg" className="flex-1">
+                {t.case.openMine}
+              </ButtonLink>
+            ) : (
+              <Button size="lg" className="flex-1" variant={c.triage === "urgent" ? "danger" : "filled"} onClick={() => setHelpOpen(true)}>
+                <HandHeart className="h-5 w-5" /> {t.map.helpCta}
+              </Button>
+            )}
             <ButtonLink href={`/cases/${c.id}`} size="lg" variant="tinted" className="px-5">
               <ChevronRight className="h-5 w-5 rtl:rotate-180" />
             </ButtonLink>

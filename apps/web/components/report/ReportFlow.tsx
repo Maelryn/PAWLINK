@@ -171,7 +171,7 @@ export function ReportFlow() {
   };
 
   return (
-    <div className="relative min-h-[100svh] overflow-x-clip">
+    <div className="relative min-h-[100svh] overflow-clip">
       {/* phones: a focused full-screen flow (close button + steps), no app bars */}
       <div className="hidden md:block">
         <TopNav noTabBar />
@@ -182,7 +182,7 @@ export function ReportFlow() {
         <AnimatePresence mode="wait">
           {phase === "form" && (
             <motion.div key="form" exit={{ opacity: 0, scale: 0.96, filter: "blur(10px)" }} transition={{ duration: 0.35 }}>
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between sm:mb-6">
                 <Link href="/map" className="glass flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90" aria-label={t.common.close}>
                   <X className="h-5 w-5" />
                 </Link>
@@ -190,7 +190,7 @@ export function ReportFlow() {
                 <span className="w-11" />
               </div>
 
-              <div className="glass-strong relative overflow-hidden rounded-[36px] p-5 sm:p-7">
+              <div className="glass-strong relative overflow-hidden rounded-[32px] p-4 sm:rounded-[36px] sm:p-7">
                 <AnimatePresence mode="wait" custom={dir} initial={false}>
                   <motion.div
                     key={step}
@@ -288,13 +288,14 @@ function Progress({ step, labels, onJump }: { step: number; labels: string[]; on
 
 function StepHeader({ emoji, title, body }: { emoji: string; title: string; body?: string }) {
   return (
-    <div className="mb-5 flex items-start gap-3.5">
-      <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.05 }}>
-        <Emoji3D src={emoji} size={52} />
+    <div className="mb-4 flex items-start gap-3 sm:mb-5 sm:gap-3.5">
+      <motion.div className="shrink-0" initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.05 }}>
+        <Emoji3D src={emoji} size={44} className="sm:hidden" />
+        <Emoji3D src={emoji} size={52} className="hidden sm:block" />
       </motion.div>
       <div>
-        <h1 className="text-[26px] font-bold leading-tight tracking-[-0.03em]">{title}</h1>
-        {body && <p className="mt-1 text-[14.5px] text-label-2">{body}</p>}
+        <h1 className="text-[22px] font-bold leading-tight tracking-[-0.03em] sm:text-[26px]">{title}</h1>
+        {body && <p className="mt-1 text-[14px] leading-snug text-label-2 sm:text-[14.5px]">{body}</p>}
       </div>
     </div>
   );
@@ -549,7 +550,7 @@ function SituationStep({ tags, setTags, desc, setDesc }: { tags: string[]; setTa
   return (
     <div>
       <StepHeader emoji="/3d/bandage.png" title={t.report.situationTitle} body={t.report.situationBody} />
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {TAGS.map((x) => {
           const on = tags.includes(x);
           const hot = urgentTags.includes(x);
@@ -560,7 +561,7 @@ function SituationStep({ tags, setTags, desc, setDesc }: { tags: string[]; setTa
               whileTap={{ scale: 0.92 }}
               onClick={() => toggle(x)}
               className={cn(
-                "h-9 rounded-full px-3.5 text-[13.5px] font-semibold transition-colors",
+                "h-9 rounded-full px-3 text-[13.5px] font-semibold transition-colors sm:px-3.5",
                 on ? (hot ? "bg-urgent text-white" : "bg-label text-bg") : "bg-surface-2/80 hover:bg-surface-2",
               )}
             >
@@ -572,11 +573,11 @@ function SituationStep({ tags, setTags, desc, setDesc }: { tags: string[]; setTa
       <textarea
         value={desc}
         onChange={(e) => setDesc(e.target.value)}
-        rows={4}
+        rows={3}
         placeholder={t.report.descPlaceholder}
-        className="mt-4 w-full resize-none rounded-[20px] bg-surface-2 p-4 text-[15px] leading-relaxed outline-none ring-accent/40 placeholder:text-label-2 focus:ring-2"
+        className="mt-3 w-full resize-none rounded-[20px] bg-surface-2 p-3.5 text-[15px] leading-relaxed outline-none ring-accent/40 placeholder:text-label-2 focus:ring-2 sm:mt-4 sm:p-4"
       />
-      <p className="mt-3 text-[12.5px] text-label-2">🛡️ {t.trust.why}</p>
+      <p className="mt-2.5 text-[12px] leading-snug text-label-2">🛡️ {t.trust.why}</p>
     </div>
   );
 }
@@ -688,12 +689,12 @@ function Result({ ai, c, onPublish, onReset }: { ai: AIAnalysis; c: Case; onPubl
             animate={{ scale: 2.2, opacity: 0 }}
             transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
           />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)]" style={{ background: color }}>
-            <Emoji3D src={ai.triage === "urgent" ? "/3d/ambulance.png" : ai.triage === "monitoring" ? "/3d/owl.png" : "/3d/heart.png"} size={58} />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-full shadow-[0_16px_32px_-10px_rgba(0,0,0,0.3)] sm:h-20 sm:w-20" style={{ background: color }}>
+            <Emoji3D src={ai.triage === "urgent" ? "/3d/ambulance.png" : ai.triage === "monitoring" ? "/3d/owl.png" : "/3d/heart.png"} size={42} />
           </div>
         </div>
-        <div className="mt-5 text-[14px] font-semibold uppercase tracking-wider text-label-2">{t.ai.triageLabel}</div>
-        <div className="text-[56px] font-bold leading-none tracking-[-0.045em]" style={{ color }}>
+        <div className="mt-3 text-[13px] font-semibold uppercase tracking-wider text-label-2">{t.ai.triageLabel}</div>
+        <div className="text-[42px] font-bold leading-none tracking-[-0.04em] sm:text-[52px]" style={{ color }}>
           {t.common.triage[ai.triage]}
         </div>
         {pending ? (
@@ -708,21 +709,28 @@ function Result({ ai, c, onPublish, onReset }: { ai: AIAnalysis; c: Case; onPubl
         {c.trust && <TrustBadge level={c.trust.level} className="mt-2" />}
       </motion.div>
 
-      <AICard ai={ai} reveal className="relative mt-8" />
+      {/* essentials only; the full analysis (helpers, vets nearby) is on the case page */}
+      <AICard ai={ai} compact hideTriage reveal className="relative mt-5" />
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6 }} className="relative mt-6 flex flex-col gap-3 sm:flex-row">
-        <Button size="lg" className="flex-1" disabled={pending} onClick={() => onPublish("map")}>
+      {/* actions stay under the thumb */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.9 }}
+        className="sticky bottom-0 z-20 -mx-4 mt-5 space-y-2 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 md:static md:mx-0 md:px-0 md:pb-0"
+      >
+        <Button size="lg" className="w-full" disabled={pending} onClick={() => onPublish("map")}>
           <MapPin className="h-[18px] w-[18px]" /> {t.report.viewOnMap}
         </Button>
-        <Button size="lg" variant="glass" className="flex-1" onClick={() => onPublish("case")}>
-          {t.report.viewCase}
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button size="lg" variant="glass" onClick={() => onPublish("case")}>
+            {t.report.viewCase}
+          </Button>
+          <Button size="lg" variant="glass" onClick={onReset}>
+            {t.report.newReport}
+          </Button>
+        </div>
       </motion.div>
-      <div className="relative mt-4 text-center">
-        <Button variant="plain" size="sm" className="mx-auto" onClick={onReset}>
-          {t.report.newReport}
-        </Button>
-      </div>
     </div>
   );
 }

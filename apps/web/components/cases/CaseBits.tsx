@@ -94,6 +94,7 @@ export function HelpPicker({ c, onDone }: { c: Case; onDone?: () => void }) {
   const router = useRouter();
   const [picked, setPicked] = useState<HelpType | null>(null);
   const options: HelpType[] = ["transport", "medical", "foster", "food", "search", "boarding", "funds"];
+  if (user && user.id === c.reporter.id) return <OwnReport c={c} />;
   return (
     <div>
       <div className="text-[19px] font-bold tracking-[-0.02em]">{t.case.helpTitle}</div>
@@ -154,5 +155,19 @@ export function CaseLink({ id, children, className }: { id: string; children: Re
     <Link href={`/cases/${id}`} className={className}>
       {children}
     </Link>
+  );
+}
+
+/** Shown to the person who reported the case: they can't "help" themselves, they follow it. */
+export function OwnReport({ c }: { c: Case }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex items-start gap-3 rounded-[20px] bg-accent-soft p-4">
+      <Emoji3D src="/3d/bell.png" size={34} className="shrink-0" />
+      <div>
+        <div className="text-[16px] font-bold">{t.case.yourReport}</div>
+        <p className="mt-0.5 text-[13.5px] text-label-2">{c.helpers.length ? t.common.helpers(c.helpers.length) + " · " : ""}{t.case.yourReportBody}</p>
+      </div>
+    </div>
   );
 }

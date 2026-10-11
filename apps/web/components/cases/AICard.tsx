@@ -19,7 +19,7 @@ const item = {
 } as const;
 
 /** Structured AI triage output. `reveal` plays the staggered entrance (report flow). */
-export function AICard({ ai, compact, reveal, className }: { ai: AIAnalysis; compact?: boolean; reveal?: boolean; className?: string }) {
+export function AICard({ ai, compact, reveal, hideTriage, className }: { ai: AIAnalysis; compact?: boolean; reveal?: boolean; hideTriage?: boolean; className?: string }) {
   const { t } = useI18n();
   const color = TRIAGE_COLOR[ai.triage];
 
@@ -56,16 +56,20 @@ export function AICard({ ai, compact, reveal, className }: { ai: AIAnalysis; com
       </motion.div>
 
       <motion.div variants={item} className="relative mt-4">
-        <div className="text-[12px] font-semibold uppercase tracking-wider text-label-2">{t.ai.triageLabel}</div>
-        <div className="mt-1 text-[34px] font-bold leading-none tracking-[-0.03em]" style={{ color }}>
-          {t.common.triage[ai.triage]}
-        </div>
+        {!hideTriage && (
+          <>
+            <div className="text-[12px] font-semibold uppercase tracking-wider text-label-2">{t.ai.triageLabel}</div>
+            <div className="mt-1 text-[34px] font-bold leading-none tracking-[-0.03em]" style={{ color }}>
+              {t.common.triage[ai.triage]}
+            </div>
+          </>
+        )}
         {ai.forcedUrgentByRule && (
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-urgent-soft px-2.5 py-1 text-[12px] font-semibold text-urgent">
             <ShieldAlert className="h-3.5 w-3.5" /> {t.ai.forced}
           </div>
         )}
-        <p className="mt-3 text-[15px] leading-relaxed text-label">{ai.summary}</p>
+        <p className={cn("text-[15px] leading-relaxed text-label", !hideTriage && "mt-3")}>{ai.summary}</p>
       </motion.div>
 
       {ai.possiblyContagious && (

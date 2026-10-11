@@ -18,14 +18,14 @@ import { TopNav } from "@/components/layout/TopNav";
 import { MapView } from "@/components/map";
 import { Reveal } from "@/components/motion";
 import { ButtonLink } from "@/components/ui/Button";
-import { Avatar, CasePhoto, Emoji3D, TimeAgo, TriageBadge } from "@/components/ui/primitives";
+import { Avatar, CasePhoto, Emoji3D, TimeAgo, TriageBadge, useMounted } from "@/components/ui/primitives";
 import { useCaseAI } from "@/lib/ai/useCaseAI";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, SPECIES_EMOJI } from "@/lib/species";
-import { store, useStore } from "@/lib/store";
+import { LIFETIME_DAYS, msLeftOnMap, store, useStore } from "@/lib/store";
 import { Burst } from "@/components/ui/Sparkles";
 import { Button } from "@/components/ui/Button";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Clock } from "lucide-react";
 import { useState } from "react";
 import { useSession } from "@/lib/auth";
 import { gmaps, gmapsDirections } from "@/lib/trust";
@@ -229,6 +229,7 @@ export default function CasePage() {
                     <ResolveButton c={c} onResolved={() => setParty(true)} />
                   </>
                 )}
+                <Lifetime c={c} />
                 {c.helpers.length > 0 && (
                   <div className="mt-5 border-t border-separator pt-4">
                     <div className="text-[13px] font-semibold text-label-2">{t.common.helpers(c.helpers.length)}</div>
@@ -277,6 +278,40 @@ function ResolveButton({ c, onResolved }: { c: NonNullable<ReturnType<typeof sto
       >
         <CheckCircle2 className="h-[18px] w-[18px]" /> {t.case.resolveCta}
       </Button>
+    </div>
+  );
+}
+
+/** How long the case stays on the map, and "still there" for the reporter (keeps it on the map). */
+function Lifetime({ c }: { c: NonNullable<ReturnType<typeof store.get>["cases"][number]> }) {
+  const { t } = useI18n();
+  const user = useSession();
+  const mounted = useMounted();
+  if (!mounted) return null; // time-based: render on the client only
+  const left = msLeftOnMap(c);
+  const expired = left <= 0;
+  const mine = !!user && user.id === c.reporter.id;
+  const total = (c.status === "resolved" ? 1 : LIFETIME_DAYS[c.triage]) * 86_400_000;
+  const canRenew = mine && c.status !== "resolved" && left < total / 2;
+  return (
+    <div className="mt-5 border-t border-separator pt-4">
+      <div className={cn("flex items-center gap-2 text-[13.5px] font-semibold", expired ? "text-urgent" : "text-label-2")}>
+        <Clock className="h-4 w-4 shrink-0" />
+        {expired ? t.case.expired : t.case.lifeLeft(left)}
+      </div>
+      <p className="mt-1 text-[12.5px] leading-snug text-label-3">{t.case.lifeRule}</p>
+      {canRenew && (
+        <Button
+          variant="tinted"
+          className="mt-3 w-full"
+          onClick={() => {
+            store.renewCase(c.id);
+            toast.success(t.case.renewed);
+          }}
+        >
+          {t.case.renew}
+        </Button>
+      )}
     </div>
   );
 }
