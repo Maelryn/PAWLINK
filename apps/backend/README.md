@@ -258,7 +258,7 @@ phase. Every row below was produced by running the command, not by reasoning abo
 | `prisma migrate diff --from-config-datasource --to-schema` | **No difference detected** (exit 0) |
 | `npm run seed` | users:11 zones:1 cases:27 helpers:13 trustChecks:189 services:14 reviews:5 adoptions:6 — **the counts did not move** |
 | `npm test` | **278/278** |
-| `npm run test:e2e` | **53/53** (21 Phase 1 + 32 Phase 2) |
+| `npm run test:e2e` | **53/53** (21 Phase 1 + 32 Phase 2) — on the container **and** on real Supabase |
 | `GET /cases?bbox=3.9,36.5,4.4,36.9` | 13 cases, **urgent-first**, `total: 13` with `pageSize` unchanged |
 | a bbox around Algiers only | the Kabylie cases are absent, `c13` is present |
 | `?bbox=,,,` / `?bbox=1,2,3` / `?bbox=0,0,0,200` / `?bbox=-180,-90,180,90` | 400 `VALIDATION_ERROR` for all four |
@@ -303,6 +303,41 @@ Swagger route list and the boot log, because a unit test cannot prove a broadcas
 | `GET /admin/cases` → 500 | `Prisma.join([])` **throws** on an empty array, and an unfiltered admin list builds none | `WHERE TRUE` when there are no filters |
 | `@Throttle` 5/h per IP shadowed the account limit, so `TRUST_RATE_LIMITED` was unreachable | the two limits were the same number, so the guard always fired first | the per-IP throttler is now a 15/h backstop, documented in the controller |
 | `photos` always failed validation | `@MaxLength(6)` on an **array** always fails — class-validator's `maxLength` returns false for non-strings | `@ArrayMaxSize(6)` |
+
+### Tier B — verified against the real Supabase project
+
+The project `PawLink` (`fymwcbevypwvtiocreuh`, eu-west-1, PostgreSQL 17) was paused and empty. After
+restoring it and applying the migrations, which is the stricter test — an empty `public`, so the
+migrations had to create PostGIS themselves rather than inherit it from a `postgis/postgis` image:
+
+| Tier B check | Result |
+|---|---|
+| `prisma migrate deploy` on an empty database | ✅ both migrations applied cleanly |
+| PostGIS created by the migration | ✅ `postgis 3.3.7 a0c7967`, GEOS 3.14.1, PROJ 9.7.1 |
+| the 3 `*_set_location` triggers and 4 GIST indexes | ✅ all present on Supabase |
+| drift (`migrate diff --exit-code`) | ✅ "No difference detected" |
+| `npm run seed` | ✅ **identical counts to the container** |
+| `npm run test:e2e` | ✅ **53/53** through the **session pooler** |
+| the trigger-maintained geography | ✅ all 12 cases in the Tizi Ouzou bbox have a non-null `location` |
+| `ST_Distance` nearest vet | ✅ 1.0 km — the same number the container produced |
+| e2e self-cleaning on Supabase | ✅ cases back to 27, `photo_probes` 0, `photo_hashes` 0 |
+
+**The bug Tier B caught that the container could not.** `.env.example` documented `DATABASE_URL` as
+the session pooler while showing the *direct* connection. The real pooler needs the **project ref in
+the username** (`postgres.PROJECT_REF`), otherwise Supavisor answers
+`(ENOIDENTIFIER) no tenant identifier provided (external_id or sni_hostname required)`; and the
+**session** pooler is port 5432 on the pooler host — port 6543 is the transaction pooler, which
+breaks Prisma's prepared statements. The seed failed on exactly that before it passed.
+`.env.example` now states both rules.
+
+**One security finding, reported rather than acted on.** Supabase's advisories flag **Row Level
+Security disabled on all 18 tables**. That is deliberate — `docs/BACKEND_PROMPT.md` §2 says "only
+NestJS talks to the DB, RLS stays off", and the API connects as `postgres` — but it becomes live the
+moment anyone hands the anon key to a browser or subscribes to Realtime. Enabling RLS without
+policies would block all access, so the policies have to be designed first. Flagged, not applied.
+
+Still unproven for want of credentials: real Gemini vision, a valid Cloudinary signature, Twilio
+delivery, and the `gemini-flash-latest` alias. Each degrades gracefully.
 
 ## Deviations from the spec documents
 

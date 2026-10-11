@@ -274,18 +274,68 @@ The reason this section exists is that every one of them was found by *running* 
 
 ---
 
-## 8. What cannot be proven locally, and must be said out loud
+## 8. What could not be proven locally — and what Tier B closed
+
+**Tier B has now run**, against the real project `PawLink` (`fymwcbevypwvtiocreuh`, eu-west-1,
+PostgreSQL 17). The project was paused and had to be restored; it started with **0 tables and 0
+migrations**, i.e. the migrations were proven against an empty database rather than a pre-seeded one.
+
+| Tier B check | Result |
+|---|---|
+| `prisma migrate deploy` on the real project | ✅ both migrations applied cleanly to an empty `public` |
+| **PostGIS created by the migration** | ✅ `postgis 3.3.7 a0c7967`, GEOS 3.14.1, PROJ 9.7.1 |
+| the 3 `*_set_location` triggers | ✅ `cases`, `services`, `adoptions` |
+| the 4 GIST indexes | ✅ `cases_location_gist`, `services_location_gist`, `zones_polygon_gist`, `adoptions_location_gist` |
+| `prisma migrate status` | ✅ "Database schema is up to date!" |
+| drift (`migrate diff --exit-code`) | ✅ "No difference detected", exit 0 |
+| the session pooler at runtime | ✅ seed + 53 e2e tests through `…pooler.supabase.com:5432` |
+| `npm run seed` | ✅ users:11 zones:1 cases:27 helpers:13 trustChecks:189 services:14 reviews:5 adoptions:6 — **same counts as the container** |
+| `npm run test:e2e` | ✅ **53/53** — 32 of them Phase 2, including every bbox and `ST_Distance` assertion |
+| the trigger-maintained geography | ✅ all 12 cases in `bbox 3.9,36.5,4.4,36.9` have a non-null `location` |
+| the map query on real PostGIS | ✅ 12 cases, 6 urgent — identical to the container |
+| `ST_Distance` nearest services | ✅ Cabinet Dr. Taleb **1.0 km**, then 16.3 km, 105.2 km — first row identical to the container |
+| e2e self-cleaning on Supabase | ✅ cases back to 27, `photo_probes` 0, `photo_hashes` 0 |
+
+Nothing in Phase 2 was container-specific. The one real difference — **the migration has to create
+the PostGIS extension itself**, because the `postgis/postgis` image ships it pre-installed — is now
+proven too, and it works because `CREATE EXTENSION IF NOT EXISTS postgis` sits at the top of the
+migration, before the first geography column.
+
+### Still unproven, and why
 
 | Gap | Why | What closes it |
 |---|---|---|
-| the Supabase session pooler (port 6543) | no credentials | Tier B |
 | real Gemini vision for `animalDetected` | needs `GEMINI_API_KEY` | a Tier B run with `AI_PROVIDER=gemini` |
 | Cloudinary signature validity | needs the API secret | a Tier B run with the keys set |
 | Twilio delivery | needs the account | a Tier B run with `SMS_PROVIDER=twilio` |
 | a real camera photo's EXIF | fixtures are generated | one photo from a phone, confirmed by eye |
+| the Gemini provider's real endpoint | `gemini-flash-latest` is an unverified alias | one call with a key; a 404 is an env change, not a code change |
 
-Every one of these degrades gracefully by design, so their absence must not be mistaken for a
-failure — but "not verified here" belongs in the report, not in a footnote.
+Every one of these degrades gracefully by design, so their absence is not a failure — but it is
+stated rather than dropped in a footnote.
+
+### One security finding, reported not acted on
+
+Supabase's own advisories flag **Row Level Security disabled on all 18 tables**, meaning the `anon`
+and `authenticated` roles can read and write every row. That is a real exposure *if* the anon key is
+ever handed to a client. It is **deliberate here**: `docs/BACKEND_PROMPT.md` §2 states "only NestJS
+talks to the DB, RLS stays off", and the API connects as `postgres`, so the tables are not reachable
+through Supabase's client libraries in this architecture.
+
+It becomes a live problem the moment anyone subscribes to Realtime or queries Supabase from a
+browser with the anon key. The remediation SQL is `ALTER TABLE … ENABLE ROW LEVEL SECURITY` — but
+enabling RLS without policies blocks all access, so the policies have to be designed before the
+switch is flipped. Flagged for the team, not applied.
+
+### The one bug Tier B caught that the container could not
+
+`DATABASE_URL` was wrong and `.env.example` documented it wrongly too: it claimed to be the session
+pooler while showing the *direct* connection. The real pooler needs the **project ref in the
+username** (`postgres.PROJECT_REF`) — without it Supavisor answers
+`(ENOIDENTIFIER) no tenant identifier provided (external_id or sni_hostname required)` — and the
+**session** pooler is port 5432 on the pooler host, while 6543 is the transaction pooler that breaks
+Prisma's prepared statements. The seed failed on exactly that and now passes. `.env.example` has
+been corrected with both rules spelled out.
 
 ---
 
@@ -304,7 +354,8 @@ phase. Every row below is the output of the command in the second column.
 | unit tests green | `npm test` | ✅ **278/278** (18 suites) |
 | e2e green with a DB | `npm run test:e2e` (Tier A) | ✅ **53/53** — 21 Phase 1 + 32 Phase 2, 0 skipped |
 | migration applies, no drift | §3 | ✅ 2 migrations applied · "Database schema is up to date!" · "No difference detected" (exit 0) |
-| seed still runs, counts unchanged | §3 | ✅ users:11 zones:1 cases:27 helpers:13 trustChecks:189 services:14 reviews:5 adoptions:6 |
+| seed still runs, counts unchanged | §3 | ✅ users:11 zones:1 cases:27 helpers:13 trustChecks:189 services:14 reviews:5 adoptions:6 — on the container **and** on real Supabase |
+| **Tier B: migrations + PostGIS + the pooler + e2e on the real project** | §8 | ✅ 53/53, no drift, PostGIS created by the migration itself, trigger-maintained geography verified, and one connection-string bug found and fixed |
 | `POST /cases` returns `ai` + `trust` | §4.2 | ✅ both present; `trust.level: "verified"`, `moderation` null |
 | the created case appears in the bbox | §4.2 #2 | ✅ present in `bbox=3.9,36.5,4.4,36.9`, absent from an Algiers-only bbox |
 | a suspicious case is hidden | §4.2 #4, §4.7 | ✅ Paris pin → `pending`, absent from the public bbox, present in `GET /admin/cases`; reused photo → `duplicate: false` + detail → `pending` |
