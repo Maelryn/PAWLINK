@@ -4,6 +4,9 @@ import { Check, MessageCircle, Pencil, Phone, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/primitives";
+import { ConfirmButton } from "@/components/ui/ConfirmButton";
+import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { store, useStore } from "@/lib/store";
 import type { User } from "@/lib/types";
@@ -45,6 +48,11 @@ export function MyAdoptions({ me }: { me: User }) {
               {t.market[a.status]}
             </span>
           </Link>
+          {a.status !== "adopted" && !a.reservedFor && (
+            <ConfirmButton onConfirm={() => { store.removeAdoption(a.id); toast(t.life.deleted); }} className="flex h-10 shrink-0 items-center justify-center rounded-full bg-surface-2 px-3 text-label-2" armedClassName="bg-urgent text-white text-[12px] font-semibold">
+              <Trash2 className="h-4 w-4" aria-label={t.life.delete} />
+            </ConfirmButton>
+          )}
           {a.status !== "adopted" && (
             <Link href={`/adopt/new?edit=${a.id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-2 text-label-2 transition-transform active:scale-90" aria-label={t.post.edit} title={t.post.edit}>
               <Pencil className="h-4 w-4" />
@@ -67,13 +75,15 @@ export function MyAdoptions({ me }: { me: User }) {
               </div>
             </div>
             <p className="mt-2 text-[14px]">{r.message}</p>
-            {r.status === "sent" ? (
+            {r.status === "sent" && a.reservedFor ? (
+              <div className="mt-2 text-[12.5px] font-medium text-label-2">{t.life.busy}</div>
+            ) : r.status === "sent" ? (
               <div className="mt-3 flex gap-2">
                 <button type="button" onClick={() => store.answerRequest(r.id, "accepted")} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-stable text-[13.5px] font-semibold text-white"><Check className="h-4 w-4" /> {t.market.accept}</button>
                 <button type="button" onClick={() => store.answerRequest(r.id, "declined")} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-surface text-[13.5px] font-semibold"><X className="h-4 w-4" /> {t.market.decline}</button>
               </div>
             ) : (
-              <div className={cn("mt-2 text-[13px] font-semibold", r.status === "accepted" ? "text-stable" : "text-urgent")}>{t.market.status[r.status]}</div>
+              <div className={cn("mt-2 text-[13px] font-semibold", r.status === "accepted" ? "text-stable" : r.status === "cancelled" ? "text-label-2" : "text-urgent")}>{t.market.status[r.status]}</div>
             )}
             {r.status === "accepted" && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -83,10 +93,18 @@ export function MyAdoptions({ me }: { me: User }) {
                     <a href={`https://wa.me/${r.fromPhone.replace(/[\s+]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full bg-stable text-white" aria-label={t.market.whatsapp}><MessageCircle className="h-4 w-4" /></a>
                   </>
                 )}
-                {a.status === "approved" && (
-                  <button type="button" onClick={() => store.markAdopted(a.id)} className="ms-auto flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13.5px] font-semibold text-stable">
-                    🎉 {t.market.markAdopted}
-                  </button>
+                {a.status === "approved" && a.reservedFor === r.id && (
+                  <div className="mt-1 w-full space-y-2">
+                    <p className="text-[12.5px] text-label-2">{t.life.howEnded}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => { store.markAdopted(a.id); toast.success(t.life.adopted); }} className="flex h-10 items-center justify-center rounded-full bg-stable text-[13.5px] font-semibold text-white">
+                        {t.life.adopted}
+                      </button>
+                      <ConfirmButton onConfirm={() => { store.reopenAdoption(a.id); toast(t.life.reopened); }} className="h-10 rounded-full bg-surface text-[13.5px] font-semibold">
+                        {t.life.notWorked}
+                      </ConfirmButton>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -106,7 +124,12 @@ export function MyAdoptions({ me }: { me: User }) {
               <div className="font-semibold">{a.name}</div>
               <div className={cn("text-[12.5px] font-medium", r.status === "accepted" ? "text-stable" : r.status === "declined" ? "text-urgent" : "text-monitor")}>{t.market.status[r.status]}</div>
             </Link>
-            {r.status === "accepted" && phone && (
+            {(r.status === "sent" || r.status === "accepted") && a.status !== "adopted" && (
+              <ConfirmButton onConfirm={() => { store.cancelRequest(r.id); toast(t.life.cancelled); }} className="h-9 shrink-0 rounded-full bg-surface-2 px-3 text-[12.5px] font-semibold text-label-2">
+                {t.verify.cancel}
+              </ConfirmButton>
+            )}
+            {r.status === "accepted" && a.status !== "adopted" && phone && (
               <>
                 <a href={`tel:${phone}`} className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-white" aria-label={t.common.call}><Phone className="h-4 w-4" /></a>
                 <a href={`https://wa.me/${phone.replace("+", "")}`} className="flex h-9 w-9 items-center justify-center rounded-full bg-stable text-white" aria-label={t.market.whatsapp}><MessageCircle className="h-4 w-4" /></a>
@@ -135,7 +158,7 @@ export function AdoptionQueue() {
           <div className="flex gap-1.5">{a.photos.map((p, i) => <Thumb key={i} src={p} />)}</div>
           <div className="min-w-0 flex-1">
             <div className="font-semibold">{a.name} · {t.common.species[a.species]}</div>
-            <div className="truncate text-[12.5px] text-label-2">{a.shelter.name} · {a.location.address}</div>
+            <div className="truncate text-[12.5px] text-label-2">{a.shelter.name} · {a.location.address}{a.ownerPhone && <> · <a href={`tel:${a.ownerPhone.replace(/\s/g, "")}`} className="font-semibold text-accent" dir="ltr">{a.ownerPhone}</a></>}</div>
           </div>
           <button type="button" onClick={() => store.moderateAdoption(a.id, "approved")} className="flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13px] font-semibold text-stable"><Check className="h-4 w-4" /> {t.admin.approve}</button>
           <button type="button" onClick={() => store.moderateAdoption(a.id, "rejected")} className="flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-label-2"><X className="h-4 w-4" /> {t.market.decline}</button>
@@ -210,7 +233,7 @@ export function ServiceQueue() {
         <div key={s.id} className="flex flex-wrap items-center gap-3 border-t border-separator px-5 py-3">
           <div className="min-w-0 flex-1">
             <div className="font-semibold">{s.name} · {t.common.service[s.type]}</div>
-            <div className="truncate text-[12.5px] text-label-2">{s.location.address} · {s.phone}</div>
+            <div className="truncate text-[12.5px] text-label-2">{s.location.address}{s.phone && <> · <a href={`tel:${s.phone.replace(/\s/g, "")}`} className="font-semibold text-accent" dir="ltr">{s.phone}</a></>}</div>
           </div>
           <button type="button" onClick={() => store.moderateService(s.id, true)} className="flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13px] font-semibold text-stable"><Check className="h-4 w-4" /> {t.admin.approve}</button>
           <button type="button" onClick={() => store.moderateService(s.id, false)} className="flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-label-2"><X className="h-4 w-4" /> {t.market.decline}</button>

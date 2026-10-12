@@ -137,7 +137,7 @@ export function BusinessPanel({ me }: { me: User }) {
                     <button type="button" onClick={() => store.answerBooking(b.id, "declined")} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface" aria-label={t.biz.decline}><X className="h-4 w-4" /></button>
                   </div>
                 ) : (
-                  <span className={cn("text-[12.5px] font-semibold", b.status === "confirmed" ? "text-stable" : "text-urgent")}>{b.status === "confirmed" ? t.biz.confirm : t.biz.decline} ✓</span>
+                  <span className={cn("text-[12.5px] font-semibold", b.status === "confirmed" ? "text-stable" : b.status === "cancelled" ? "text-label-2" : "text-urgent")}>{b.status === "cancelled" ? t.market.status.cancelled : `${b.status === "confirmed" ? t.biz.confirm : t.biz.decline} ✓`}</span>
                 )}
               </div>
               {b.reason && <p className="mt-2 text-[14px]">{b.reason}</p>}

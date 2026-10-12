@@ -1,6 +1,6 @@
 "use client";
 
-import { flagCase, voteOnCase } from "@/lib/cases";
+import { alreadyFlagged, flagCase, voteOnCase } from "@/lib/cases";
 
 import { Check, CircleHelp, Flag, ShieldCheck, ShieldAlert, Shield, X } from "lucide-react";
 import { useState } from "react";
@@ -35,6 +35,7 @@ export function TrustBadge({ level, className }: { level: TrustLevel; className?
 /** Checks list + community actions ("I see it too" / "report as fake"). */
 export function TrustPanel({ c, canAct }: { c: Case; canAct: boolean }) {
   const { t } = useI18n();
+  const me = useSession();
   if (!c.trust) return null;
   return (
     <section id="verify" className="card scroll-mt-24 rounded-[32px] p-6">
@@ -65,17 +66,18 @@ export function TrustPanel({ c, canAct }: { c: Case; canAct: boolean }) {
         {t.verify.count(c.trust.confirmedBy?.length ?? c.trust.confirmations, c.trust.deniedBy?.length ?? 0)}
       </div>
       {canAct && c.status !== "resolved" && <NearbyCheck c={c} />}
-      {canAct && (
+      {canAct && me && (
         <button
           type="button"
+          disabled={alreadyFlagged(c, me)}
           onClick={async () => {
-            const r = await flagCase(c);
+            const r = await flagCase(c, me);
             if (r.ok) toast(t.trust.flagged);
             else toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
           }}
-          className="mt-3 flex h-10 items-center gap-1.5 rounded-full px-1 text-[13.5px] font-semibold text-label-2 transition-opacity hover:opacity-70"
+          className="mt-3 flex h-10 items-center gap-1.5 rounded-full px-1 text-[13.5px] font-semibold text-label-2 transition-opacity hover:opacity-70 disabled:opacity-60"
         >
-          <Flag className="h-4 w-4" /> {t.trust.flag}
+          <Flag className="h-4 w-4" /> {alreadyFlagged(c, me) ? t.trust.flagged : t.trust.flag}
         </button>
       )}
     </section>

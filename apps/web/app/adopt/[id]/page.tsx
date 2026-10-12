@@ -21,7 +21,11 @@ import { store, useStore } from "@/lib/store";
 import { useSession } from "@/lib/auth";
 import { Segmented } from "@/components/ui/primitives";
 import { AnimatePresence } from "motion/react";
-import { MessageCircle, Pencil, Phone } from "lucide-react";
+import { ChevronRight, MessageCircle, Pencil, Phone } from "lucide-react";
+import { UserBadges } from "@/components/account/UserBadges";
+import { ConfirmButton } from "@/components/ui/ConfirmButton";
+import { Avatar } from "@/components/ui/primitives";
+import { badgesOf } from "@/lib/badges";
 import { ButtonLink } from "@/components/ui/Button";
 import { SPECIES_EMOJI } from "@/lib/species";
 
@@ -32,13 +36,21 @@ export default function AdoptionProfilePage() {
   const me = useSession();
   const dt = useDemoText();
   const router = useRouter();
-  const myReq = useStore((s) => s.requests).find((r) => r.adoptionId === id && r.from.id === me?.id);
+  const allRequests = useStore((s) => s.requests);
+  const allUsers = useStore((s) => s.users);
+  const allCases = useStore((s) => s.cases);
+  const allAdoptions = useStore((s) => s.adoptions);
+  // a cancelled request counts as no request: the person can ask again
+  const myReq = allRequests.find((r) => r.adoptionId === id && r.from.id === me?.id && r.status !== "cancelled");
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState("");
   const [housing, setHousing] = useState<"apartment" | "house" | "farm">("house");
   const [exp, setExp] = useState(true);
   // listings waiting for moderation (or refused) are only visible to their owner and admins
-  const visible = !!a && (a.status === "approved" || a.ownerId === me?.id || me?.role === "admin");
+  // (someone who asked for this animal keeps seeing it, so they know how it ended)
+  const visible = !!a && (a.status === "approved" || a.ownerId === me?.id || me?.role === "admin" || !!myReq);
+  const reservedReq = allRequests.find((r) => r.id === a?.reservedFor);
+  const owner = allUsers.find((u) => u.id === a?.ownerId);
   if (!a || !visible)
     return (
       <>
@@ -183,14 +195,16 @@ export default function AdoptionProfilePage() {
             </Reveal>
 
             <Reveal delay={0.2}>
-              <section className="card flex items-center gap-4 rounded-[30px] p-5">
-                <Emoji3D src="/3d/home.png" size={48} />
-                <div className="flex-1">
-                  <div className="text-[12.5px] text-label-2">{t.adopt.shelter}</div>
-                  <div className="text-[16px] font-semibold">{a.shelter.name}</div>
-                  <div className="text-[13px] text-label-2">{a.location.address}</div>
+              <Link href={`/users/${a.ownerId}`} className="card flex items-center gap-4 rounded-[30px] p-5 transition-transform active:scale-[0.98]">
+                <Avatar name={a.shelter.name} photo={owner?.photo} size={52} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12.5px] text-label-2">{t.profile.publishedBy}</div>
+                  <div className="truncate text-[16px] font-semibold">{a.shelter.name}</div>
+                  {owner && <UserBadges badges={badgesOf(owner, allCases, allAdoptions)} compact className="mt-1" />}
+                  <div className="truncate text-[13px] text-label-2">{a.location.address}</div>
                 </div>
-              </section>
+                <ChevronRight className="h-5 w-5 shrink-0 text-label-3 rtl:rotate-180" />
+              </Link>
             </Reveal>
           </div>
         </div>
@@ -200,6 +214,18 @@ export default function AdoptionProfilePage() {
         <motion.div initial={{ y: 80 }} animate={{ y: 0 }} transition={{ type: "spring", stiffness: 220, damping: 24, delay: 0.4 }} className="pointer-events-auto glass-strong w-full max-w-[480px] rounded-[30px] p-2">
           <AnimatePresence mode="wait" initial={false}>
             {mine ? (
+              a.reservedFor && reservedReq ? (
+              <motion.div key="reserved" className="space-y-2 p-2">
+                <div className="px-2 text-[14px] font-semibold">{t.life.withName(reservedReq.from.name)}</div>
+                <p className="px-2 text-[12.5px] text-label-2">{t.life.howEnded}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={() => { store.markAdopted(a.id); toast.success(t.life.adopted); }}>{t.life.adopted}</Button>
+                  <ConfirmButton onConfirm={() => { store.reopenAdoption(a.id); toast(t.life.reopened); }} className="h-11 rounded-full bg-surface-2 text-[14px] font-semibold">
+                    {t.life.notWorked}
+                  </ConfirmButton>
+                </div>
+              </motion.div>
+              ) : (
               <motion.div key="mine" className="flex items-center gap-2 p-1">
                 <div className="min-w-0 flex-1 px-3">
                   <div className="truncate text-[14px] font-semibold">{t.market.ownListing} · {t.market[a.status]}</div>
@@ -211,18 +237,33 @@ export default function AdoptionProfilePage() {
                   </ButtonLink>
                 )}
               </motion.div>
+              )
             ) : myReq ? (
               <motion.div key="req" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2 p-2">
                 <div className="flex items-center justify-between px-2 text-[14px]">
                   <span className="text-label-2">{t.market.yourRequest}</span>
                   <span className={cn("font-semibold", myReq.status === "accepted" ? "text-stable" : myReq.status === "declined" ? "text-urgent" : "text-monitor")}>{t.market.status[myReq.status]}</span>
                 </div>
-                {myReq.status === "accepted" && phone && (
+                {myReq.status === "accepted" && a.status !== "adopted" && phone && (
                   <div className="flex gap-2">
                     <ButtonLink href={`tel:${phone}`} className="flex-1"><Phone className="h-4 w-4" /> {t.common.call}</ButtonLink>
                     <ButtonLink href={`https://wa.me/${phone.replace("+", "")}`} variant="tinted" className="flex-1"><MessageCircle className="h-4 w-4" /> {t.market.whatsapp}</ButtonLink>
                   </div>
                 )}
+                {a.status === "adopted" && <p className="px-2 text-[13px] font-semibold text-stable">🎉 {t.market.adopted}</p>}
+                {(myReq.status === "sent" || myReq.status === "accepted") && a.status !== "adopted" && (
+                  <ConfirmButton onConfirm={() => { store.cancelRequest(myReq.id); toast(t.life.cancelled); }} className="h-10 w-full rounded-full text-[13.5px] font-semibold text-label-2">
+                    {t.life.cancelReq}
+                  </ConfirmButton>
+                )}
+              </motion.div>
+            ) : a.reservedFor || a.status !== "approved" ? (
+              <motion.div key="busy" className="flex items-center gap-3 px-4 py-3">
+                <Emoji3D src="/3d/hug.png" size={30} className="shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-[14.5px] font-semibold">{a.status === "adopted" ? t.market.adopted : t.life.reserved}</div>
+                  {a.status !== "adopted" && <div className="text-[12.5px] leading-snug text-label-2">{t.life.reservedBody}</div>}
+                </div>
               </motion.div>
             ) : open ? (
               <motion.form

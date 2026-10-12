@@ -53,7 +53,10 @@ export const voteOnCase = async (c: Case, userId: string, seen: boolean): Promis
 export const proposeCaseEdit = (c: Case, patch: { description: string; conditionTags: string[] }) => store.proposeCaseEdit(c.id, patch);
 export const deleteCase = (c: Case) => store.removeCase(c.id);
 
-export const flagCase = (c: Case) => run(() => casesApi.flag(c.id), () => store.flag(c.id));
+export const flagCase = (c: Case, me: User) => run(() => casesApi.flag(c.id), () => void store.flag(c.id, me.id));
+export const alreadyFlagged = (c: Case, me: User) => !!c.trust?.flaggedBy?.includes(me.id);
+/** Demo data only for now. */
+export const withdrawHelp = (c: Case, me: User) => store.withdrawHelp(c.id, me.id);
 
 export const moderateCase = (c: Case, decision: "approved" | "hidden") =>
   run(() => casesApi.moderate(c.id, decision), () => store.moderate(c.id, decision));

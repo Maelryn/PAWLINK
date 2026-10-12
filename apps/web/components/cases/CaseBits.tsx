@@ -1,8 +1,10 @@
 "use client";
 
+import { ConfirmButton } from "@/components/ui/ConfirmButton";
+
 import { useCaseText } from "@/lib/i18n/content";
 
-import { offerHelp } from "@/lib/cases";
+import { offerHelp, withdrawHelp } from "@/lib/cases";
 
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Clock, MapPin } from "lucide-react";
@@ -95,6 +97,22 @@ export function HelpPicker({ c, onDone }: { c: Case; onDone?: () => void }) {
   const [picked, setPicked] = useState<HelpType | null>(null);
   const options: HelpType[] = ["transport", "medical", "foster", "food", "search", "boarding", "funds"];
   if (user && user.id === c.reporter.id) return <OwnReport c={c} />;
+  const helping = user ? c.helpers.find((h) => h.user.id === user.id) : undefined;
+  if (helping && user)
+    return (
+      <div className="rounded-[20px] bg-stable-soft p-4">
+        <div className="flex items-center gap-3">
+          <Emoji3D src={HELP_EMOJI[helping.helpType]} size={34} className="shrink-0" />
+          <div className="min-w-0">
+            <div className="text-[16px] font-bold">{t.life.helping}</div>
+            <div className="text-[13.5px] text-label-2">{t.common.help[helping.helpType]}</div>
+          </div>
+        </div>
+        <ConfirmButton onConfirm={() => { withdrawHelp(c, user); toast(t.life.stopped); }} className="mt-3 h-10 w-full rounded-full bg-surface text-[13.5px] font-semibold text-label-2">
+          {t.life.stopHelp}
+        </ConfirmButton>
+      </div>
+    );
   return (
     <div>
       <div className="text-[19px] font-bold tracking-[-0.02em]">{t.case.helpTitle}</div>

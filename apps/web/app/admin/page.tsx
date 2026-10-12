@@ -6,7 +6,7 @@ import { moderateCase } from "@/lib/cases";
 
 import { RequireAuth } from "@/components/layout/RequireAuth";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, EyeOff, LayoutGrid, ListChecks, Map as MapIcon, Plus, Users } from "lucide-react";
+import { Check, EyeOff, LayoutGrid, ListChecks, Map as MapIcon, Plus, Users, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -16,7 +16,6 @@ import { CountUp } from "@/components/motion";
 import { Button } from "@/components/ui/Button";
 import { Avatar, CasePhoto, Emoji3D, TimeAgo, TriageBadge } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
-import { USERS } from "@/lib/mock/data";
 import { suggestZones, zoneStats, ZONE_PLACES } from "@/lib/zones";
 import { SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
@@ -253,6 +252,8 @@ function Moderation() {
   const ct = useCaseText();
   const { t } = useI18n();
   const cases = useStore((s) => s.cases);
+  const users = useStore((s) => s.users);
+  const phoneOf = (id: string) => users.find((u) => u.id === id)?.phone;
   const queue = [...cases].sort((a, b) => (a.moderation === "pending" ? -1 : 0) - (b.moderation === "pending" ? -1 : 0) || (a.trust?.score ?? 1) - (b.trust?.score ?? 1));
   return (
     <section className="card overflow-hidden rounded-[28px]">
@@ -282,6 +283,11 @@ function Moderation() {
                       <div className="text-[12.5px] text-label-2">{c.location.address}</div>
                     </div>
                   </Link>
+                  {phoneOf(c.reporter.id) && (
+                    <a href={`tel:${phoneOf(c.reporter.id)!.replace(/\s/g, "")}`} className="mt-1 inline-flex items-center gap-1 text-[12.5px] font-semibold text-accent" dir="ltr">
+                      <Phone className="h-3.5 w-3.5" /> {c.reporter.name} · {phoneOf(c.reporter.id)}
+                    </a>
+                  )}
                 </td>
                 <td className="px-3">
                   <TriageBadge triage={c.triage} size="sm" />
@@ -461,18 +467,26 @@ function Zones() {
 
 function UsersTable() {
   const { t } = useI18n();
+  const users = useStore((s) => s.users);
   const color: Record<string, string> = { reporter: "var(--label-2)", volunteer: "var(--stable)", vet: "var(--accent)", admin: "var(--accent-2)" };
   return (
     <section className="card overflow-hidden rounded-[28px]">
       <h2 className="p-5 text-[19px] font-bold">{t.admin.users}</h2>
       <div className="divide-y divide-separator border-t border-separator">
-        {USERS.map((u) => (
+        {users.map((u) => (
           <div key={u.id} className="flex items-center gap-3 px-5 py-3">
-            <Avatar name={u.name} size={38} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[15px] font-semibold">{u.name}</div>
-              <div className="text-[12.5px] text-label-2">{u.helpTypes?.map((h) => t.common.help[h]).join(" · ") || "—"}</div>
-            </div>
+            <Link href={`/users/${u.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+              <Avatar name={u.name} photo={u.photo} size={38} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[15px] font-semibold">{u.name}</div>
+                <div className="truncate text-[12.5px] text-label-2">{u.city ?? "—"}{u.helpTypes?.length ? ` · ${u.helpTypes.map((h) => t.common.help[h]).join(" · ")}` : ""}</div>
+              </div>
+            </Link>
+            {u.phone && (
+              <a href={`tel:${u.phone.replace(/\s/g, "")}`} className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-accent-soft px-3 text-[13px] font-semibold text-accent" dir="ltr" title={u.phone}>
+                <Phone className="h-4 w-4" /> <span className="max-md:hidden">{u.phone}</span>
+              </a>
+            )}
             {u.rating && <span className="text-[13px] font-semibold tabular-nums text-label-2">★ {u.rating}</span>}
             <span className="rounded-full px-3 py-1 text-[12.5px] font-semibold" style={{ color: color[u.role], background: `color-mix(in srgb, ${color[u.role]} 14%, transparent)` }}>
               {t.dashboard.roles[u.role]}

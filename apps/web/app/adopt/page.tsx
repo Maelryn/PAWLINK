@@ -138,6 +138,7 @@ export default function AdoptPage() {
                     <span className="absolute bottom-2.5 start-2.5 flex items-center gap-1 rounded-full bg-white/90 py-0.5 pe-2.5 ps-1 text-[12px] font-bold text-[#1d1d1f]">
                       {t.adopt.age(a.ageMonths)}
                     </span>
+                    {a.reservedFor && <span className="absolute start-2.5 top-2.5 rounded-full bg-monitor px-2 py-0.5 text-[11px] font-bold text-white">{t.life.reserved}</span>}
                   </div>
                   <div className="px-1 pt-2">
                     <div className="flex items-center justify-between gap-2">

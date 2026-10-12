@@ -25,7 +25,9 @@ import { HELP_EMOJI, SPECIES_EMOJI } from "@/lib/species";
 import { LIFETIME_DAYS, msLeftOnMap, store, useStore } from "@/lib/store";
 import { Burst } from "@/components/ui/Sparkles";
 import { Button } from "@/components/ui/Button";
-import { CheckCircle2, Clock } from "lucide-react";
+import { CheckCircle2, ChevronRight, Clock } from "lucide-react";
+import { UserBadges } from "@/components/account/UserBadges";
+import { badgesOf } from "@/lib/badges";
 import { Suspense, useState } from "react";
 import { ReporterTools } from "@/components/cases/ReporterTools";
 import { useSession } from "@/lib/auth";
@@ -41,6 +43,9 @@ export default function CasePage() {
   const [party, setParty] = useState(false);
   const ct = useCaseText();
   const zones = useStore((s) => s.zones);
+  const allCases = useStore((s) => s.cases);
+  const allAdoptions = useStore((s) => s.adoptions);
+  const reporter = useStore((s) => s.users).find((u) => u.id === c?.reporter.id);
 
   if (!c)
     return (
@@ -136,13 +141,15 @@ export default function CasePage() {
                     </span>
                   ))}
                 </div>
-                <div className="mt-5 flex items-center gap-3 border-t border-separator pt-4">
+                <Link href={`/users/${c.reporter.id}`} className="mt-5 flex items-center gap-3 border-t border-separator pt-4 transition-opacity active:opacity-70">
                   <Avatar name={c.reporter.name} size={40} />
-                  <div className="text-[14px]">
+                  <div className="min-w-0 flex-1 text-[14px]">
                     <div className="text-label-2">{t.common.reportedBy}</div>
-                    <div className="font-semibold">{c.reporter.name}</div>
+                    <div className="truncate font-semibold">{c.reporter.name}</div>
+                    {reporter && <UserBadges badges={badgesOf(reporter, allCases, allAdoptions)} compact className="mt-1" />}
                   </div>
-                </div>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-label-3 rtl:rotate-180" />
+                </Link>
                 {user?.id === c.reporter.id && (
                   <Suspense>
                     <ReporterTools c={c} />

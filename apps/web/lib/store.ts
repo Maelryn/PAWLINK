@@ -258,11 +258,22 @@ export const store = {
       return { ...c, updatedAt: now(), trust: { ...c.trust, confirmations, score: Math.min(1, c.trust.score + 0.08), level: c.trust.level === "unverified" && confirmations >= 2 ? "verified" : c.trust.level } };
     });
   },
-  flag(caseId: string) {
+  /** Returns false when this person already flagged the case (3 different people send it back to moderators). */
+  flag(caseId: string, userId: string) {
+    const c0 = state.cases.find((x) => x.id === caseId);
+    if (!c0?.trust || c0.trust.flaggedBy?.includes(userId)) return false;
     updateCase(caseId, (c) => {
       if (!c.trust) return c;
       const flags = c.trust.flags + 1;
-      return { ...c, trust: { ...c.trust, flags }, moderation: flags >= 3 ? "pending" : c.moderation };
+      return { ...c, trust: { ...c.trust, flags, flaggedBy: [...(c.trust.flaggedBy ?? []), userId] }, moderation: flags >= 3 ? "pending" : c.moderation };
+    });
+    return true;
+  },
+  /** A helper can't help anymore: they leave the case (with nobody left, it's open again). */
+  withdrawHelp(caseId: string, userId: string) {
+    updateCase(caseId, (c) => {
+      const helpers = c.helpers.filter((h) => h.user.id !== userId);
+      return { ...c, helpers, status: c.status === "in_progress" && helpers.length === 0 ? "open" : c.status, updatedAt: now() };
     });
   },
   moderate(caseId: string, decision: "approved" | "hidden") {
@@ -322,7 +333,13 @@ export const store = {
     set({ adoptions: state.adoptions.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
   },
   removeAdoption(id: string) {
-    set({ adoptions: state.adoptions.filter((a) => a.id !== id), requests: state.requests.filter((r) => r.adoptionId !== id) });
+    const a = state.adoptions.find((x) => x.id === id);
+    const waiting = state.requests.filter((r) => r.adoptionId === id && r.status === "sent");
+    set({
+      adoptions: state.adoptions.filter((a) => a.id !== id),
+      requests: state.requests.filter((r) => r.adoptionId !== id),
+      notifications: [...waiting.flatMap((r) => notify(r.from.id, "adoptDeclined", a?.name ?? "", "/adopt")), ...state.notifications],
+    });
   },
   moderateAdoption(id: string, status: "approved" | "rejected") {
     const a = state.adoptions.find((x) => x.id === id);
@@ -352,7 +369,40 @@ export const store = {
   },
   /** PATCH /adoptions/:id { status: "adopted" } — the owner confirms the animal found its family. */
   markAdopted(id: string) {
-    set({ adoptions: state.adoptions.map((x) => (x.id === id ? { ...x, status: "adopted" } : x)) });
+    const a = state.adoptions.find((x) => x.id === id);
+    if (!a) return;
+    // the adopter is thanked, everyone still waiting gets a clear "no" instead of waiting forever
+    const waiting = state.requests.filter((r) => r.adoptionId === id && r.status === "sent");
+    const chosen = state.requests.find((r) => r.id === a.reservedFor);
+    set({
+      adoptions: state.adoptions.map((x) => (x.id === id ? { ...x, status: "adopted", reservedFor: undefined } : x)),
+      requests: state.requests.map((r) => (r.adoptionId === id && r.status === "sent" ? { ...r, status: "declined" } : r)),
+      notifications: [
+        ...notify(chosen?.from.id, "adoptDone", a.name, `/adopt/${id}`),
+        ...waiting.flatMap((r) => notify(r.from.id, "adoptDeclined", a.name, `/adopt/${id}`)),
+        ...state.notifications,
+      ],
+    });
+  },
+  /** The accepted adoption didn't happen: the animal is available again. */
+  reopenAdoption(id: string) {
+    const a = state.adoptions.find((x) => x.id === id);
+    const chosen = state.requests.find((r) => r.id === a?.reservedFor);
+    set({
+      adoptions: state.adoptions.map((x) => (x.id === id ? { ...x, reservedFor: undefined } : x)),
+      requests: state.requests.map((r) => (r.id === chosen?.id ? { ...r, status: "declined" } : r)),
+      notifications: [...notify(chosen?.from.id, "adoptDeclined", a?.name ?? "", `/adopt/${id}`), ...state.notifications],
+    });
+  },
+  /** The adopter withdraws their request (also after it was accepted). */
+  cancelRequest(id: string) {
+    const r = state.requests.find((x) => x.id === id);
+    const a = state.adoptions.find((x) => x.id === r?.adoptionId);
+    set({
+      requests: state.requests.map((x) => (x.id === id ? { ...x, status: "cancelled" } : x)),
+      adoptions: state.adoptions.map((x) => (x.id === a?.id && x.reservedFor === id ? { ...x, reservedFor: undefined } : x)),
+      notifications: [...notify(a?.ownerId, "adoptCancelled", r?.from.name ?? "", "/account?tab=adoption"), ...state.notifications],
+    });
   },
   sendRequest(r: AdoptionRequest) {
     const a = state.adoptions.find((x) => x.id === r.adoptionId);
@@ -365,8 +415,10 @@ export const store = {
   answerRequest(id: string, status: "accepted" | "declined") {
     const r = state.requests.find((x) => x.id === id);
     const a = state.adoptions.find((x) => x.id === r?.adoptionId);
+    if (status === "accepted" && a?.reservedFor) return; // one adoption at a time
     set({
       requests: state.requests.map((x) => (x.id === id ? { ...x, status } : x)),
+      adoptions: status === "accepted" ? state.adoptions.map((x) => (x.id === a?.id ? { ...x, reservedFor: id } : x)) : state.adoptions,
       notifications: [...notify(r?.from.id, status === "accepted" ? "adoptAccepted" : "adoptDeclined", a?.name ?? "", `/adopt/${a?.id}`), ...state.notifications],
     });
   },
@@ -438,6 +490,15 @@ export const store = {
     const s = state.services.find((x) => x.id === b.serviceId);
     set({ bookings: [b, ...state.bookings], notifications: [...notify(s?.ownerId, "booking", b.from.name, "/account?tab=pro"), ...state.notifications] });
   },
+  /** The client cancels their appointment. */
+  cancelBooking(id: string) {
+    const b = state.bookings.find((x) => x.id === id);
+    const s = state.services.find((x) => x.id === b?.serviceId);
+    set({
+      bookings: state.bookings.map((x) => (x.id === id ? { ...x, status: "cancelled" } : x)),
+      notifications: [...notify(s?.ownerId, "bookingCancelled", b?.from.name ?? "", "/account?tab=pro"), ...state.notifications],
+    });
+  },
   answerBooking(id: string, status: "confirmed" | "declined") {
     const b = state.bookings.find((x) => x.id === id);
     const s = state.services.find((x) => x.id === b?.serviceId);
@@ -469,6 +530,9 @@ export const store = {
   },
 
   /* ── notifications ── */
+  markRead(id: string) {
+    if (state.notifications.some((n) => n.id === id && !n.read)) set({ notifications: state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) });
+  },
   markAllRead(userId: string) {
     set({ notifications: state.notifications.map((n) => (n.userId === userId ? { ...n, read: true } : n)) });
   },

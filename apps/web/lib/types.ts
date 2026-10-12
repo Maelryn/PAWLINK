@@ -71,6 +71,8 @@ export interface Trust {
   /** People who answered "do you see this animal?" while standing near it (one answer each). */
   confirmedBy?: string[];
   deniedBy?: string[];
+  /** One "report as fake" per person. */
+  flaggedBy?: string[];
 }
 
 export interface AIAnalysis {
@@ -167,7 +169,7 @@ export interface Booking {
   time: string;
   animal: string;
   reason: string;
-  status: "sent" | "confirmed" | "declined";
+  status: "sent" | "confirmed" | "declined" | "cancelled";
   createdAt: string;
 }
 
@@ -189,7 +191,10 @@ export type NotificationKind =
   | "editApproved"
   | "editRejected"
   | "confirmAsk"
-  | "caseConfirmed";
+  | "caseConfirmed"
+  | "adoptCancelled"
+  | "adoptDone"
+  | "bookingCancelled";
 
 export interface AppNotification {
   id: string;
@@ -237,6 +242,8 @@ export interface AdoptionProfile {
   createdAt: string;
   /** Changes the owner made to a live listing: public only once a moderator approves them. */
   pendingEdit?: AdoptionEdit;
+  /** The request the owner accepted: the animal is "reserved" until the owner says how it ended. */
+  reservedFor?: string;
 }
 
 export type AdoptionEdit = Partial<Omit<AdoptionProfile, "id" | "status" | "ownerId" | "shelter" | "createdAt" | "pendingEdit">> & { at: string };
@@ -250,6 +257,6 @@ export interface AdoptionRequest {
   message: string;
   housing: "apartment" | "house" | "farm";
   experience: boolean;
-  status: "sent" | "accepted" | "declined";
+  status: "sent" | "accepted" | "declined" | "cancelled";
   createdAt: string;
 }

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { TopNav } from "@/components/layout/TopNav";
 import { MapView } from "@/components/map";
 import { Reveal } from "@/components/motion";
@@ -29,6 +30,7 @@ export default function ServicePage() {
   const dt = useDemoText();
   const s = useStore((st) => st.services).find((x) => x.id === id);
   const allReviews = useStore((st) => st.reviews);
+  const user = useSession();
 
   if (!s)
     return (
@@ -138,7 +140,7 @@ export default function ServicePage() {
                   ))}
                 </div>
               </div>
-              <ReviewForm serviceId={s.id} />
+              {s.ownerId !== user?.id && <ReviewForm serviceId={s.id} />}
               <div className="mt-4 space-y-3">
                 {reviews.length === 0 && <div className="py-4 text-center text-[14px] text-label-2">{t.services.noReviews}</div>}
                 {reviews.map((r) => (
@@ -178,14 +180,17 @@ function BookingCard({ s }: { s: Service }) {
   const me = useSession();
   const router = useRouter();
   const [f, setF] = useState({ date: "", time: "", animal: "", reason: "" });
-  const mine = useStore((st) => st.bookings).find((b) => b.serviceId === s.id && b.from.id === me?.id && b.status !== "declined");
-
   const today = new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd in local time
+  const mine = useStore((st) => st.bookings).find((b) => b.serviceId === s.id && b.from.id === me?.id && (b.status === "sent" || b.status === "confirmed") && b.date >= today);
+  const own = !!me && s.ownerId === me.id;
+
   const fmtDay = (d: string) => new Date(`${d}T12:00`).toLocaleDateString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { weekday: "short", day: "numeric", month: "short" });
   return (
     <section className="card rounded-[30px] p-5">
       <h2 className="flex items-center gap-2 text-[18px] font-bold"><Emoji3D src="/3d/bell.png" size={26} /> {t.svc.book}</h2>
-      {!s.pro ? (
+      {own ? (
+        <p className="mt-2 text-[14px] text-label-2">{t.life.yourService}</p>
+      ) : !s.pro ? (
         <p className="mt-2 text-[14px] text-label-2">{t.svc.onlyPro}</p>
       ) : mine ? (
         <div className="mt-3 rounded-[18px] bg-surface-2 p-4 text-[14px]">
@@ -193,6 +198,9 @@ function BookingCard({ s }: { s: Service }) {
           <div className={cn("mt-1 font-semibold", mine.status === "confirmed" ? "text-stable" : mine.status === "declined" ? "text-urgent" : "text-monitor")}>
             {mine.status === "confirmed" ? `${t.biz.confirm} ✓` : mine.status === "declined" ? t.svc.declined : t.market.status.sent}
           </div>
+          <ConfirmButton onConfirm={() => { store.cancelBooking(mine.id); toast(t.life.bookingCancelled); }} className="mt-3 h-10 w-full rounded-full bg-surface text-[13.5px] font-semibold text-urgent">
+            {t.life.cancelBooking}
+          </ConfirmButton>
         </div>
       ) : (
         <form

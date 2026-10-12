@@ -427,7 +427,7 @@ function Notifications({ me }: { me: User }) {
         <button type="button" onClick={() => store.markAllRead(me.id)} className="h-10 rounded-full px-3 text-[13.5px] font-semibold text-accent transition-colors hover:bg-accent-soft">{t.acct.markRead}</button>
       </div>
       {list.map((n) => (
-        <Link key={n.id} href={n.href} className={cn("flex items-center gap-3 rounded-[18px] p-3 hover:bg-surface-2", !n.read && "bg-accent-soft/60")}>
+        <Link key={n.id} href={n.href} onClick={() => store.markRead(n.id)} className={cn("flex items-center gap-3 rounded-[18px] p-3 hover:bg-surface-2", !n.read && "bg-accent-soft/60")}>
           <Emoji3D src="/3d/bell.png" size={30} />
           <div className="min-w-0 flex-1">
             <div className="text-[14.5px]">{t.notif[n.kind](n.subject)}</div>
