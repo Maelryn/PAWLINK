@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronLeft, Lock, Sparkles as SparkIcon, Store, X } from "lucide-react";
+import { Check, ChevronLeft, Lock, Sparkles as SparkIcon, Store, X, Ticket } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -75,7 +75,7 @@ export function Paywall({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-[#f2f2f7] px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 dark:bg-[#0b0b0d]">
+    <div className="relative flex h-full flex-col overflow-y-auto overflow-x-hidden bg-[#f2f2f7] px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 dark:bg-[#0b0b0d]">
       {/* soft animated glow + sparkles behind the icon */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[42%]">
         <motion.div
@@ -176,7 +176,7 @@ export function Paywall({ onClose }: { onClose: () => void }) {
                         {on && <Check className="h-4 w-4" strokeWidth={3} />}
                       </span>
                     </span>
-                    <span className="mt-2.5 flex items-start gap-2 border-t border-separator pt-2.5 text-[13px] text-label-2 [@media(max-height:800px)]:mt-2 [@media(max-height:800px)]:pt-2 [@media(max-height:800px)]:text-[12px]">
+                    <span className={cn("mt-2.5 flex items-start gap-2 border-t border-separator pt-2.5 text-[13px] text-label-2 [@media(max-height:800px)]:mt-2 [@media(max-height:800px)]:pt-2 [@media(max-height:800px)]:text-[12px]", !on && "[@media(max-height:720px)]:hidden")}>
                       <Store className="mt-0.5 h-4 w-4 shrink-0" /> {t.pay.features[tier]}
                     </span>
                   </span>
@@ -207,12 +207,12 @@ export function Paywall({ onClose }: { onClose: () => void }) {
             </motion.button>
 
             {code === null ? (
-              <button type="button" onClick={() => setCode("")} className="h-12 rounded-full bg-white text-[15px] font-semibold dark:bg-white/10">
-                {t.pay.code}
+              <button type="button" onClick={() => setCode("")} className="flex h-[52px] w-full shrink-0 items-center justify-center gap-2 rounded-full bg-white text-[16px] font-semibold shadow-sm transition-transform active:scale-[0.98] dark:bg-white/10">
+                <Ticket className="h-[18px] w-[18px] text-accent" /> {t.pay.code}
               </button>
             ) : (
               <form
-                className="flex gap-2"
+                className="flex w-full shrink-0 gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (code.trim().toUpperCase() === "DEMODAY") {
@@ -221,8 +221,8 @@ export function Paywall({ onClose }: { onClose: () => void }) {
                   } else toast.error(t.pay.codeBad);
                 }}
               >
-                <input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder={t.pay.codePh} className="h-12 min-w-0 flex-1 rounded-full bg-white px-5 text-[15px] uppercase outline-none dark:bg-white/10" />
-                <button type="submit" className="h-12 rounded-full bg-[#1d1d1f] px-5 text-[15px] font-semibold text-white dark:bg-white dark:text-black">OK</button>
+                <input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder={t.pay.codePh} className="h-[52px] w-0 min-w-0 flex-1 rounded-full bg-white px-5 text-[16px] uppercase shadow-sm outline-none ring-accent/40 focus:ring-2 dark:bg-white/10" />
+                <button type="submit" className="h-[52px] w-[72px] shrink-0 rounded-full bg-[#1d1d1f] text-[16px] font-semibold text-white transition-transform active:scale-95 dark:bg-white dark:text-black">OK</button>
               </form>
             )}
             <p className="text-center text-[11px] text-label-2 [@media(max-height:800px)]:hidden">🐾 {t.pro.citizens}</p>

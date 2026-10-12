@@ -191,7 +191,7 @@ function ReviewReply({ r, canReply }: { r: Review; canReply: boolean }) {
 const PLUS_KEY = "pawlink.plusHint";
 const WEEK = 7 * 86_400_000;
 
-function PlusSuggestion({ me, busy }: { me: User; busy: boolean }) {
+export function PlusSuggestion({ me, busy }: { me: User; busy: boolean }) {
   const { t } = useI18n();
   const [hidden, setHidden] = useState(() => {
     try {

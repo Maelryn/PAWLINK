@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { MyAdoptions } from "@/components/adopt/AdoptionPanels";
 import { CaseRow } from "@/components/cases/CaseBits";
 import { TrustBadge } from "@/components/cases/Trust";
-import { BusinessPanel } from "@/components/account/BusinessPanel";
+import { BusinessPanel, PlusSuggestion } from "@/components/account/BusinessPanel";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Avatar, Emoji3D, TimeAgo } from "@/components/ui/primitives";
@@ -141,6 +141,8 @@ function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
   const urgentNear = open.filter((x) => x.c.triage === "urgent" && x.d < 40).length;
   const near = open.slice(0, 3);
   const bizNoPro = myService?.status === "approved" && !proActive(me);
+  // Pro businesses only hear about Pro+ once they are actually busy (bookings / reviews), at most once a week
+  const busy = useStore((s) => s.bookings.filter((b) => b.serviceId === me.serviceId).length >= 3 || s.reviews.filter((r) => r.serviceId === me.serviceId).length >= 5);
   return (
     <>
       {/* what matters right now, in one glance */}
@@ -204,6 +206,8 @@ function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
           </div>
           <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[13px] font-bold text-[#3d3bd6]">{t.home.proCta}</span>
         </button>
+      ) : me.serviceId && proActive(me) ? (
+        <PlusSuggestion me={me} busy={busy} />
       ) : !me.serviceId ? (
         <Link href="/account?tab=profile#business" className="card flex items-center gap-3 rounded-[24px] p-4 transition-transform active:scale-[0.98]">
           <Emoji3D src="/3d/stethoscope.png" size={40} className="shrink-0" />
