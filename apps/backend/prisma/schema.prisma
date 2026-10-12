@@ -198,6 +198,7 @@ model User {
   requestsSent      AdoptionRequest[]  @relation("RequestFrom")
   notifications     Notification[]
   phoneOtps         PhoneOtp[]
+  photoProbes       PhotoProbe[]
 
   @@index([role], map: "users_role_idx")
   @@index([email], map: "users_email_idx")
@@ -352,6 +353,32 @@ model PhotoHash {
 
   @@index([subjectType, hash], map: "photo_hashes_subject_hash_idx")
   @@index([subjectId], map: "photo_hashes_subject_idx")
+}
+
+/// Server-side truth about an uploaded original (PHASE2_PLAN.md §6 option A).
+///
+/// Cloudinary strips metadata on upload, so the EXIF and the perceptual hash are
+/// read from the raw bytes at `POST /uploads/probe` and kept here, keyed by an
+/// opaque `probeId`, until `POST /cases` consumes them. That is what makes the
+/// `photoGps` / `photoFresh` / `duplicate` trust checks server-computed instead
+/// of client claims.
+///
+/// Deviation from docs/BACKEND_PROMPT.md §4's table list — see README §Deviations.
+/// Rows live one hour; `photo_hashes` (above) holds the permanent record.
+model PhotoProbe {
+  @@map("photo_probes")
+  id        String   @id @default(cuid())
+  userId    String
+  /// exifr output: { gps?: { lat, lng }, takenAt?: ISO string, camera?: string }
+  exif      Json?
+  /// 64-bit dHash, 16 hex chars
+  hash      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt], map: "photo_probes_user_idx")
+  @@index([createdAt], map: "photo_probes_expiry_idx")
 }
 
 model Service {

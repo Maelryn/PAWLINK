@@ -91,17 +91,24 @@ interface AdoptionProfile {
 
 ---
 
-## 2. What I need from the AI / LLM dev (Gemini Flash)
+## 2. What I need from the AI / LLM dev (Gemini Flash) — this is a standalone service in `apps/Ai/`
+
+> **Scope note:** the AI service is a **separate app** (`apps/Ai/`), owned by the AI
+> developer. The backend does **not** implement `POST /ai/analyze` and has **no
+> dependency** on the AI service until it is delivered. The frontend calls the
+> backend; how the AI analysis reaches the product (a future `POST /ai/analyze`
+> on the AI service, or a backend→AI link wired in later) is decided once that
+> service exists. Until then `animalDetected` is `null` and `Case.ai` is absent.
 
 ### Rules (from the stack)
-- The frontend **never calls Gemini directly**. Everything goes through `POST /ai/analyze` on the backend (keeps the API key secret).
-- Provider interface: switching provider is a config change, transparent to the frontend
+- The frontend **never calls Gemini directly**. The Gemini key stays server-side inside the AI service.
+- Provider interface: switching provider is a config change, transparent to consumers
 - **Safety rules layer:** keywords (`bleeding`, `fire`, `trapped`, `not breathing`, `saignement`, `feu`, `coincé`…) force `urgent`. Set `forcedUrgentByRule: true` so the UI can show "Flagged urgent by safety rule".
 - **No diagnosis**, always point to a vet, and the `disclaimer` field is always present
 
 ### Request / response
 ```ts
-// POST /ai/analyze
+// The AI service's analyze endpoint (in apps/Ai/), shape mirrored from the web types
 interface AIAnalyzeRequest {
   photoUrls: string[];
   description: string;
@@ -156,7 +163,7 @@ interface AIAnalysis {
 | Photo GPS vs pin | read EXIF on the server before Cloudinary strips it; distance < 2 km |
 | Photo is recent | EXIF `DateTimeOriginal` < 48 h |
 | Reporter near animal | device GPS sent with the report (optional, remote reports allowed) |
-| An animal is in the photo | Gemini returns `animalDetected: boolean` |
+| An animal is in the photo | `null` for now — the AI service (`apps/Ai/`) is not delivered yet; becomes the AI's `animalDetected` once wired in |
 | Not a reused photo | perceptual hash (pHash) compared to existing cases |
 | Rate limit | max 5 reports/hour/account (and per IP) |
 
@@ -176,7 +183,7 @@ Flow: owner posts (max **3 real photos**) → **admin approves** → public list
 
 | Method | Route | Notes |
 |---|---|---|
-| POST | `/adoptions` | `status: "pending"`. Max 3 photos. Reject images without camera EXIF (Make/Model/DateTimeOriginal) + Gemini "real photo of an animal?" + pHash duplicate check |
+| POST | `/adoptions` | `status: "pending"`. Max 3 photos. Reject images without camera EXIF (Make/Model/DateTimeOriginal) + pHash duplicate check (the AI "real photo of an animal?" check is part of the `apps/Ai/` service, added later) |
 | GET | `/adoptions?status=approved` | public list (auth required) |
 | PATCH | `/admin/adoptions/:id` | `{ status: "approved" \| "rejected" }`, admin only |
 | POST | `/adoptions/:id/requests` | one request per user per listing |
@@ -208,12 +215,13 @@ Types: `AdoptionProfile`, `AdoptionRequest` in `web/lib/types.ts`.
 - [ ] Indexes: GIST on locations; RLS off if only NestJS talks to the DB
 - [ ] Algeria polygon table for the "inside Algeria" check
 
-### AI (Gemini Flash)
+### AI (Gemini Flash) — standalone service in `apps/Ai/`
 - [ ] `AIProvider` interface + `GeminiProvider`, provider chosen by env config
 - [ ] Prompt → strict JSON matching `AIAnalysis` (+ `animalDetected`, `isRealPhoto`)
 - [ ] Safety rules layer (keywords FR / AR / Darija / EN force "urgent"), list in `web/lib/ai/analyze.ts`
 - [ ] Always a vet disclaimer, never a diagnosis
 - [ ] 3 cached example answers for the demo fallback
+- [ ] **Integration (deferred until this service is delivered):** wire the AI answer into `Case.ai` and the `animalDetected` trust check. The backend currently has **no** dependency on `apps/Ai/` by explicit decision.
 
 ### Mobile (Expo)
 - [ ] Report flow with camera (EXIF kept), GPS, offline queue, push notifications ("urgent case near you", "request accepted")

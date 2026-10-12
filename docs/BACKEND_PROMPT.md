@@ -26,7 +26,6 @@ These files are the specification. Read them completely — do not guess:
 | `../docs/TEAM_HANDOFF.md` | The contract the frontend dev wrote **for you**: endpoints, data shapes, auth, trust rules, adoption flow, checklist |
 | `../apps/web/lib/types.ts` | **Source of truth for every data shape.** Your DTOs must serialize exactly these fields (names, casing, optionality) |
 | `../apps/web/lib/store.ts` | Every mutation the UI performs, annotated with its target endpoint. Any action here must have a matching API route |
-| `../apps/web/lib/ai/analyze.ts` | The mock AI + the **safety-rule layer** you must port to the server, keyword lists included (FR/EN/AR/Darija) |
 | `../apps/web/lib/trust.ts` | The trust scoring algorithm you must re-implement **server-side, never trusting client input** |
 | `../apps/web/lib/auth.ts` | How the UI signs in/up/registers, and the role model (admin never signable) |
 | `../apps/web/lib/mock/data.ts` | The seed dataset: `USERS`, `EMERGENCY_ZONES`, `CASES`, `SERVICES`, `REVIEWS`, `ADOPTIONS`, `DEMO_PASSWORD` |
@@ -53,7 +52,6 @@ These files are the specification. Read them completely — do not guess:
 | Realtime | **Socket.IO** gateway (`@nestjs/websockets` + `@nestjs/platform-socket.io`) |
 | CORS | `http://localhost:3000` + the Vercel domain, `credentials: true` |
 | Storage | **Cloudinary** signed uploads (`POST /uploads/signature`) |
-| AI | **Gemini Flash** behind an `AIProvider` interface (`mock` / `gemini` selected by env) |
 | SMS | **`SmsProvider` interface** with `console` (default — logs + DB the code, demo works offline) and `twilio` implementations |
 | Tests | Jest + `supertest` |
 
@@ -101,7 +99,7 @@ Implement exactly this surface. `*` = also derivable from `store.ts` / the web p
 | GET | `/cases?bbox=minLng,minLat,maxLng,maxLat&triage=&species=&category=&status=&zoneId=` | **PostGIS bbox query** — powers the map. Only `moderation = approved` (or `null`) are public |
 | GET | `/cases/nearby?lat=&lng=&radiusKm=` | dashboards |
 | GET | `/cases/:id` | |
-| POST | `/cases` | photos already uploaded (Cloudinary URLs). Response **includes `ai`** and `trust` |
+| POST | `/cases` | photos already uploaded (Cloudinary URLs). Response **includes `trust`**. The `ai` field is `null` until the AI service (`apps/Ai/`) is wired in |
 | PATCH | `/cases/:id/status` | volunteer / vet / admin only |
 | POST | `/cases/:id/help` | `{ helpType, message? }` → emits `help.offered` |
 | POST | `/cases/:id/confirm` | "I see it too" → `trust.confirmations++`, raises level |
@@ -112,25 +110,14 @@ Implement exactly this surface. `*` = also derivable from `store.ts` / the web p
 **Services** `GET /services?lat=&lng=&type=&radiusKm=&q= · GET /services/:id · POST /services · PATCH /services/:id · GET/POST /services/:id/reviews · POST /services/:id/bookings · PATCH /bookings/:id`
 **Adoptions** `GET /adoptions?status=approved · GET /adoptions/:id · POST /adoptions (→ pending) · PATCH /adoptions/:id · POST /adoptions/:id/requests · PATCH /requests/:id`
 **Admin** `GET /admin/stats · GET /admin/users · PATCH /admin/users/:id/role · GET /admin/cases · GET /admin/adoptions · PATCH /admin/adoptions/:id · GET /admin/services · PATCH /admin/services/:id`
-**AI** `POST /ai/analyze`
 **Realtime** Socket.IO, events `case.created` · `case.updated` · `help.offered` · `notification`
 
-### 3.4 AI — `POST /ai/analyze`
-Request: `{ photoUrls: string[]; description: string; species?: Species; conditionTags?: string[]; location: GeoPoint; count?: number; baseline?: Triage; lang: "fr"|"en"|"ar" }`
-
-Response **must match `AIAnalysis` in `apps/web/lib/types.ts` field-for-field**, plus `animalDetected: boolean` and `isRealPhoto?: boolean` used internally by trust checks.
-
-Rules:
-1. The frontend **never** calls Gemini. Key stays server-side (`GEMINI_API_KEY`).
-2. `AIProvider` interface → `GeminiProvider` / `MockProvider`, chosen by `AI_PROVIDER`. Swapping providers = env change only.
-3. **Safety-rule layer runs after the model and overrides it**: port the keyword lists from
-   `apps/web/lib/ai/analyze.ts` (FR / EN / AR / Darija + condition tags). A hit forces
-   `triage: "urgent"` and sets `forcedUrgentByRule: true`.
-4. **Never diagnose.** `disclaimer` always present, always points to a veterinarian.
-5. Strict JSON output (responseMimeType `application/json`), validated against the type; on
-   timeout (**< 5 s**), model error, or validation failure → fall back to 1 of **3 cached
-   example responses** (urgent / monitoring / stable) checked into the repo.
-6. `suggestedServices` / `suggestedHelpers` = real nearest-row queries (PostGIS `ST_Distance`), top 3, rounded to 0.1 km.
+> **AI is out of scope for this backend.** `POST /ai/analyze`, the `AIProvider`
+> interface, the safety-rule layer, the Gemini integration and the 3 cached
+> fallbacks belong to the **AI developer** in `apps/Ai/`. The backend must not
+> import, call or depend on any AI module. The `animalDetected` trust check and
+> the `Case.ai` field stay in place as `null`/unavailable until that service is
+> delivered and the link is wired in.
 
 ### 3.5 Trust & anti-abuse — every report, server-side
 Re-implement `apps/web/lib/trust.ts` with **real** checks. Return `trust: { level, score, checks[], confirmations, flags }` on every case.
@@ -142,7 +129,7 @@ Re-implement `apps/web/lib/trust.ts` with **real** checks. Return `trust: { leve
 | `photoGps` | EXIF `GPSLatitude/Longitude` read **server-side from the original file before upload** (`exifr`) vs report pin, `< 2 km`, else `null` |
 | `photoFresh` | EXIF `DateTimeOriginal` `< 48 h`, else `null` |
 | `onSite` | device GPS (optional field) `< 5 km`, else `null` |
-| `animalDetected` | Gemini `animalDetected` from `POST /ai/analyze`, else `null` |
+| `animalDetected` | `null` — the AI service (`apps/Ai/`) is not delivered yet; flips to the AI answer when the backend↔AI link is wired in |
 | `duplicate` | perceptual hash: `sharp` → 64-bit dHash, Hamming distance ≤ 8 against stored hashes = duplicate |
 | `rateLimit` | ≤ 5 reports / hour / account and / IP |
 
@@ -151,7 +138,7 @@ Scoring, `hardFail` ids and level thresholds stay **exactly** as in `lib/trust.t
 `GET /cases` until an admin approves it.**
 
 ### 3.6 Domain rules
-- **Adoption:** owner posts (max **3** photos, rejects images without camera EXIF Make/Model/DateTimeOriginal, plus Gemini `isRealPhoto` + pHash dup check) → `pending` → admin approves → public → adopter sends one request (`message`, `housing`, `experience`) → owner `accepted`/`declined` → **phone numbers of both parties appear only in the response when status is `accepted`**. PawLink never handles money.
+- **Adoption:** owner posts (max **3** photos, rejects images without camera EXIF Make/Model/DateTimeOriginal, plus pHash dup check) → `pending` → admin approves → public → adopter sends one request (`message`, `housing`, `experience`) → owner `accepted`/`declined` → **phone numbers of both parties appear only in the response when status is `accepted`**. PawLink never handles money.
 - **Reviews:** authenticated, **one per user per service**, rating 1–5, owner can `reply`.
 - **Services:** created by a business/vet account (`ownerId`) → `status: "pending"` → admin approves. `pro: true` users are sorted first.
 - **Notifications:** created server-side for `adoptRequest`, `adoptAccepted`, `adoptDeclined`, `listingApproved`, `listingRejected`, `booking`, `bookingConfirmed`, `bookingDeclined`, `help`, `review`, `serviceApproved`, `proActive` (see `NotificationKind` in `types.ts`) and pushed over Socket.IO.
@@ -205,8 +192,6 @@ JWT_REFRESH_TTL=30d
 CORS_ORIGINS=http://localhost:3000
 SMS_PROVIDER=console      # console | twilio
 TWILIO_ACCOUNT_SID= TWILIO_AUTH_TOKEN= TWILIO_FROM=
-AI_PROVIDER=mock          # mock | gemini
-GEMINI_API_KEY=
 CLOUDINARY_CLOUD_NAME= CLOUDINARY_API_KEY= CLOUDINARY_API_SECRET=
 ```
 
@@ -223,7 +208,8 @@ CLOUDINARY_CLOUD_NAME= CLOUDINARY_API_KEY= CLOUDINARY_API_SECRET=
 The frontend reads `NEXT_PUBLIC_API_URL` (default `http://localhost:4000`) and
 `NEXT_PUBLIC_USE_MOCK`. Your API must work with **zero** of the optional third-party keys set
 (`AI_PROVIDER=mock`, `SMS_PROVIDER=console`, no Cloudinary → return a clear typed error for
-uploads) so the demo never depends on the network.
+uploads) so the demo never depends on the network. (The AI service is a separate app; it is
+not part of this backend's env or demo path.)
 
 ---
 
@@ -236,7 +222,7 @@ uploads) so the demo never depends on the network.
 5. Phone numbers revealed only under the rules in §3.6.
 6. Everything must stay runnable without paid third-party services.
 7. No new framework/ORM/npm-heavy dependencies outside §2 without flagging it first.
-8. Never log tokens, passwords, OTP codes in production, or `GEMINI_API_SECRET`/Cloudinary secrets.
+8. Never log tokens, passwords, OTP codes in production, or Cloudinary secrets.
 
 ---
 
@@ -259,13 +245,13 @@ Register → OTP → verify → login → refresh → logout → `GET/PATCH/DELE
 **Acceptance:** Jest e2e covering register → verify → login → `/me` → refresh → role denial,
 and admin routes rejecting non-admins.
 
-**Phase 2 — Cases + trust + AI + realtime (the core)**
+**Phase 2 — Cases + trust + realtime (the core)**
 `/cases` (PostGIS bbox + filters + moderation gating), create case with EXIF/pHash/Algeria/
 rate-limit trust pipeline, status changes, help offers, confirm/flag, moderation queue,
-`/uploads/signature`, `POST /ai/analyze` with `AIProvider` + safety rules + 3 cached fallbacks,
-Socket.IO emitting `case.created`/`case.updated`/`help.offered`. **Acceptance:** unit tests for
-the trust scorer (port `lib/trust.ts` cases), safety-rule override, AI fallback; e2e creating a
-case returns `ai` + `trust` and it appears in the bbox query.
+`/uploads/signature`, Socket.IO emitting `case.created`/`case.updated`/`help.offered`. **Acceptance:** unit tests for
+the trust scorer (port `lib/trust.ts` cases); e2e creating a
+case returns `trust` and it appears in the bbox query. (`ai` stays `null` — the AI
+service in `apps/Ai/` is a separate workstream.)
 
 **Phase 3 — Marketplace + services + zones**
 Adoption flow (§3.6 end-to-end incl. phone reveal), services + reviews + bookings, emergency
@@ -301,6 +287,7 @@ _Recorded by the Phase 0 re-audit (2026-10-09, branch `backend1`). Nothing in §
 | D3 | Lint config is `eslint.config.mjs` (ESLint 9 **flat config**) instead of the `.eslintrc` named in §7. | ESLint 9 removed `.eslintrc` support; `eslint-config-expo`-style flat config is the only supported form. Same rule set, same `npm run lint`. |
 | D4 | `pg` + `@types/pg` are now **direct** dependencies of `apps/backend`. | Prisma 7 has no built-in Postgres driver: the client talks through `PrismaPg` (`@prisma/adapter-pg`), which pulls `pg` transitively. Relying on that made the runtime DB driver one `npm` hoisting accident away from breaking. Pinned explicitly (`pg ^8.23.1`). |
 | D5 | `datasource.url` is not in `schema.prisma`; it lives in `prisma.config.ts`. | Prisma 7 moved connection URLs out of the schema. `SUPABASE_DB_URL` (direct) is used by migrate commands, `DATABASE_URL` (session pooler) at runtime through the adapter. |
+| D6 | **AI removed from the backend scope.** The original §3.4 (`POST /ai/analyze`, `AIProvider`, safety-rule layer, Gemini, 3 cached fallbacks), the `animalDetected` trust signal, `Case.ai` writes, the AI env vars and the Phase 2 AI acceptance are all stripped. The `animalDetected` check and the `Case.ai` column stay in place, always `null`/unwritten. | The AI work belongs to a separate developer in `apps/Ai/`, not to the backend. The team decided there must be **no backend↔AI link at all** until that service is delivered, so the backend neither imports nor calls any AI module. Re-wiring is additive: bring back an `AIProvider` client and feed `animalDetected` + `Case.ai` from it. |
 
 ### Known cosmetic issue (not a deviation)
 

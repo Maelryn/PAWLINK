@@ -98,4 +98,4 @@ apps/mobile/
 
 ## 6. Plugging in the backend later
 
-Identical rule as the web: replace `lib/store.ts` + `lib/ai/analyze.ts` with `POST /cases`, `GET /cases?bbox=`, `POST /ai/analyze`; keep `EXPO_PUBLIC_USE_MOCK=true` for offline demos. Backend lives in `apps/backend/` (NestJS, empty for now).
+Identical rule as the web: replace `lib/store.ts` + `lib/ai/analyze.ts` with `POST /cases`, `GET /cases?bbox=`; keep `EXPO_PUBLIC_USE_MOCK=true` for offline demos. Backend lives in `apps/backend/` (NestJS). The AI analysis (`POST /ai/analyze`) is a separate service in `apps/Ai/` — not on the backend until that service is delivered.
