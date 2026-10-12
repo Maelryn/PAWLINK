@@ -150,12 +150,13 @@ export function EditQueue() {
   const { t } = useI18n();
   const adoptions = useStore((s) => s.adoptions).filter((a) => a.pendingEdit);
   const services = useStore((s) => s.services).filter((s) => s.pendingEdit);
+  const cases = useStore((s) => s.cases).filter((c) => c.pendingEdit);
   const show = (v: unknown): string =>
     Array.isArray(v) ? v.map((x) => (typeof x === "string" ? (x.startsWith("data:") ? "📷" : x) : (x as { name?: string }).name ?? "")).join(", ") : v && typeof v === "object" ? ((v as { address?: string }).address ?? "") : String(v ?? "");
   const label: Record<string, string> = {
     name: t.market.name, species: t.report.animalTitle, breed: t.market.breed, sex: t.adopt.sex.male + " / " + t.adopt.sex.female, ageMonths: t.market.age,
     photos: t.market.stepPhotos, healthStatus: t.market.health, vaccinations: t.market.vaccines, behavior: t.market.behavior, careNeeds: t.market.care,
-    story: t.market.story, ownerPhone: t.market.phone, phone: t.acct.phone, location: t.market.city, description: t.biz.description, hours: t.biz.hours,
+    story: t.market.story, ownerPhone: t.market.phone, phone: t.acct.phone, location: t.market.city, description: t.biz.description, hours: t.biz.hours, conditionTags: t.report.situationTitle,
   };
   const rows = (cur: Record<string, unknown>, next: Record<string, unknown>) =>
     Object.keys(next)
@@ -168,7 +169,7 @@ export function EditQueue() {
           </span>
         </div>
       ));
-  const total = adoptions.length + services.length;
+  const total = adoptions.length + services.length + cases.length;
   return (
     <section className="card mb-5 overflow-hidden rounded-[28px]">
       <div className="flex items-center justify-between p-5">
@@ -178,6 +179,7 @@ export function EditQueue() {
       {total === 0 && <div className="px-5 pb-5 text-[14px] text-label-2">{t.market.none}</div>}
       {[
         ...adoptions.map((a) => ({ id: a.id, name: a.name, kind: t.nav.adopt, cur: a as unknown as Record<string, unknown>, next: a.pendingEdit as Record<string, unknown>, ok: (v: boolean) => store.reviewAdoptionEdit(a.id, v) })),
+        ...cases.map((c) => ({ id: c.id, name: c.title, kind: t.nav.report, cur: c as unknown as Record<string, unknown>, next: c.pendingEdit as Record<string, unknown>, ok: (v: boolean) => store.reviewCaseEdit(c.id, v) })),
         ...services.map((s) => ({ id: s.id, name: s.name, kind: t.common.service[s.type], cur: s as unknown as Record<string, unknown>, next: s.pendingEdit as Record<string, unknown>, ok: (v: boolean) => store.reviewServiceEdit(s.id, v) })),
       ].map((x) => (
         <div key={x.id} className="space-y-2 border-t border-separator px-5 py-3">

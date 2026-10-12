@@ -1,6 +1,5 @@
 "use client";
 
-import { getPosition } from "@/lib/geo";
 
 import { AnimatePresence, motion } from "motion/react";
 import { BadgeCheck, LayoutGrid, Map as MapIcon, MapPin, Search, SlidersHorizontal } from "lucide-react";
@@ -15,11 +14,13 @@ import { SERVICE_COLOR, SERVICE_EMOJI } from "@/lib/species";
 import { ratingOf, useStore } from "@/lib/store";
 import type { Service, ServiceType } from "@/lib/types";
 import { cn, distanceKm } from "@/lib/utils";
-import { inAlgeria } from "@/lib/trust";
+import { useNearMe } from "@/lib/useNearMe";
+import { Pager } from "@/components/ui/Pager";
 import { toast } from "sonner";
 
 const TYPES: ServiceType[] = ["vet", "shelter", "transport", "boarding", "training", "store"];
 const ALGIERS = { lat: 36.7538, lng: 3.0588 };
+const PAGE = 12;
 
 /** Pastel card backgrounds per category (the "tile" look of iOS apps). */
 const TILE: Record<ServiceType, string> = {
@@ -39,16 +40,14 @@ export default function ServicesPage() {
   const [type, setType] = useState<"all" | ServiceType>("all");
   const [view, setView] = useState<"grid" | "map">("grid");
   const [q, setQ] = useState("");
-  const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
-  const [locating, setLocating] = useState(false);
-  const locate = () => {
-    if (origin) return setOrigin(null);
-    setLocating(true);
-    getPosition(8000).then((here) => {
-      setLocating(false);
-      if (here && inAlgeria(here)) setOrigin(here);
-      else toast(t.svc.locFail);
-    });
+  const near = useNearMe();
+  const origin = near.origin;
+  const locating = near.locating;
+  const [page, setPage] = useState(1);
+  const locate = async () => {
+    setPage(1);
+    if (origin) return near.clear();
+    if (!(await near.locate())) toast(t.svc.locFail);
   };
   const query = q.trim().toLowerCase();
 
@@ -57,7 +56,11 @@ export default function ServicesPage() {
     .filter((s) => s.status === "approved" && (type === "all" || s.type === type))
     .filter((s) => !query || s.name.toLowerCase().includes(query) || (s.location.address ?? "").toLowerCase().includes(query))
     .map((s) => ({ s, d: distanceKm(origin ?? ALGIERS, s.location), ...ratingOf(s, reviews) }))
-    .sort((a, b) => Number(!!b.s.pro) - Number(!!a.s.pro) || Number(!!b.s.verified) - Number(!!a.s.verified) || b.rating - a.rating);
+    // featured (Pro) first; then the closest when we know where you are, otherwise verified and best rated
+    .sort((a, b) => Number(!!b.s.pro) - Number(!!a.s.pro) || (origin ? a.d - b.d : Number(!!b.s.verified) - Number(!!a.s.verified) || b.rating - a.rating));
+  const pages = Math.ceil(list.length / PAGE);
+  const cur = Math.min(page, Math.max(1, pages));
+  const shown = list.slice((cur - 1) * PAGE, cur * PAGE);
 
   return (
     <div className="min-h-[100svh] pb-32">
@@ -81,7 +84,7 @@ export default function ServicesPage() {
         <div className="mt-3 flex gap-2">
           <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-surface-2 px-4">
             <Search className="h-[18px] w-[18px] text-label-2" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.map.search} className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-label-2" />
+            <input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder={t.map.search} className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-label-2" />
           </div>
           <button
             type="button"
@@ -90,7 +93,7 @@ export default function ServicesPage() {
             className={cn("flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-semibold transition-[background,transform] active:scale-95", origin ? "bg-accent text-white" : "bg-surface-2")}
           >
             <MapPin className={cn("h-4 w-4", origin ? "text-white" : "text-accent", locating && "animate-pulse")} />
-            {locating ? t.svc.locating : origin ? t.svc.nearMe : t.svc.algiers}
+            {locating ? t.svc.locating : t.svc.nearMe}
           </button>
         </div>
 
@@ -99,7 +102,7 @@ export default function ServicesPage() {
           {(["all", ...TYPES] as const).map((ty) => {
             const on = type === ty;
             return (
-              <button key={ty} type="button" onClick={() => setType(ty)} className="flex w-[68px] shrink-0 flex-col items-center gap-1.5">
+              <button key={ty} type="button" onClick={() => { setType(ty); setPage(1); }} className="flex w-[68px] shrink-0 flex-col items-center gap-1.5">
                 <motion.span
                   whileTap={{ scale: 0.9 }}
                   className={cn("flex h-[60px] w-[60px] items-center justify-center rounded-full transition-shadow", on ? "ring-[3px] ring-accent ring-offset-2 ring-offset-bg" : "")}
@@ -125,14 +128,15 @@ export default function ServicesPage() {
         ) : (
           <motion.div layout className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             <AnimatePresence mode="popLayout">
-              {list.map(({ s, d, rating, count }, i) => (
+              {shown.map(({ s, d, rating, count }, i) => (
                 <motion.div key={s.id} layout initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 300, damping: 28, delay: Math.min(i * 0.025, 0.25) }}>
-                  <ServiceTile s={s} d={d} rating={rating} count={count} />
+                  <ServiceTile s={s} d={origin ? d : undefined} rating={rating} count={count} />
                 </motion.div>
               ))}
             </AnimatePresence>
           </motion.div>
         )}
+        {view === "grid" && <Pager id="svc" page={cur} pages={pages} onChange={setPage} />}
 
         <Link href="/pro" className="mt-8 flex items-center gap-4 rounded-[26px] bg-gradient-to-r from-[#0a7cff] to-[#5e5ce6] p-5 text-white">
           <Emoji3D src="/3d/home.png" size={44} />
@@ -148,7 +152,7 @@ export default function ServicesPage() {
 }
 
 /** Marketplace-style card: big visual on top, name / rating / distance under. */
-function ServiceTile({ s, d, rating, count }: { s: Service; d: number; rating: number; count: number }) {
+function ServiceTile({ s, d, rating, count }: { s: Service; d?: number; rating: number; count: number }) {
   const { t } = useI18n();
   return (
     <Link href={`/services/${s.id}`} className="group block active:scale-[0.98]">
@@ -162,7 +166,7 @@ function ServiceTile({ s, d, rating, count }: { s: Service; d: number; rating: n
             {s.openNow ? t.services.open : t.services.closed}
           </span>
         )}
-        <span className="absolute bottom-2.5 end-2.5 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{t.common.km(d)}</span>
+        {d !== undefined && <span className="absolute bottom-2.5 end-2.5 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{t.common.km(d)}</span>}
       </div>
       <div className="px-1 pt-2">
         <div className="flex items-center gap-1">

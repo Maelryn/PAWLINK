@@ -43,6 +43,14 @@ export const resolveCase = (c: Case, me: User) =>
 
 export const confirmCase = (c: Case) => run(() => casesApi.confirm(c.id), () => store.confirm(c.id));
 
+/** "Do you see it?" from someone within 1 km. Until the API takes { seen, lat, lng } on /confirm, a "no" goes to /flag. */
+export const voteOnCase = (c: Case, userId: string, seen: boolean) =>
+  run(() => (seen ? casesApi.confirm(c.id) : casesApi.flag(c.id)), () => store.vote(c.id, userId, seen));
+
+/** The reporter edits / deletes their report (local until the API has PATCH and DELETE /cases/:id). */
+export const proposeCaseEdit = (c: Case, patch: { description: string; conditionTags: string[] }) => store.proposeCaseEdit(c.id, patch);
+export const deleteCase = (c: Case) => store.removeCase(c.id);
+
 export const flagCase = (c: Case) => run(() => casesApi.flag(c.id), () => store.flag(c.id));
 
 export const moderateCase = (c: Case, decision: "approved" | "hidden") =>

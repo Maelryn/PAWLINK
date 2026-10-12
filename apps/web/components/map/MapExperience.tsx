@@ -24,7 +24,7 @@ import { LIVESTOCK, SERVICE_EMOJI, SPECIES_EMOJI, TRIAGE_ORDER } from "@/lib/spe
 import { isPublic, store, useStore } from "@/lib/store";
 import { gmaps } from "@/lib/trust";
 import { TrustBadge } from "@/components/cases/Trust";
-import type { Case, GeoPoint, Triage } from "@/lib/types";
+import type { Case, GeoPoint, Service, Triage } from "@/lib/types";
 import { cn, distanceKm, minutesSince } from "@/lib/utils";
 import { useHideTabBar } from "@/lib/ui";
 import { zoneStats } from "@/lib/zones";
@@ -77,7 +77,10 @@ export function MapExperience() {
   const emergency = emergencyWanted && !!zone;
   const [triage, setTriage] = useState<"all" | Triage>("all");
   const [category, setCategory] = useState<"all" | "companion" | "livestock">("all");
-  const [showServices, setShowServices] = useState(false);
+  // what the map shows: every case (default), only my reports, or only services
+  const [layer, setLayer] = useState<"cases" | "mine" | "services">("cases");
+  const [layersOpen, setLayersOpen] = useState(false);
+  const me = useSession();
   const [is3d, setIs3d] = useState(false);
   const [userLoc, setUserLoc] = useState<GeoPoint | null>(null);
   const [query, setQuery] = useState("");
@@ -87,12 +90,14 @@ export function MapExperience() {
   const ref = userLoc ?? (emergency ? zone!.center : ALGIERS);
   /** We only talk about "nearby" and distances when we know where the person (or the emergency) is. */
   const located = !!userLoc || emergency;
-  const listTitle = located ? t.map.nearby : t.map.latest;
+  const listTitle = layer === "mine" ? t.map.show.mine : layer === "services" ? t.map.show.services : located ? t.map.nearby : t.map.latest;
 
   const cases = useMemo(() => {
     const q = query.trim().toLowerCase();
+    if (layer === "services") return [];
     return allCases
-      .filter(isPublic)
+      // my reports: also the ones still waiting for a moderator or gone from the public map
+      .filter((c) => (layer === "mine" ? c.reporter.id === me?.id && c.moderation !== "hidden" : isPublic(c)))
       .filter((c) => (emergency ? c.emergencyZoneId === zone!.id : true))
       .filter((c) => triage === "all" || c.triage === triage)
       .filter((c) => category === "all" || (category === "livestock" ? LIVESTOCK.includes(c.species) : !LIVESTOCK.includes(c.species)))
@@ -105,11 +110,24 @@ export function MapExperience() {
             ? a.d - b.d
             : TRIAGE_ORDER[a.c.triage] - TRIAGE_ORDER[b.c.triage] || +new Date(b.c.createdAt) - +new Date(a.c.createdAt),
       );
-  }, [allCases, emergency, triage, category, query, ref, ct, located, zone]);
+  }, [allCases, emergency, triage, category, query, ref, ct, located, zone, layer, me?.id]);
 
   const selected = allCases.find((c) => c.id === selectedId) ?? null;
   const SERVICES = useStore((s) => s.services).filter((s) => s.status === "approved");
   const service = SERVICES.find((s) => s.id === serviceId) ?? null;
+  const serviceList = useMemo(
+    () => (layer === "services" ? SERVICES.map((s) => ({ s, d: distanceKm(ref, s.location) })).sort((a, b) => Number(!!b.s.pro) - Number(!!a.s.pro) || a.d - b.d) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layer, SERVICES.length, ref],
+  );
+  const pickLayer = (l: typeof layer) => {
+    setLayersOpen(false);
+    if (l === "mine" && !me) return router.push("/login?next=/map");
+    setLayer(l);
+    setSelectedId(null);
+    setServiceId(null);
+    if (navigator.vibrate) navigator.vibrate(8);
+  };
 
   /* ── camera helpers ── */
   const flyToCase = useCallback(
@@ -222,7 +240,7 @@ export function MapExperience() {
 
       <MapView
         cases={cases.map((x) => x.c)}
-        services={showServices ? SERVICES : undefined}
+        services={layer === "services" ? SERVICES : undefined}
         zone={emergency ? zone : null}
         selectedId={selectedId}
         selectedServiceId={serviceId}
@@ -300,7 +318,7 @@ export function MapExperience() {
       {/* Right control stack (Apple Maps style) */}
       <div className={cn("absolute end-3 z-20 flex flex-col gap-2.5 max-lg:bottom-[164px] lg:end-4 lg:top-[84px]", emergency && "lg:top-[84px]")}>
         <div className="glass glass-sheen flex flex-col overflow-hidden rounded-full">
-          <ControlBtn label={t.map.showServices} active={showServices} onClick={() => setShowServices((v) => !v)}>
+          <ControlBtn label={t.map.show.title} active={layer !== "cases" || layersOpen} onClick={() => setLayersOpen((v) => !v)}>
             <Layers className="h-[19px] w-[19px]" />
           </ControlBtn>
           <span className="mx-2.5 h-px bg-separator" />
@@ -327,6 +345,8 @@ export function MapExperience() {
           <Globe2 className="h-[19px] w-[19px]" />
         </button>
       </div>
+
+      <LayersCard open={layersOpen} value={layer} onPick={pickLayer} onClose={() => setLayersOpen(false)} signedIn={!!me} />
 
       {/* Desktop side panel */}
       {desktop && (
@@ -377,7 +397,7 @@ export function MapExperience() {
                 </div>
                 <div className="flex items-center justify-between px-5 pb-1 pt-2">
                   <span className="text-[17px] font-bold tracking-[-0.02em]">{listTitle}</span>
-                  <span className="text-[13px] font-medium text-label-2">{t.map.results(cases.length)}</span>
+                  <span className="text-[13px] font-medium text-label-2">{t.map.results(layer === "services" ? serviceList.length : cases.length)}</span>
                 </div>
                 <div className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-3 no-scrollbar">
                   {cases.map(({ c, d }, i) => (
@@ -385,7 +405,10 @@ export function MapExperience() {
                       <CaseRow c={c} distance={located ? d : undefined} onClick={() => select(c.id)} />
                     </motion.div>
                   ))}
-                  {cases.length === 0 && <Empty label={t.map.noResults} />}
+                  {serviceList.map(({ s, d }) => (
+                    <ServiceRow key={s.id} s={s} distance={located ? d : undefined} onClick={() => setServiceId(s.id)} />
+                  ))}
+                  {cases.length === 0 && serviceList.length === 0 && <Empty label={layer === "mine" ? t.map.show.noMine : t.map.noResults} />}
                 </div>
               </motion.div>
             )}
@@ -406,7 +429,15 @@ export function MapExperience() {
           </div>
           <AnimatePresence>
             {!selected && (
-              <MobileListSheet items={cases} title={listTitle} showDistance={located} onOpen={(c) => select(c.id)} />
+              <MobileListSheet
+                items={cases}
+                services={serviceList}
+                title={listTitle}
+                showDistance={located}
+                empty={layer === "mine" ? t.map.show.noMine : t.map.noResults}
+                onOpen={(c) => select(c.id)}
+                onOpenService={(id) => setServiceId(id)}
+              />
             )}
           </AnimatePresence>
           <AnimatePresence>
@@ -699,7 +730,23 @@ function CaseQuickView({
 }
 
 /** Apple-Maps-style list: compact bar above the tab bar → full-width sheet (tab bar slides away). */
-function MobileListSheet({ items, title, showDistance, onOpen }: { items: { c: Case; d: number }[]; title: string; showDistance: boolean; onOpen: (c: Case) => void }) {
+function MobileListSheet({
+  items,
+  services,
+  title,
+  showDistance,
+  empty,
+  onOpen,
+  onOpenService,
+}: {
+  items: { c: Case; d: number }[];
+  services: { s: Service; d: number }[];
+  title: string;
+  showDistance: boolean;
+  empty: string;
+  onOpen: (c: Case) => void;
+  onOpenService: (id: string) => void;
+}) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const urgent = items.filter((x) => x.c.triage === "urgent").length;
@@ -733,7 +780,7 @@ function MobileListSheet({ items, title, showDistance, onOpen }: { items: { c: C
             <span className="truncate font-display text-[17px] font-extrabold">{title}</span>
             <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold">
               {urgent > 0 && <span className="rounded-full bg-urgent-soft px-2 py-0.5 text-urgent">{urgent}</span>}
-              <span className="text-label-2">{t.map.results(items.length)}</span>
+              <span className="text-label-2">{t.map.results(items.length + services.length)}</span>
               <ChevronRight className={cn("h-4 w-4 text-label-3 transition-transform", open ? "rotate-90" : "-rotate-90")} />
             </span>
           </span>
@@ -743,6 +790,10 @@ function MobileListSheet({ items, title, showDistance, onOpen }: { items: { c: C
             {items.map(({ c, d }) => (
               <CaseRow key={c.id} c={c} distance={showDistance ? d : undefined} onClick={() => { setOpen(false); onOpen(c); }} />
             ))}
+            {services.map(({ s, d }) => (
+              <ServiceRow key={s.id} s={s} distance={showDistance ? d : undefined} onClick={() => { setOpen(false); onOpenService(s.id); }} />
+            ))}
+            {items.length + services.length === 0 && <Empty label={empty} />}
           </div>
         )}
       </motion.div>
@@ -785,3 +836,88 @@ function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose
   );
 }
 
+
+const LAYERS = [
+  { id: "cases", emoji: "/3d/paw.png", bg: "#ffe1dc" },
+  { id: "mine", emoji: "/3d/camera.png", bg: "#dcecff" },
+  { id: "services", emoji: "/3d/stethoscope.png", bg: "#d9f5e4" },
+] as const;
+
+/** Apple-Maps-style "what to show" card: pops out of the layers button. */
+function LayersCard({ open, value, onPick, onClose, signedIn }: { open: boolean; value: "cases" | "mine" | "services"; onPick: (v: "cases" | "mine" | "services") => void; onClose: () => void; signedIn: boolean }) {
+  const { t } = useI18n();
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div key="dim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-[24] bg-black/10" />
+          <motion.div
+            key="card"
+            role="dialog"
+            aria-label={t.map.show.title}
+            initial={{ opacity: 0, scale: 0.6, x: 30 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.7, x: 24 }}
+            transition={{ type: "spring", stiffness: 460, damping: 30 }}
+            style={{ transformOrigin: "right center" }}
+            className="glass-strong absolute end-[72px] z-[26] w-[268px] rounded-[26px] p-3 max-lg:bottom-[150px] lg:end-[76px] lg:top-[84px] rtl:[transform-origin:left_center]"
+          >
+            <div className="flex items-center justify-between px-1 pb-2">
+              <span className="text-[15px] font-bold">{t.map.show.title}</span>
+              <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2" aria-label={t.common.close}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {LAYERS.map((l, i) => {
+                const on = value === l.id;
+                return (
+                  <motion.button
+                    key={l.id}
+                    type="button"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.03 + i * 0.04 }}
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() => onPick(l.id)}
+                    aria-pressed={on}
+                    className="flex flex-col items-center gap-1.5 rounded-[18px] p-1.5"
+                  >
+                    <span className={cn("relative flex h-[62px] w-full items-center justify-center rounded-[16px] transition-shadow", on && "ring-[3px] ring-accent")} style={{ background: l.bg }}>
+                      <Emoji3D src={l.emoji} size={34} />
+                      {l.id === "mine" && !signedIn && <span className="absolute end-1 top-1 rounded-full bg-black/60 px-1.5 text-[9px] font-bold text-white">🔒</span>}
+                    </span>
+                    <span className={cn("text-center text-[12px] leading-tight", on ? "font-bold text-accent" : "font-semibold text-label")}>{t.map.show[l.id]}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function ServiceRow({ s, distance, onClick }: { s: Service; distance?: number; onClick: () => void }) {
+  const { t } = useI18n();
+  return (
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-[18px] p-2.5 text-start transition-colors hover:bg-surface-2 active:bg-surface-2">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-surface-2">
+        <Emoji3D src={SERVICE_EMOJI[s.type]} size={30} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-[15px] font-semibold">{s.name}</span>
+          {s.pro && <span className="shrink-0 rounded-full bg-gradient-to-r from-[#0a7cff] to-[#5e5ce6] px-1.5 py-px text-[10px] font-bold text-white">PRO</span>}
+        </span>
+        <span className="block truncate text-[12.5px] text-label-2">
+          {t.common.service[s.type]}
+          {distance !== undefined && ` · ${distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(distance < 10 ? 1 : 0)} km`}`}
+          {s.location.address ? ` · ${s.location.address}` : ""}
+        </span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-label-3 rtl:rotate-180" />
+    </button>
+  );
+}

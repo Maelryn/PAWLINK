@@ -3,7 +3,7 @@
 import { SERVICE_EMOJI } from "@/lib/species";
 
 import { motion } from "motion/react";
-import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, House, MapPin, User as UserIcon } from "lucide-react";
+import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, House, MapPin, Pencil, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -393,14 +393,20 @@ function MyReports({ me }: { me: User }) {
   return (
     <section className="card rounded-[28px] p-3">
       {mine.map((c) => (
-        <Link key={c.id} href={`/cases/${c.id}`} className="block">
+        <div key={c.id} className="relative">
+        <Link href={`/cases/${c.id}`} className="block">
           <CaseRow c={c} />
-          <div className="flex flex-wrap items-center gap-2 px-3 pb-3">
+          <div className="flex flex-wrap items-center gap-2 pb-3 pe-14 ps-3">
             {c.trust && <TrustBadge level={c.trust.level} />}
             {c.moderation === "pending" && <span className="rounded-full bg-monitor-soft px-2.5 py-1 text-[12px] font-semibold text-monitor">{t.market.pending}</span>}
+            {c.pendingEdit && <span className="rounded-full bg-monitor-soft px-2.5 py-1 text-[12px] font-semibold text-monitor">{t.post.pending}</span>}
             <span className="text-[12.5px] text-label-2">{t.common.helpers(c.helpers.length)}</span>
           </div>
         </Link>
+          <Link href={`/cases/${c.id}?edit=1`} className="absolute bottom-2 end-2 flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-label-2 transition-transform active:scale-90" aria-label={t.verify.edit} title={t.verify.edit}>
+            <Pencil className="h-4 w-4" />
+          </Link>
+        </div>
       ))}
     </section>
   );

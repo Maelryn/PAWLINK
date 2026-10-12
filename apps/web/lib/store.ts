@@ -17,8 +17,13 @@ import type {
   Service,
   User,
   AdoptionEdit,
+  CaseEdit,
   ServiceEdit,
 } from "./types";
+import { distanceKm } from "./utils";
+
+/** "Do you see this animal?" goes to people within this distance of a new report. */
+const ASK_RADIUS_KM = 3;
 
 /* Client "database" for the demo. Everything is saved in localStorage so the app behaves like a
    real one (reload-safe). When the NestJS + Supabase API is live, each action below becomes one
@@ -166,10 +171,19 @@ export const store = {
   addCase(c: Case) {
     // the volunteers / vets the AI matched nearby get a notification (only once the report is public)
     const nearby = c.moderation === "pending" ? [] : (c.ai?.suggestedHelpers ?? []).map((h) => h.userId).filter((id) => id !== c.reporter.id);
+    // people around the animal (≤ 3 km) are asked "do you see it?": their answers verify the report
+    const around =
+      c.moderation === "pending"
+        ? []
+        : state.users.filter((u) => u.id !== c.reporter.id && !nearby.includes(u.id) && u.location && distanceKm(u.location, c.location) <= ASK_RADIUS_KM).map((u) => u.id);
     set({
       cases: [c, ...state.cases],
       lastCreatedId: c.moderation === "pending" ? null : c.id,
-      notifications: [...nearby.flatMap((id) => notify(id, "nearbyCase", c.title, `/cases/${c.id}`)), ...state.notifications],
+      notifications: [
+        ...nearby.flatMap((id) => notify(id, "nearbyCase", c.title, `/cases/${c.id}`)),
+        ...around.flatMap((id) => notify(id, "confirmAsk", c.title, `/cases/${c.id}#verify`)),
+        ...state.notifications,
+      ],
     });
   },
   offerHelp(caseId: string, helpType: HelpType, me: User) {
@@ -193,6 +207,49 @@ export const store = {
   /** The reporter says the animal is still there: the case stays on the map for a new period. PATCH /cases/:id/renew */
   renewCase(caseId: string) {
     updateCase(caseId, (c) => ({ ...c, updatedAt: now() }));
+  },
+  /** Someone near the animal answers "do you see it?". Two yes = verified; more no than yes (≥ 2) = back to moderators.
+      The position check (≤ 1 km) happens before, on the device and again in the API. POST /cases/:id/confirm { seen, lat, lng } */
+  vote(caseId: string, userId: string, seen: boolean) {
+    const before = state.cases.find((x) => x.id === caseId);
+    if (!before?.trust || before.trust.confirmedBy?.includes(userId) || before.trust.deniedBy?.includes(userId)) return;
+    updateCase(caseId, (c) => {
+      if (!c.trust) return c;
+      const confirmedBy = seen ? [...(c.trust.confirmedBy ?? []), userId] : c.trust.confirmedBy ?? [];
+      const deniedBy = seen ? c.trust.deniedBy ?? [] : [...(c.trust.deniedBy ?? []), userId];
+      const confirmations = c.trust.confirmations + (seen ? 1 : 0);
+      const doubtful = deniedBy.length >= 2 && deniedBy.length > confirmedBy.length;
+      return {
+        ...c,
+        updatedAt: seen ? now() : c.updatedAt,
+        moderation: doubtful ? "pending" : c.moderation,
+        trust: {
+          ...c.trust,
+          confirmedBy,
+          deniedBy,
+          confirmations,
+          score: Math.max(0, Math.min(1, c.trust.score + (seen ? 0.12 : -0.12))),
+          level: doubtful ? "suspicious" : confirmedBy.length >= 2 ? "verified" : c.trust.level,
+        },
+      };
+    });
+    if (seen) set({ notifications: [...notify(before.reporter.id, "caseConfirmed", before.title, `/cases/${caseId}`), ...state.notifications] });
+  },
+  /** The reporter changes the text of a public report: it waits for a moderator (a pending report changes directly). PATCH /cases/:id */
+  proposeCaseEdit(caseId: string, patch: Omit<CaseEdit, "at">) {
+    updateCase(caseId, (c) => (c.moderation === "pending" ? { ...c, ...patch, updatedAt: now() } : { ...c, pendingEdit: { ...patch, at: now() } }));
+  },
+  reviewCaseEdit(caseId: string, ok: boolean) {
+    const c = state.cases.find((x) => x.id === caseId);
+    if (!c?.pendingEdit) return;
+    const patch: Partial<CaseEdit> = { ...c.pendingEdit };
+    delete patch.at;
+    updateCase(caseId, (x) => (ok ? { ...x, ...patch, pendingEdit: undefined, updatedAt: now() } : { ...x, pendingEdit: undefined }));
+    set({ notifications: [...notify(c.reporter.id, ok ? "editApproved" : "editRejected", c.title, `/cases/${caseId}`), ...state.notifications] });
+  },
+  /** The reporter deletes their report. DELETE /cases/:id */
+  removeCase(caseId: string) {
+    set({ cases: state.cases.filter((c) => c.id !== caseId), notifications: state.notifications.filter((n) => n.href.split("#")[0] !== `/cases/${caseId}`) });
   },
   confirm(caseId: string) {
     updateCase(caseId, (c) => {

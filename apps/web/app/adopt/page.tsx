@@ -18,7 +18,12 @@ import { LIVESTOCK } from "@/lib/species";
 import type { Species } from "@/lib/types";
 import type { Dict } from "@/lib/i18n/en";
 import { cn } from "@/lib/utils";
-import { Heart, PawPrint } from "lucide-react";
+import { Heart, MapPin, PawPrint } from "lucide-react";
+import { Pager } from "@/components/ui/Pager";
+import { useNearMe } from "@/lib/useNearMe";
+import { distanceKm } from "@/lib/utils";
+
+const PAGE = 12;
 
 type Cat = "all" | "saved" | "dog" | "cat" | "livestock" | "other";
 const CATS: { id: Cat; label: (t: Dict) => string; pet?: { src: string; bg: string } }[] = [
@@ -40,7 +45,16 @@ export default function AdoptPage() {
   const router = useRouter();
   const allFavs = useStore((s) => s.favorites);
   const favs = (user && allFavs[user.id]) || [];
-  const list = useStore((s) => s.adoptions).filter((a) => a.status === "approved" && matches(filter, a.species) && (filter !== "saved" || favs.includes(a.id)));
+  const near = useNearMe();
+  const [page, setPage] = useState(1);
+  // closest first when we know where you are (device, or the city on your profile), newest first otherwise
+  const list = useStore((s) => s.adoptions)
+    .filter((a) => a.status === "approved" && matches(filter, a.species) && (filter !== "saved" || favs.includes(a.id)))
+    .map((a) => ({ a, d: near.origin ? distanceKm(near.origin, a.location) : undefined }))
+    .sort((x, y) => (x.d !== undefined && y.d !== undefined ? x.d - y.d : +new Date(y.a.createdAt) - +new Date(x.a.createdAt)));
+  const pages = Math.ceil(list.length / PAGE);
+  const cur = Math.min(page, Math.max(1, pages));
+  const shown = list.slice((cur - 1) * PAGE, cur * PAGE);
   const toggleFav = (id: string) => {
     if (!user) {
       toast(t.adopt.signInToSave);
@@ -56,7 +70,22 @@ export default function AdoptPage() {
     <div className="min-h-[100svh] pb-32">
       <TopNav />
       <div className="mx-auto max-w-[1180px] px-4 pt-[76px] sm:pt-24">
-        <h1 className="text-[30px] font-black leading-tight sm:text-[38px]">{t.adopt.title}</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="min-w-0 text-[30px] font-black leading-tight sm:text-[38px]">{t.adopt.title}</h1>
+          <button
+            type="button"
+            onClick={async () => {
+              setPage(1);
+              if (near.origin) return near.clear();
+              if (!(await near.locate())) toast(t.svc.locFail);
+            }}
+            aria-pressed={!!near.origin}
+            className={cn("flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-semibold transition-[background,transform] active:scale-95", near.origin ? "bg-accent text-white" : "bg-surface-2")}
+          >
+            <MapPin className={cn("h-4 w-4", near.origin ? "text-white" : "text-accent", near.locating && "animate-pulse")} />
+            {near.locating ? t.svc.locating : t.svc.nearMe}
+          </button>
+        </div>
         <p className="mt-1 max-w-[560px] text-[15px] text-label-2">{t.adopt.subtitle}</p>
 
         {/* categories with real pet photos (same pattern as Services) */}
@@ -64,7 +93,7 @@ export default function AdoptPage() {
           {CATS.map((c) => {
             const on = filter === c.id;
             return (
-              <button key={c.id} type="button" onClick={() => setFilter(c.id)} className="flex w-[72px] shrink-0 flex-col items-center gap-1.5">
+              <button key={c.id} type="button" onClick={() => { setFilter(c.id); setPage(1); }} className="flex w-[72px] shrink-0 flex-col items-center gap-1.5">
                 <span className={cn("rounded-full transition-shadow", on && "ring-[3px] ring-accent ring-offset-2 ring-offset-bg")}>
                   {c.pet ? (
                     <span className="flex h-[62px] w-[62px] items-center justify-center rounded-full" style={{ background: c.pet.bg }}><Emoji3D src={c.pet.src} size={38} /></span>
@@ -87,7 +116,7 @@ export default function AdoptPage() {
 
         <motion.div layout className="mt-4 grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
           <AnimatePresence mode="popLayout">
-            {list.map((a, i) => (
+            {shown.map(({ a, d }, i) => (
               <motion.div key={a.id} layout initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 280, damping: 26, delay: Math.min(i * 0.04, 0.3) }}>
                 <Link href={`/adopt/${a.id}`} className="group block active:scale-[0.98]">
                   <div className="relative aspect-[4/5] overflow-hidden rounded-[24px] bg-surface-2 shadow-[var(--card-shadow)]">
@@ -115,13 +144,14 @@ export default function AdoptPage() {
                       <span className="truncate font-display text-[18px] font-extrabold">{a.name}</span>
                       <span className="shrink-0 text-[13px] font-semibold text-label-2">{a.sex === "male" ? "♂" : "♀"}</span>
                     </div>
-                    <div className="truncate text-[12.5px] text-label-2">{dt(a.breed)} · {a.location.address}</div>
+                    <div className="truncate text-[12.5px] text-label-2">{d !== undefined ? `${t.common.km(d)} · ` : ""}{dt(a.breed)} · {a.location.address}</div>
                   </div>
                 </Link>
               </motion.div>
             ))}
           </AnimatePresence>
         </motion.div>
+        <Pager id="adopt" page={cur} pages={pages} onChange={setPage} />
       </div>
     </div>
   );

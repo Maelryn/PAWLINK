@@ -68,6 +68,9 @@ export interface Trust {
   checks: TrustCheck[];
   confirmations: number;
   flags: number;
+  /** People who answered "do you see this animal?" while standing near it (one answer each). */
+  confirmedBy?: string[];
+  deniedBy?: string[];
 }
 
 export interface AIAnalysis {
@@ -109,7 +112,11 @@ export interface Case {
   helpers: { user: UserLite; helpType: HelpType }[];
   createdAt: string;
   updatedAt: string;
+  /** The reporter's changes to a public report: shown once a moderator approves them. */
+  pendingEdit?: CaseEdit;
 }
+
+export type CaseEdit = { description?: string; conditionTags?: string[]; at: string };
 
 export interface EmergencyZone {
   id: string;
@@ -180,7 +187,9 @@ export type NotificationKind =
   | "resolved"
   | "nearbyCase"
   | "editApproved"
-  | "editRejected";
+  | "editRejected"
+  | "confirmAsk"
+  | "caseConfirmed";
 
 export interface AppNotification {
   id: string;

@@ -183,9 +183,9 @@ function NewAdoption({ editId }: { editId?: string }) {
             <motion.div
               key={step}
               custom={dir}
-              initial={{ x: dir * 60, opacity: 0, filter: "blur(6px)" }}
-              animate={{ x: 0, opacity: 1, filter: "blur(0px)" }}
-              exit={{ x: dir * -60, opacity: 0, filter: "blur(6px)" }}
+              initial={{ x: dir * 60, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: dir * -60, opacity: 0 }}
               transition={{ type: "spring", stiffness: 320, damping: 32 }}
               className="space-y-3"
             >

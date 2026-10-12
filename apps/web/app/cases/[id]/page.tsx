@@ -26,7 +26,8 @@ import { LIFETIME_DAYS, msLeftOnMap, store, useStore } from "@/lib/store";
 import { Burst } from "@/components/ui/Sparkles";
 import { Button } from "@/components/ui/Button";
 import { CheckCircle2, Clock } from "lucide-react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { ReporterTools } from "@/components/cases/ReporterTools";
 import { useSession } from "@/lib/auth";
 import { gmaps, gmapsDirections } from "@/lib/trust";
 import { TrustBadge, TrustPanel } from "@/components/cases/Trust";
@@ -142,6 +143,11 @@ export default function CasePage() {
                     <div className="font-semibold">{c.reporter.name}</div>
                   </div>
                 </div>
+                {user?.id === c.reporter.id && (
+                  <Suspense>
+                    <ReporterTools c={c} />
+                  </Suspense>
+                )}
               </section>
             </Reveal>
 

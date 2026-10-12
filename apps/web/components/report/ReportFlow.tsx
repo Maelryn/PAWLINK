@@ -28,7 +28,7 @@ import { CASES } from "@/lib/mock/data";
 import { cn, distanceKm } from "@/lib/utils";
 
 const DEMO_PHOTOS = ["/mock/dog-brown.jpg", "/mock/goat-1.jpg", "/mock/cat-bw.jpg", "/mock/sheep-1.jpg"];
-const TAGS = ["injured", "bleeding", "burned", "trapped", "smoke", "breathing", "lost", "abandoned", "thin", "dehydrated", "limping", "not-eating", "eyes", "sneezing", "skin", "coughing", "young", "needs-food"];
+export const TAGS = ["injured", "bleeding", "burned", "trapped", "smoke", "breathing", "lost", "abandoned", "thin", "dehydrated", "limping", "not-eating", "eyes", "sneezing", "skin", "coughing", "young", "needs-food"];
 const DEFAULT_POINT: GeoPoint = { lat: 36.6455, lng: 4.1979, address: "Larbaâ Nath Irathen, Tizi Ouzou" };
 
 type Phase = "form" | "analyzing" | "result";
@@ -181,7 +181,7 @@ export function ReportFlow() {
       <div className="relative z-10 mx-auto max-w-[620px] px-4 pb-10 pt-[max(16px,env(safe-area-inset-top))] md:pb-36 md:pt-28">
         <AnimatePresence mode="wait">
           {phase === "form" && (
-            <motion.div key="form" exit={{ opacity: 0, scale: 0.96, filter: "blur(10px)" }} transition={{ duration: 0.35 }}>
+            <motion.div key="form" exit={{ opacity: 0, scale: 0.96 }} transition={{ duration: 0.35 }}>
               <div className="mb-4 flex items-center justify-between sm:mb-6">
                 <Link href="/map" className="glass flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90" aria-label={t.common.close}>
                   <X className="h-5 w-5" />
@@ -195,9 +195,9 @@ export function ReportFlow() {
                   <motion.div
                     key={step}
                     custom={dir}
-                    initial={{ x: dir * 60, opacity: 0, filter: "blur(6px)" }}
-                    animate={{ x: 0, opacity: 1, filter: "blur(0px)" }}
-                    exit={{ x: dir * -60, opacity: 0, filter: "blur(6px)" }}
+                    initial={{ x: dir * 60, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: dir * -60, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 320, damping: 32 }}
                   >
                     {step === 0 && <PhotoStep photo={photo} setPhoto={setPhoto} exif={exif} setExif={setExif} point={point} />}
@@ -229,7 +229,7 @@ export function ReportFlow() {
           )}
 
           {phase === "analyzing" && (
-            <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.05, filter: "blur(12px)" }} transition={{ duration: 0.5 }}>
+            <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.05 }} transition={{ duration: 0.5 }}>
               <Analyzing photo={photo} species={species!} />
             </motion.div>
           )}

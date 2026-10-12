@@ -48,15 +48,19 @@ export function CreateFab({ onOpenChange }: { onOpenChange?: (open: boolean) => 
   const hoverRef = useRef(-1);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cards = useRef<(HTMLDivElement | null)[]>([]);
+  const ignoreClick = useRef(0);
   useEffect(() => {
     modeRef.current = mode;
+    if (!mode) {
+      hoverRef.current = -1;
+    }
     onOpenChange?.(!!mode);
   }, [mode, onOpenChange]);
 
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
   // close on route change / back gesture
   useEffect(() => {
-    if (mode !== "sheet") return;
+    if (!mode) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMode(null);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -95,27 +99,45 @@ export function CreateFab({ onOpenChange }: { onOpenChange?: (open: boolean) => 
         aria-haspopup="dialog"
         aria-expanded={!!mode}
         onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId);
-          timer.current = setTimeout(() => {
+          if (modeRef.current) return; // open already: a tap closes it (pointerup below)
+          const start = { x: e.clientX, y: e.clientY };
+          const hold = () => {
+            if (timer.current) clearTimeout(timer.current);
+            if (modeRef.current === "hold") return;
             modeRef.current = "hold";
+            setHover(-1);
             setMode("hold");
             vibrate(14);
-          }, 300);
+          };
+          timer.current = setTimeout(hold, 280);
+          // follow the finger on the whole window: on phones the gesture leaves the button right away
+          const move = (ev: PointerEvent) => {
+            if (modeRef.current !== "hold" && start.y - ev.clientY > 12) hold(); // sliding up = shortcut, no need to wait
+            if (modeRef.current === "hold") pick(ev.clientX, ev.clientY);
+          };
+          const noScroll = (ev: TouchEvent) => modeRef.current === "hold" && ev.cancelable && ev.preventDefault();
+          const end = (ev: PointerEvent) => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", end);
+            window.removeEventListener("pointercancel", end);
+            window.removeEventListener("touchmove", noScroll);
+            if (timer.current) clearTimeout(timer.current);
+            if (modeRef.current === "hold") {
+              const i = hoverRef.current;
+              // released on a card: open it. Elsewhere (or the browser interrupted the gesture): the cards stay, tap one
+              if (ev.type === "pointerup" && i >= 0) go(items[i].href);
+              ignoreClick.current = Date.now() + 450; // the click that follows this release must not close the cards
+              return;
+            }
+          };
+          window.addEventListener("pointermove", move);
+          window.addEventListener("pointerup", end);
+          window.addEventListener("pointercancel", end);
+          window.addEventListener("touchmove", noScroll, { passive: false });
         }}
-        onPointerMove={(e) => modeRef.current === "hold" && pick(e.clientX, e.clientY)}
-        onPointerUp={() => {
-          if (timer.current) clearTimeout(timer.current);
-          if (modeRef.current === "hold") {
-            const i = hoverRef.current;
-            if (i >= 0) go(items[i].href);
-            else setMode(null);
-            return;
-          }
-          setMode((m) => (m ? null : "sheet"));
-        }}
-        onPointerCancel={() => {
-          if (timer.current) clearTimeout(timer.current);
-          if (modeRef.current === "hold") setMode(null);
+        onClick={() => {
+          if (Date.now() < ignoreClick.current) return;
+          setMode(modeRef.current ? null : "sheet"); // tap (or keyboard) toggles the sheet
         }}
         onContextMenu={(e) => e.preventDefault()}
         whileTap={{ scale: 0.88 }}
@@ -156,12 +178,15 @@ export function CreateFab({ onOpenChange }: { onOpenChange?: (open: boolean) => 
                   ref={(el) => {
                     cards.current[i] = el;
                   }}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => go(it.href)}
                   initial={{ x: 0, y: 150, rotate: 0, scale: 0.3, opacity: 0 }}
                   animate={{ x: k * step, y: Math.abs(k) * 16 + (on ? -18 : 0), rotate: k * 9, scale: on ? 1.1 : hover >= 0 ? 0.92 : 1, opacity: 1 }}
                   exit={{ x: 0, y: 150, rotate: 0, scale: 0.3, opacity: 0, transition: { duration: 0.18 } }}
                   transition={{ type: "spring", stiffness: 420, damping: 24, delay: i * 0.035 }}
                   className={cn(
-                    "absolute bottom-0 flex w-[96px] flex-col items-center gap-2 rounded-[26px] bg-surface px-2 pb-3 pt-4 text-center shadow-[0_18px_40px_-14px_rgba(0,0,0,0.5)]",
+                    "pointer-events-auto absolute bottom-0 flex w-[96px] cursor-pointer flex-col items-center gap-2 rounded-[26px] bg-surface px-2 pb-3 pt-4 text-center shadow-[0_18px_40px_-14px_rgba(0,0,0,0.5)]",
                     on && "ring-[3px] ring-accent",
                   )}
                 >
