@@ -21,7 +21,7 @@ import { store, useStore } from "@/lib/store";
 import { useSession } from "@/lib/auth";
 import { Segmented } from "@/components/ui/primitives";
 import { AnimatePresence } from "motion/react";
-import { MessageCircle, Phone } from "lucide-react";
+import { MessageCircle, Pencil, Phone } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { SPECIES_EMOJI } from "@/lib/species";
 
@@ -200,8 +200,16 @@ export default function AdoptionProfilePage() {
         <motion.div initial={{ y: 80 }} animate={{ y: 0 }} transition={{ type: "spring", stiffness: 220, damping: 24, delay: 0.4 }} className="pointer-events-auto glass-strong w-full max-w-[480px] rounded-[30px] p-2">
           <AnimatePresence mode="wait" initial={false}>
             {mine ? (
-              <motion.div key="mine" className="px-4 py-3 text-center text-[14px] font-semibold">
-                {t.market.ownListing} · {a.status === "approved" ? t.market.approved : a.status === "pending" ? t.market.pending : t.market.rejected}
+              <motion.div key="mine" className="flex items-center gap-2 p-1">
+                <div className="min-w-0 flex-1 px-3">
+                  <div className="truncate text-[14px] font-semibold">{t.market.ownListing} · {t.market[a.status]}</div>
+                  {a.pendingEdit && <div className="truncate text-[12.5px] font-medium text-monitor">{t.post.pending}</div>}
+                </div>
+                {a.status !== "adopted" && (
+                  <ButtonLink href={`/adopt/new?edit=${a.id}`} variant="tinted" className="shrink-0">
+                    <Pencil className="h-4 w-4" /> {t.post.edit}
+                  </ButtonLink>
+                )}
               </motion.div>
             ) : myReq ? (
               <motion.div key="req" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2 p-2">

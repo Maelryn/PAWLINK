@@ -2,7 +2,7 @@
 
 import { useSession } from "@/lib/auth";
 
-import { getPosition } from "@/lib/geo";
+import { geoPermission, getPosition } from "@/lib/geo";
 import { toast } from "sonner";
 
 import { useCaseText } from "@/lib/i18n/content";
@@ -145,6 +145,16 @@ export function MapExperience() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emergency, ready]);
+
+  // location already allowed: show "you are here" and sort by distance, without moving the camera
+  useEffect(() => {
+    if (!ready) return;
+    let live = true;
+    geoPermission().then((p) => p === "granted" && getPosition(8000).then((here) => live && here && setUserLoc(here)));
+    return () => {
+      live = false;
+    };
+  }, [ready]);
 
   const first3d = useRef(true);
   useEffect(() => {

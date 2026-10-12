@@ -146,7 +146,11 @@ export interface Service {
   /** Pro subscribers: featured first + online appointments. */
   pro?: boolean;
   status?: "pending" | "approved" | "rejected";
+  /** Changes the owner made to a live listing: public only once a moderator approves them. */
+  pendingEdit?: ServiceEdit;
 }
+
+export type ServiceEdit = Partial<Pick<Service, "name" | "phone" | "description" | "hours" | "location">> & { at: string };
 
 export interface Booking {
   id: string;
@@ -174,7 +178,9 @@ export type NotificationKind =
   | "serviceApproved"
   | "proActive"
   | "resolved"
-  | "nearbyCase";
+  | "nearbyCase"
+  | "editApproved"
+  | "editRejected";
 
 export interface AppNotification {
   id: string;
@@ -220,7 +226,11 @@ export interface AdoptionProfile {
   /** Reviewed by an admin before it is public; "adopted" once the owner confirms it found its family (then it leaves the list). */
   status: "pending" | "approved" | "rejected" | "adopted";
   createdAt: string;
+  /** Changes the owner made to a live listing: public only once a moderator approves them. */
+  pendingEdit?: AdoptionEdit;
 }
+
+export type AdoptionEdit = Partial<Omit<AdoptionProfile, "id" | "status" | "ownerId" | "shelter" | "createdAt" | "pendingEdit">> & { at: string };
 
 export interface AdoptionRequest {
   id: string;

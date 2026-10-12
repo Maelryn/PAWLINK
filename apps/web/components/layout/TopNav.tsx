@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
-import { Bell, ChevronLeft, Heart, LayoutGrid, LogOut, Map, Plus, Settings, Shield, Sparkles, Stethoscope, User as UserIcon } from "lucide-react";
+import { Bell, ChevronLeft, Heart, House, LayoutGrid, LogOut, Map, Settings, Shield, Sparkles, Stethoscope } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -11,7 +11,7 @@ import { AppIcon } from "@/components/brand/Logo";
 function Wordmark() {
   return <span className="bg-gradient-to-r from-[#1f8bff] via-[#3d6bff] to-[#7b4dff] bg-clip-text font-display text-[22px] font-black leading-none tracking-[-0.03em] text-transparent">pawlink</span>;
 }
-import { ButtonLink } from "@/components/ui/Button";
+import { CreateFab, CreateMenuDesktop } from "@/components/layout/CreateMenu";
 import { Avatar } from "@/components/ui/primitives";
 import { signOut, useSession } from "@/lib/auth";
 import { useStore } from "@/lib/store";
@@ -142,15 +142,17 @@ export function TopNav({
             <Link href="/settings" aria-label={t.acct.tabs.settings} className={cn(iconBtn, "w-11 px-0 md:w-10 max-md:bg-surface max-md:shadow-[0_2px_10px_rgba(0,0,0,0.08)]", (back || actions) && "max-md:hidden")}>
               <Settings className="h-[18px] w-[18px]" />
             </Link>
-            <ButtonLink href="/report" size="sm" className="ms-1 hidden sm:inline-flex">
-              <Plus className="h-4 w-4" strokeWidth={2.6} />
-              {t.nav.report}
-            </ButtonLink>
-            {/* phones: notifications and the account are in the bottom tab bar ("My space") */}
+            <CreateMenuDesktop />
+            {/* phones: notifications and the account live in the "Home" tab; signed-out people get a sign-in pill */}
             <div className="hidden items-center gap-0.5 md:flex">
               <NotificationBell />
               <AccountMenu />
             </div>
+            {user === null && (
+              <div className="md:hidden">
+                <AccountMenu />
+              </div>
+            )}
           </div>
         </nav>
       </motion.header>
@@ -222,45 +224,53 @@ function AccountMenu() {
   );
 }
 
-/** iOS-style floating tab bar on phones. Always visible (pages pad their bottom by 96px). */
+/** iOS-style floating tab bar on phones: Home · Adopt · + · Services · Map. */
 function MobileTabBar() {
   const { t } = useI18n();
   const hidden = useTabBarHidden();
   const pathname = usePathname();
   const user = useSession();
   const unread = useStore((s) => s.notifications.filter((n) => n.userId === user?.id && !n.read).length);
+  const [creating, setCreating] = useState(false);
+  const isHome = user ? ["/account", "/admin", "/settings", "/dashboard"].some((p) => pathname.startsWith(p)) : pathname === "/";
   const tabs = [
-    { href: "/map", label: t.nav.map, icon: Map },
-    { href: "/adopt", label: t.nav.adopt, icon: Heart },
-    { href: "/report", label: t.nav.report, icon: Plus, primary: true },
-    { href: "/services", label: t.nav.services, icon: Stethoscope },
-    user ? { href: user.role === "admin" && pathname.startsWith("/admin") ? "/admin" : "/account", label: t.account.mySpace, icon: UserIcon } : { href: "/login", label: t.nav.signIn, icon: UserIcon },
+    { href: user ? "/account" : "/", label: t.home.tab, icon: House, active: isHome, badge: unread },
+    { href: "/adopt", label: t.nav.adopt, icon: Heart, active: pathname.startsWith("/adopt") },
+    null,
+    { href: "/services", label: t.nav.services, icon: Stethoscope, active: pathname.startsWith("/services") },
+    { href: "/map", label: t.nav.map, icon: Map, active: pathname.startsWith("/map") },
   ];
   return (
     <motion.div
       animate={{ y: hidden ? 120 : 0, opacity: hidden ? 0 : 1 }}
       transition={{ type: "spring", stiffness: 380, damping: 36 }}
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[55] flex justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom))] md:hidden"
+      className={cn("pointer-events-none fixed inset-x-0 bottom-0 flex justify-center px-4 pb-[max(12px,env(safe-area-inset-bottom))] md:hidden", creating ? "z-[73]" : "z-[55]")}
     >
-      <nav className="glass-strong pointer-events-auto flex h-[64px] w-full max-w-[420px] items-center justify-around rounded-full px-2">
+      <nav className="glass-strong pointer-events-auto flex h-[64px] w-full max-w-[420px] items-center justify-around rounded-full px-1.5">
         {tabs.map((tab) => {
-          const active = pathname.startsWith(tab.href);
+          if (!tab) return <CreateFab key="create" onOpenChange={setCreating} />;
           const Icon = tab.icon;
-          if (tab.primary)
-            return (
-              <Link key={tab.href} href={tab.href} aria-label={tab.label} className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white transition-transform active:scale-90 shadow-[0_8px_20px_-6px_var(--accent)]">
-                <Icon className="h-6 w-6" strokeWidth={2.6} />
-              </Link>
-            );
           return (
-            <Link key={tab.href} href={tab.href} className={cn("relative flex w-16 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition-opacity active:opacity-60", active ? "text-accent" : "text-label-2")}>
-              <span className="relative">
-                <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 1.9} />
-                {tab.href === "/account" && unread > 0 && (
-                  <span className="absolute -end-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-urgent px-1 text-[10px] font-bold text-white">{unread}</span>
+            <Link
+              key={tab.label}
+              href={tab.href}
+              aria-current={tab.active ? "page" : undefined}
+              className={cn("relative flex h-[52px] w-[66px] flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors active:opacity-60", tab.active ? "text-accent" : "text-label-2")}
+            >
+              {tab.active && <motion.span layoutId="tabbar-pill" className="absolute inset-0 rounded-full bg-accent-soft" transition={{ type: "spring", stiffness: 480, damping: 36 }} />}
+              <motion.span
+                key={tab.active ? "on" : "off"}
+                initial={tab.active ? { scale: 0.6, y: 3 } : false}
+                animate={{ scale: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 520, damping: 14 }}
+                className="relative"
+              >
+                <Icon className="h-[22px] w-[22px]" strokeWidth={tab.active ? 2.4 : 1.9} />
+                {!!tab.badge && (
+                  <span className="absolute -end-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-urgent px-1 text-[10px] font-bold text-white">{tab.badge}</span>
                 )}
-              </span>
-              <span className="max-w-full truncate">{tab.label}</span>
+              </motion.span>
+              <span className="relative max-w-full truncate">{tab.label}</span>
             </Link>
           );
         })}

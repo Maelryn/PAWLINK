@@ -83,14 +83,25 @@ export function BusinessPanel({ me }: { me: User }) {
         className={cn(card, "space-y-3")}
         onSubmit={(e) => {
           e.preventDefault();
-          store.updateService(s.id, { name: f.name, phone: f.phone, description: f.description, hours: f.hours, location: { ...s.location, address: f.address } });
-          toast.success(t.acct.saved);
+          store.proposeServiceEdit(s.id, { name: f.name.trim(), phone: f.phone.trim(), description: f.description.trim(), hours: f.hours.trim(), location: { ...s.location, address: f.address.trim() } });
+          if (s.status !== "approved") return toast.success(t.acct.saved);
+          // a business that just updated its listing is the right moment to mention Pro (only if it doesn't have it)
+          toast.success(t.post.sent, isPro ? undefined : { action: { label: t.home.proCta, onClick: () => openPaywall() } });
         }}
       >
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-[18px] font-bold"><Emoji3D src={SERVICE_EMOJI[s.type]} size={26} /> {t.biz.listing}</h2>
           {s.status === "approved" && <Link href={`/services/${s.id}`} className="text-[13.5px] font-semibold text-accent">{t.map.details} →</Link>}
         </div>
+        {s.pendingEdit && (
+          <div className="flex items-start gap-2.5 rounded-[18px] bg-monitor-soft p-3.5">
+            <Emoji3D src="/3d/shield.png" size={26} className="shrink-0" />
+            <div>
+              <div className="text-[14px] font-semibold text-monitor">{t.post.pending}</div>
+              <p className="text-[13px] text-label-2">{t.post.pendingBody}</p>
+            </div>
+          </div>
+        )}
         <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder={t.biz.bizName} className={field} />
         <div className="grid gap-3 sm:grid-cols-2">
           <input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder={t.acct.phone} className={field} dir="ltr" />
@@ -98,7 +109,7 @@ export function BusinessPanel({ me }: { me: User }) {
         </div>
         <input value={f.hours} onChange={(e) => setF({ ...f, hours: e.target.value })} placeholder={t.biz.hours} className={field} />
         <textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder={t.biz.description} className={cn(field, "h-auto resize-none py-3")} />
-        <Button type="submit">{t.acct.save}</Button>
+        <Button type="submit">{s.status === "approved" ? t.post.send : t.acct.save}</Button>
       </form>
 
       {/* appointments */}

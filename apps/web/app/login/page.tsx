@@ -135,17 +135,10 @@ function Login() {
       <button type="button" onClick={() => setStep("choose")} className="glass fixed start-4 top-[max(12px,env(safe-area-inset-top))] z-30 flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-90 lg:hidden" aria-label={t.common.back}>
         <ChevronLeft className="h-5 w-5 rtl:rotate-180" />
       </button>
-      <div className="relative mx-auto flex min-h-full max-w-[1080px] flex-col items-center justify-end px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-[max(56px,env(safe-area-inset-top))] lg:flex-row lg:justify-center lg:gap-16 lg:pb-4 lg:pt-16">
+      <div className="relative mx-auto flex min-h-full max-w-[1080px] flex-col items-center justify-center px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-[max(64px,env(safe-area-inset-top))] lg:flex-row lg:gap-16 lg:pb-4 lg:pt-16">
         <div className="relative hidden h-[440px] w-[440px] shrink-0 lg:block">
           <PhotoStack />
         </div>
-        {/* phones: the photos fill whatever room the form leaves, and step aside when it's too tight */}
-        <div className="relative min-h-0 w-full max-w-[340px] flex-1 [container-type:size] lg:hidden">
-          <div className="absolute inset-x-0 top-1/2 h-[min(100%,280px)] -translate-y-1/2 transition-opacity duration-200 [@container(max-height:150px)]:opacity-0">
-            <PhotoStack />
-          </div>
-        </div>
-
         <div className="flex w-full max-w-[400px] shrink-0 flex-col">
           {/* centered iOS header */}
           <div className="flex flex-col items-center text-center">

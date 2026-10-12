@@ -21,7 +21,7 @@ import { suggestZones, zoneStats, ZONE_PLACES } from "@/lib/zones";
 import { SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
 import { TrustBadge } from "@/components/cases/Trust";
-import { AdoptionQueue, ServiceQueue } from "@/components/adopt/AdoptionPanels";
+import { AdoptionQueue, EditQueue, ServiceQueue } from "@/components/adopt/AdoptionPanels";
 import type { EmergencyZone, Triage } from "@/lib/types";
 import { cn, minutesSince } from "@/lib/utils";
 
@@ -84,6 +84,7 @@ function AdminPage() {
                   <>
                     <ServiceQueue />
                     <AdoptionQueue />
+                    <EditQueue />
                     <Moderation />
                   </>
                 )}

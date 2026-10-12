@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, MessageCircle, Phone, X } from "lucide-react";
+import { Check, MessageCircle, Pencil, Phone, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/primitives";
@@ -34,13 +34,23 @@ export function MyAdoptions({ me }: { me: User }) {
       </div>
       {mine.length === 0 && empty}
       {mine.map((a) => (
-        <Link key={a.id} href={`/adopt/${a.id}`} className="flex items-center gap-3 rounded-[20px] p-2.5 hover:bg-surface-2">
-          <Thumb src={a.photos[0]} />
-          <span className="flex-1 font-semibold">{a.name}</span>
-          <span className={cn("rounded-full px-2.5 py-1 text-[12px] font-semibold", a.status === "approved" || a.status === "adopted" ? "bg-stable-soft text-stable" : a.status === "pending" ? "bg-monitor-soft text-monitor" : "bg-urgent-soft text-urgent")}>
-            {t.market[a.status]}
-          </span>
-        </Link>
+        <div key={a.id} className="flex items-center gap-2 rounded-[20px] p-2.5 hover:bg-surface-2">
+          <Link href={`/adopt/${a.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+            <Thumb src={a.photos[0]} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold">{a.name}</span>
+              {a.pendingEdit && <span className="block truncate text-[12px] font-medium text-monitor">{t.post.pending}</span>}
+            </span>
+            <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold", a.status === "approved" || a.status === "adopted" ? "bg-stable-soft text-stable" : a.status === "pending" ? "bg-monitor-soft text-monitor" : "bg-urgent-soft text-urgent")}>
+              {t.market[a.status]}
+            </span>
+          </Link>
+          {a.status !== "adopted" && (
+            <Link href={`/adopt/new?edit=${a.id}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-2 text-label-2 transition-transform active:scale-90" aria-label={t.post.edit} title={t.post.edit}>
+              <Pencil className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
       ))}
 
       <h2 className={title}>{t.market.received}</h2>
@@ -129,6 +139,54 @@ export function AdoptionQueue() {
           </div>
           <button type="button" onClick={() => store.moderateAdoption(a.id, "approved")} className="flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13px] font-semibold text-stable"><Check className="h-4 w-4" /> {t.admin.approve}</button>
           <button type="button" onClick={() => store.moderateAdoption(a.id, "rejected")} className="flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-label-2"><X className="h-4 w-4" /> {t.market.decline}</button>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** Admin: changes to live listings (adoption or business), shown field by field. */
+export function EditQueue() {
+  const { t } = useI18n();
+  const adoptions = useStore((s) => s.adoptions).filter((a) => a.pendingEdit);
+  const services = useStore((s) => s.services).filter((s) => s.pendingEdit);
+  const show = (v: unknown): string =>
+    Array.isArray(v) ? v.map((x) => (typeof x === "string" ? (x.startsWith("data:") ? "📷" : x) : (x as { name?: string }).name ?? "")).join(", ") : v && typeof v === "object" ? ((v as { address?: string }).address ?? "") : String(v ?? "");
+  const label: Record<string, string> = {
+    name: t.market.name, species: t.report.animalTitle, breed: t.market.breed, sex: t.adopt.sex.male + " / " + t.adopt.sex.female, ageMonths: t.market.age,
+    photos: t.market.stepPhotos, healthStatus: t.market.health, vaccinations: t.market.vaccines, behavior: t.market.behavior, careNeeds: t.market.care,
+    story: t.market.story, ownerPhone: t.market.phone, phone: t.acct.phone, location: t.market.city, description: t.biz.description, hours: t.biz.hours,
+  };
+  const rows = (cur: Record<string, unknown>, next: Record<string, unknown>) =>
+    Object.keys(next)
+      .filter((k) => k !== "at" && show(cur[k]) !== show(next[k]))
+      .map((k) => (
+        <div key={k} className="grid grid-cols-[90px_1fr] gap-2 text-[12.5px]">
+          <span className="font-semibold text-label-2">{label[k] ?? k}</span>
+          <span className="min-w-0">
+            <span className="text-label-2 line-through">{show(cur[k]) || "—"}</span> → <span className="font-semibold">{show(next[k]) || "—"}</span>
+          </span>
+        </div>
+      ));
+  const total = adoptions.length + services.length;
+  return (
+    <section className="card mb-5 overflow-hidden rounded-[28px]">
+      <div className="flex items-center justify-between p-5">
+        <h2 className="text-[19px] font-bold">{t.post.queue}</h2>
+        <span className="rounded-full bg-monitor-soft px-3 py-1 text-[13px] font-semibold text-monitor">{total}</span>
+      </div>
+      {total === 0 && <div className="px-5 pb-5 text-[14px] text-label-2">{t.market.none}</div>}
+      {[
+        ...adoptions.map((a) => ({ id: a.id, name: a.name, kind: t.nav.adopt, cur: a as unknown as Record<string, unknown>, next: a.pendingEdit as Record<string, unknown>, ok: (v: boolean) => store.reviewAdoptionEdit(a.id, v) })),
+        ...services.map((s) => ({ id: s.id, name: s.name, kind: t.common.service[s.type], cur: s as unknown as Record<string, unknown>, next: s.pendingEdit as Record<string, unknown>, ok: (v: boolean) => store.reviewServiceEdit(s.id, v) })),
+      ].map((x) => (
+        <div key={x.id} className="space-y-2 border-t border-separator px-5 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-0 flex-1 font-semibold">{x.name} · <span className="font-normal text-label-2">{x.kind}</span></div>
+            <button type="button" onClick={() => x.ok(true)} className="flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13px] font-semibold text-stable"><Check className="h-4 w-4" /> {t.admin.approve}</button>
+            <button type="button" onClick={() => x.ok(false)} className="flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-label-2"><X className="h-4 w-4" /> {t.market.decline}</button>
+          </div>
+          <div className="space-y-1 rounded-[14px] bg-surface-2 p-3">{rows(x.cur, x.next)}</div>
         </div>
       ))}
     </section>

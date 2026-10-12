@@ -16,6 +16,8 @@ import type {
   Review,
   Service,
   User,
+  AdoptionEdit,
+  ServiceEdit,
 } from "./types";
 
 /* Client "database" for the demo. Everything is saved in localStorage so the app behaves like a
@@ -272,6 +274,25 @@ export const store = {
       notifications: [...notify(a?.ownerId, status === "approved" ? "listingApproved" : "listingRejected", a?.name ?? "", `/adopt/${id}`), ...state.notifications],
     });
   },
+  /** The owner edits a listing. A live one keeps its public version until a moderator approves the change
+      (second review); a refused one goes back to the queue. PATCH /adoptions/:id */
+  proposeAdoptionEdit(id: string, patch: Omit<AdoptionEdit, "at">) {
+    set({
+      adoptions: state.adoptions.map((a) =>
+        a.id !== id ? a : a.status === "approved" ? { ...a, pendingEdit: { ...patch, at: now() } } : { ...a, ...patch, status: a.status === "rejected" ? "pending" : a.status },
+      ),
+    });
+  },
+  reviewAdoptionEdit(id: string, ok: boolean) {
+    const a = state.adoptions.find((x) => x.id === id);
+    if (!a?.pendingEdit) return;
+    const patch: Partial<AdoptionEdit> = { ...a.pendingEdit };
+    delete patch.at;
+    set({
+      adoptions: state.adoptions.map((x) => (x.id !== id ? x : ok ? { ...x, ...patch, pendingEdit: undefined } : { ...x, pendingEdit: undefined })),
+      notifications: [...notify(a.ownerId, ok ? "editApproved" : "editRejected", a.name, `/adopt/${id}`), ...state.notifications],
+    });
+  },
   /** PATCH /adoptions/:id { status: "adopted" } — the owner confirms the animal found its family. */
   markAdopted(id: string) {
     set({ adoptions: state.adoptions.map((x) => (x.id === id ? { ...x, status: "adopted" } : x)) });
@@ -299,6 +320,22 @@ export const store = {
   },
   updateService(id: string, patch: Partial<Service>) {
     set({ services: state.services.map((s) => (s.id === id ? { ...s, ...patch } : s)) });
+  },
+  /** Same second review for business listings. PATCH /services/:id */
+  proposeServiceEdit(id: string, patch: Omit<ServiceEdit, "at">) {
+    set({
+      services: state.services.map((s) => (s.id !== id ? s : s.status === "approved" ? { ...s, pendingEdit: { ...patch, at: now() } } : { ...s, ...patch })),
+    });
+  },
+  reviewServiceEdit(id: string, ok: boolean) {
+    const s = state.services.find((x) => x.id === id);
+    if (!s?.pendingEdit) return;
+    const patch: Partial<ServiceEdit> = { ...s.pendingEdit };
+    delete patch.at;
+    set({
+      services: state.services.map((x) => (x.id !== id ? x : ok ? { ...x, ...patch, pendingEdit: undefined } : { ...x, pendingEdit: undefined })),
+      notifications: [...notify(s.ownerId, ok ? "editApproved" : "editRejected", s.name, "/account?tab=pro"), ...state.notifications],
+    });
   },
   /** A regular account asks to become a professional: the listing waits for an admin. POST /services */
   requestBusiness(userId: string, b: { name: string; type: Service["type"]; city: string; phone: string; location?: GeoPoint }) {

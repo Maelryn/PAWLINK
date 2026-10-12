@@ -247,7 +247,7 @@ export function ReportFlow() {
 
 /* ───────────────────── pieces ───────────────────── */
 
-function Backdrop({ triage }: { triage?: AIAnalysis["triage"] }) {
+export function Backdrop({ triage }: { triage?: AIAnalysis["triage"] }) {
   const color = triage ? TRIAGE_COLOR[triage] : null;
   return (
     <div className="pointer-events-none absolute inset-0">
@@ -265,7 +265,7 @@ function Backdrop({ triage }: { triage?: AIAnalysis["triage"] }) {
   );
 }
 
-function Progress({ step, labels, onJump }: { step: number; labels: string[]; onJump: (n: number) => void }) {
+export function Progress({ step, labels, onJump }: { step: number; labels: string[]; onJump: (n: number) => void }) {
   return (
     <div className="glass flex items-center gap-1 rounded-full p-1">
       {labels.map((l, i) => (
@@ -286,7 +286,7 @@ function Progress({ step, labels, onJump }: { step: number; labels: string[]; on
   );
 }
 
-function StepHeader({ emoji, title, body }: { emoji: string; title: string; body?: string }) {
+export function StepHeader({ emoji, title, body }: { emoji: string; title: string; body?: string }) {
   return (
     <div className="mb-4 flex items-start gap-3 sm:mb-5 sm:gap-3.5">
       <motion.div className="shrink-0" initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.05 }}>

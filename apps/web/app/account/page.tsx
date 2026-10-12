@@ -3,7 +3,7 @@
 import { SERVICE_EMOJI } from "@/lib/species";
 
 import { motion } from "motion/react";
-import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, Home, MapPin, Settings, User as UserIcon, PlusCircle } from "lucide-react";
+import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, House, MapPin, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -12,18 +12,29 @@ import { MyAdoptions } from "@/components/adopt/AdoptionPanels";
 import { CaseRow } from "@/components/cases/CaseBits";
 import { TrustBadge } from "@/components/cases/Trust";
 import { BusinessPanel } from "@/components/account/BusinessPanel";
-import { SettingsPanel } from "@/components/account/SettingsPanel";
 import { TopNav } from "@/components/layout/TopNav";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Avatar, Emoji3D, TimeAgo } from "@/components/ui/primitives";
 import { useSession, saveProfile } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, TRIAGE_ORDER } from "@/lib/species";
-import { isPublic, store, useStore } from "@/lib/store";
+import { isPublic, proActive, store, useStore } from "@/lib/store";
+import { openPaywall } from "@/lib/ui";
 import type { HelpType, User, ServiceType } from "@/lib/types";
 import { cn, distanceKm } from "@/lib/utils";
 
-type Tab = "home" | "profile" | "reports" | "adoption" | "pro" | "notifications" | "settings";
+type Tab = "home" | "profile" | "reports" | "adoption" | "pro" | "notifications";
+
+/** "Good morning" / "Good evening"… from the device clock. */
+function greeting(t: ReturnType<typeof useI18n>["t"]) {
+  const h = new Date().getHours();
+  return h >= 5 && h < 12 ? t.home.morning : h >= 12 && h < 18 ? t.home.afternoon : t.home.evening;
+}
+/** "Yasmine", or "Dr Meriem" for vets. */
+function firstName(name: string) {
+  const parts = name.replace(/^Dr\.?\s*/, "Dr ").split(" ");
+  return parts[0] === "Dr" ? parts.slice(0, 2).join(" ") : parts[0];
+}
 
 export default function AccountPage() {
   return (
@@ -41,14 +52,13 @@ function Account() {
   const unread = useStore((s) => s.notifications.filter((n) => n.userId === me?.id && !n.read).length);
   if (!me) return null;
 
-  const tabs: { id: Tab; label: string; Icon: typeof Home; badge?: number }[] = [
-    { id: "home", label: t.acct.tabs.home, Icon: Home },
+  const tabs: { id: Tab; label: string; Icon: typeof House; badge?: number }[] = [
+    { id: "home", label: t.home.tab, Icon: House },
     { id: "profile", label: t.acct.tabs.profile, Icon: UserIcon },
     { id: "reports", label: t.acct.tabs.reports, Icon: MapPin },
     { id: "adoption", label: t.acct.tabs.adoption, Icon: Heart },
     ...(me.serviceId ? [{ id: "pro" as Tab, label: t.acct.tabs.pro, Icon: Briefcase }] : []),
     { id: "notifications", label: t.acct.tabs.notifications, Icon: Bell, badge: unread },
-    { id: "settings", label: t.acct.tabs.settings, Icon: Settings },
   ];
   const tab = (tabs.find((x) => x.id === params.get("tab"))?.id ?? "home") as Tab;
   const go = (id: Tab) => router.replace(`/account?tab=${id}`, { scroll: false });
@@ -57,11 +67,19 @@ function Account() {
     <div className="min-h-[100svh] pb-32">
       <TopNav />
       <div className="mx-auto max-w-[1100px] px-4 pt-[76px] sm:pt-24">
-        {/* header */}
-        <div className="flex items-center gap-4">
-          <Avatar name={me.name} photo={me.photo} size={64} />
+        {/* header: a personal hello */}
+        <div className="flex items-center gap-3.5">
+          <button type="button" onClick={() => go("profile")} className="shrink-0 rounded-full transition-transform active:scale-95" aria-label={t.acct.tabs.profile}>
+            <Avatar name={me.name} photo={me.photo} size={60} />
+          </button>
           <div className="min-w-0">
-            <h1 className="truncate text-[28px] font-bold tracking-[-0.035em] sm:text-[34px]">{me.name}</h1>
+            <div className="text-[14px] font-semibold text-label-2">{greeting(t)}</div>
+            <h1 className="flex items-center gap-2 text-[28px] font-black leading-tight tracking-[-0.035em] sm:text-[34px]">
+              <span className="truncate">{firstName(me.name)}</span>
+              <motion.span className="inline-block origin-[70%_70%]" animate={{ rotate: [0, 16, -8, 16, 0] }} transition={{ duration: 1.2, delay: 0.4 }} aria-hidden>
+                👋
+              </motion.span>
+            </h1>
             <div className="flex flex-wrap items-center gap-x-2 text-[13.5px] text-label-2">
               <span className="font-semibold text-accent">{me.serviceId && me.role !== "vet" ? t.biz.signupAs.split(" (")[0] : t.dashboard.roles[me.role]}</span>
               {me.city && <span className="flex min-w-0 items-center gap-1"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{me.city}</span></span>}
@@ -98,7 +116,6 @@ function Account() {
             {tab === "adoption" && <MyAdoptions me={me} />}
             {tab === "pro" && <BusinessPanel me={me} />}
             {tab === "notifications" && <Notifications me={me} />}
-            {tab === "settings" && <SettingsTab />}
           </motion.main>
         </div>
       </div>
@@ -112,38 +129,92 @@ function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
   const { t } = useI18n();
   const cases = useStore((s) => s.cases);
   const adoptions = useStore((s) => s.adoptions);
+  const myService = useStore((s) => s.services).find((x) => x.id === me.serviceId);
   const home = me.location ?? { lat: 36.7538, lng: 3.0588 };
   const myReports = cases.filter((c) => c.reporter.id === me.id).length;
   const helped = cases.filter((c) => c.helpers.some((h) => h.user.id === me.id)).length;
   const listings = adoptions.filter((a) => a.ownerId === me.id).length;
-  const near = cases
+  const open = cases
     .filter((c) => isPublic(c) && c.status !== "resolved")
     .map((c) => ({ c, d: distanceKm(home, c.location) }))
-    .sort((a, b) => TRIAGE_ORDER[a.c.triage] - TRIAGE_ORDER[b.c.triage] || a.d - b.d)
-    .slice(0, 5);
+    .sort((a, b) => TRIAGE_ORDER[a.c.triage] - TRIAGE_ORDER[b.c.triage] || a.d - b.d);
+  const urgentNear = open.filter((x) => x.c.triage === "urgent" && x.d < 40).length;
+  const near = open.slice(0, 3);
+  const bizNoPro = myService?.status === "approved" && !proActive(me);
   return (
     <>
+      {/* what matters right now, in one glance */}
+      <Link
+        href="/map"
+        className={cn(
+          "relative block overflow-hidden rounded-[30px] p-5 text-white transition-transform active:scale-[0.98]",
+          urgentNear ? "bg-gradient-to-br from-[#ff7a45] via-[#ff4d5e] to-[#ff2d78]" : "bg-gradient-to-br from-[#30c46b] via-[#1fa98f] to-[#0a7cff]",
+        )}
+      >
+        <motion.div className="absolute -end-2 -top-2" animate={{ y: [0, -6, 0], rotate: [0, -4, 0] }} transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}>
+          <Emoji3D src={urgentNear ? "/3d/ambulance.png" : "/3d/sun.png"} size={92} className="drop-shadow-[0_12px_18px_rgba(0,0,0,0.2)]" />
+        </motion.div>
+        <div className="relative max-w-[72%] text-[21px] font-bold leading-tight tracking-[-0.02em]">{t.home.near(urgentNear)}</div>
+        <p className="relative mt-1.5 max-w-[80%] text-[13.5px] leading-snug text-white/85">{urgentNear ? t.home.nearBody : t.home.calmBody}</p>
+        <span className="relative mt-4 inline-flex h-10 items-center gap-1 rounded-full bg-white px-4 text-[14px] font-bold text-[#1d1d1f]">
+          {t.home.nearCta} <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+        </span>
+      </Link>
+
       <div className="grid grid-cols-3 gap-3">
         {[
           { e: "/3d/camera.png", n: myReports, l: t.acct.stats.reports, tab: "reports" as Tab },
-          { e: "/3d/hearthands.png", n: helped, l: t.acct.stats.helped, tab: "home" as Tab },
+          { e: "/3d/hearthands.png", n: helped, l: t.acct.stats.helped, tab: "reports" as Tab },
           { e: "/3d/home.png", n: listings, l: t.acct.stats.listings, tab: "adoption" as Tab },
-        ].map((s) => (
-          <button key={s.l} type="button" onClick={() => go(s.tab)} className="card flex min-w-0 flex-col items-start gap-2 rounded-[24px] p-4 text-start">
-            <Emoji3D src={s.e} size={36} />
+        ].map((s, i) => (
+          <motion.button
+            key={s.l}
+            type="button"
+            onClick={() => go(s.tab)}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 + i * 0.05 }}
+            className="card flex min-w-0 flex-col items-start gap-2 rounded-[24px] p-4 text-start transition-transform active:scale-[0.97]"
+          >
+            <Emoji3D src={s.e} size={34} />
             <div className="text-[26px] font-bold leading-none tabular-nums">{s.n}</div>
             <div className="text-[12.5px] leading-tight text-label-2">{s.l}</div>
-          </button>
+          </motion.button>
         ))}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <ButtonLink href="/report" size="lg" className="w-full">
-          <Camera className="h-[18px] w-[18px]" /> {t.acct.reportCta}
-        </ButtonLink>
-        <ButtonLink href="/adopt/new" size="lg" variant="tinted" className="w-full">
-          <PlusCircle className="h-[18px] w-[18px]" /> {t.market.post}
-        </ButtonLink>
-      </div>
+
+      {/* one personal card: admin console, Pro for businesses, or becoming a verified professional */}
+      {me.role === "admin" ? (
+        <Link href="/admin" className="card flex items-center gap-3 rounded-[24px] p-4 transition-transform active:scale-[0.98]">
+          <Emoji3D src="/3d/shield.png" size={40} className="shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="font-bold">{t.home.admin}</div>
+            <div className="truncate text-[13px] text-label-2">{t.home.adminBody}</div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-label-3 rtl:rotate-180" />
+        </Link>
+      ) : bizNoPro ? (
+        <button type="button" onClick={() => openPaywall()} className="relative flex w-full items-center gap-3 overflow-hidden rounded-[24px] bg-gradient-to-r from-[#0a7cff] via-[#5e5ce6] to-[#ff2d78] p-4 text-start text-white transition-transform active:scale-[0.98]">
+          <motion.span animate={{ rotate: [0, -10, 10, 0], scale: [1, 1.1, 1] }} transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 1.5 }} className="shrink-0">
+            <Emoji3D src="/3d/star.png" size={40} />
+          </motion.span>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold">{t.biz.proTitle}</div>
+            <div className="line-clamp-2 text-[13px] text-white/85">{t.biz.proPitch}</div>
+          </div>
+          <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[13px] font-bold text-[#3d3bd6]">{t.home.proCta}</span>
+        </button>
+      ) : !me.serviceId ? (
+        <Link href="/account?tab=profile#business" className="card flex items-center gap-3 rounded-[24px] p-4 transition-transform active:scale-[0.98]">
+          <Emoji3D src="/3d/stethoscope.png" size={40} className="shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="font-bold">{t.create.pro}</div>
+            <div className="truncate text-[13px] text-label-2">{t.create.proSub}</div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-label-3 rtl:rotate-180" />
+        </Link>
+      ) : null}
+
       <section className="card rounded-[28px] p-3">
         <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-3">
           <h2 className="min-w-0 text-[20px] font-bold tracking-[-0.02em]">{t.dashboard.near}</h2>
@@ -358,8 +429,4 @@ function Notifications({ me }: { me: User }) {
       ))}
     </section>
   );
-}
-
-function SettingsTab() {
-  return <SettingsPanel />;
 }

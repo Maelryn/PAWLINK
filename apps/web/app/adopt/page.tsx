@@ -18,8 +18,7 @@ import { LIVESTOCK } from "@/lib/species";
 import type { Species } from "@/lib/types";
 import type { Dict } from "@/lib/i18n/en";
 import { cn } from "@/lib/utils";
-import { ButtonLink } from "@/components/ui/Button";
-import { Heart, PawPrint, Plus } from "lucide-react";
+import { Heart, PawPrint } from "lucide-react";
 
 type Cat = "all" | "saved" | "dog" | "cat" | "livestock" | "other";
 const CATS: { id: Cat; label: (t: Dict) => string; pet?: { src: string; bg: string } }[] = [
@@ -57,12 +56,7 @@ export default function AdoptPage() {
     <div className="min-h-[100svh] pb-32">
       <TopNav />
       <div className="mx-auto max-w-[1180px] px-4 pt-[76px] sm:pt-24">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="min-w-0 text-[30px] font-black leading-tight sm:text-[38px]">{t.adopt.title}</h1>
-          <ButtonLink href="/adopt/new" size="sm" aria-label={t.market.post} className="shrink-0 max-sm:h-11 max-sm:w-11 max-sm:px-0">
-            <Plus className="h-5 w-5 sm:h-4 sm:w-4" strokeWidth={2.6} /> <span className="hidden sm:inline">{t.market.post}</span>
-          </ButtonLink>
-        </div>
+        <h1 className="text-[30px] font-black leading-tight sm:text-[38px]">{t.adopt.title}</h1>
         <p className="mt-1 max-w-[560px] text-[15px] text-label-2">{t.adopt.subtitle}</p>
 
         {/* categories with real pet photos (same pattern as Services) */}
