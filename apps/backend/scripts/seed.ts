@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { hash } from '@node-rs/argon2';
-import { Prisma, PrismaClient, TrustCheckId } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
+import type { TrustCheckId } from '@prisma/client';
 import { prismaClientOptions } from '../src/common/prisma/client-options';
 import {
   ADOPTIONS,

@@ -287,3 +287,26 @@ endpoints), final test pass. **Acceptance:** the frontend can be pointed at
 3. Test results.
 4. Any deviation from §3 — **with justification** (append to this file under `## Deviations`).
 5. Anything you could not do and why.
+
+---
+
+## Deviations
+
+_Recorded by the Phase 0 re-audit (2026-10-09, branch `backend1`). Nothing in §3 contracts changed._
+
+| # | Deviation | Justification |
+|---|---|---|
+| D1 | §4 asks for `location geography(Point,4326) GENERATED ALWAYS AS (ST_SetSRID(ST_MakePoint(lng,lat),4326)) STORED`. Phase 0 ships a **BEFORE INSERT/UPDATE trigger** (`pawlink_set_location()`) instead, declared in `prisma/migrations/20261003000000_init/migration.sql`. | Prisma cannot model a generated-column expression, so `prisma migrate dev` reads drift on every run and tries to drop/recreate the column. The trigger keeps the DDL byte-identical to what `schema.prisma` declares (column + GIST index are both modelled), so `migrate dev` stays clean. Same data, same indexes, same `$queryRaw` usage — only the sync mechanism differs. |
+| D2 | `CREATE EXTENSION postgis` is hand-placed at the **top** of the initial migration, and the trigger block is hand-composed at the **bottom**, rather than living in a separate migration. | The `geography` type must exist before any table uses it, and the trigger function must exist after the tables. Prisma's own generated migrations do not know either ordering. The composed file is what `prisma migrate deploy` applies. |
+| D3 | Lint config is `eslint.config.mjs` (ESLint 9 **flat config**) instead of the `.eslintrc` named in §7. | ESLint 9 removed `.eslintrc` support; `eslint-config-expo`-style flat config is the only supported form. Same rule set, same `npm run lint`. |
+| D4 | `pg` + `@types/pg` are now **direct** dependencies of `apps/backend`. | Prisma 7 has no built-in Postgres driver: the client talks through `PrismaPg` (`@prisma/adapter-pg`), which pulls `pg` transitively. Relying on that made the runtime DB driver one `npm` hoisting accident away from breaking. Pinned explicitly (`pg ^8.23.1`). |
+| D5 | `datasource.url` is not in `schema.prisma`; it lives in `prisma.config.ts`. | Prisma 7 moved connection URLs out of the schema. `SUPABASE_DB_URL` (direct) is used by migrate commands, `DATABASE_URL` (session pooler) at runtime through the adapter. |
+
+### Known cosmetic issue (not a deviation)
+
+`prisma/migrations/20261003000000_init/migration.sql` contains one comment block whose box-drawing
+characters were double-encoded (`â”€` instead of `─`) when the migration was composed. It is inside
+SQL comments and has **zero** runtime effect. It is deliberately **not** edited: modifying a migration
+that may already be applied would break `prisma migrate status` checksum verification. Fix it only by
+squashing the migration history on a fresh database.
+
