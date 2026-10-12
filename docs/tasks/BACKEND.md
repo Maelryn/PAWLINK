@@ -85,6 +85,7 @@ NEXT_PUBLIC_API_FEATURES=auth,cases,uploads
 - **Emergency zones:** admins declare (type, name, centre, radius → polygon) and end them (`active: false`, `endedAt`). New reports inside an active zone get its `emergencyZoneId`. The website also *suggests* a zone to admins when ≥ 4 open cases (≥ 3 urgent) sit within 10 km in 48 h outside any active zone (`apps/web/lib/zones.ts`); a human always confirms.
 - **Becoming a professional:** a regular account creates a listing with `status: "pending"` (`POST /services`); approving it makes a vet listing's owner `role: "vet"`; refusing it frees the account (`serviceId` removed). Pro can only be bought once the listing is approved.
 - **Notifications:** two more kinds: `resolved` (a case you reported or helped on was resolved) and `nearbyCase` (a case near an available helper).
+- **Editing listings (second review):** owners can edit their adoption listing and their business listing. On an `approved` listing the change is stored as `pendingEdit` (the changed fields + `at`) and the public version stays until an admin approves it; approve merges it, refuse drops it. A `rejected` adoption that is edited goes back to `pending`. Admin needs a list of listings with a `pendingEdit`. Two more notification kinds: `editApproved`, `editRejected`.
 
 ### Before deploying the API (important for the judges)
 
