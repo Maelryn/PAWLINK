@@ -206,7 +206,7 @@ export default function CasePage() {
                 <div className="flex items-center justify-between gap-3 p-4">
                   <div className="min-w-0">
                     <div className="text-[12px] font-semibold uppercase tracking-wide text-label-2">{t.case.location}</div>
-                    <a href={gmaps(c.location)} target="_blank" rel="noopener noreferrer" className="block truncate text-[15px] font-semibold text-accent hover:underline">
+                    <a href={gmaps(c.location)} target="_blank" rel="noopener noreferrer" className="block truncate py-2 text-[15px] font-semibold text-accent hover:underline">
                       {c.location.address}
                     </a>
                     <div className="font-mono text-[11.5px] text-label-2" dir="ltr">

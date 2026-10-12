@@ -242,9 +242,9 @@ function ReviewForm({ serviceId }: { serviceId: string }) {
     >
       <div className="flex items-center justify-between">
         <span className="text-[14px] font-semibold">{existing ? t.svc.yourReview : t.services.writeReview}</span>
-        <span className="flex gap-1" aria-label={t.review.rate}>
+        <span className="flex shrink-0" aria-label={t.review.rate}>
           {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} type="button" onClick={() => setRating(n)} className={cn("text-[24px] leading-none transition-transform active:scale-90", n <= rating ? "text-[#ff9f0a]" : "text-label-3")}>★</button>
+            <button key={n} type="button" onClick={() => setRating(n)} className={cn("flex h-11 w-9 items-center justify-center text-[26px] leading-none transition-transform active:scale-90", n <= rating ? "text-[#ff9f0a]" : "text-label-3")}>★</button>
           ))}
         </span>
       </div>

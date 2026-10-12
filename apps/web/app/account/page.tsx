@@ -424,7 +424,7 @@ function Notifications({ me }: { me: User }) {
   return (
     <section className="card rounded-[28px] p-2">
       <div className="flex justify-end p-2">
-        <button type="button" onClick={() => store.markAllRead(me.id)} className="text-[13.5px] font-semibold text-accent">{t.acct.markRead}</button>
+        <button type="button" onClick={() => store.markAllRead(me.id)} className="h-10 rounded-full px-3 text-[13.5px] font-semibold text-accent transition-colors hover:bg-accent-soft">{t.acct.markRead}</button>
       </div>
       {list.map((n) => (
         <Link key={n.id} href={n.href} className={cn("flex items-center gap-3 rounded-[18px] p-3 hover:bg-surface-2", !n.read && "bg-accent-soft/60")}>
