@@ -10,7 +10,9 @@ import { TrustService } from './trust.service';
 import { DHashService, DUPLICATE_THRESHOLD } from '../uploads/dhash.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { caseRowToCase, type CaseRowWithRelations } from './serialize';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { CreateCaseDto } from './dto/create-case.dto';
+import type { Paginated, Viewer } from '../shared/pagination';
 import type { CaseListQuery } from './dto/query-cases.dto';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from './dto/query-cases.dto';
 import type { ConfirmCaseDto, FlagCaseDto, OfferHelpDto, PatchCaseStatusDto } from './dto/case.dto';
@@ -52,18 +54,8 @@ const CASE_INCLUDE = {
   trustChecks: true,
 } satisfies Prisma.CaseInclude;
 
-export interface Paginated<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-/** Who is asking, when the caller is anonymous. `sub`/`role` come from a verified token. */
-export interface Viewer {
-  sub: string;
-  role: string;
-}
+/** Re-exported so the existing `import { Paginated, Viewer } from './cases.service'` keeps working. */
+export type { Paginated, Viewer } from '../shared/pagination';
 
 @Injectable()
 export class CasesService {
@@ -77,6 +69,7 @@ export class CasesService {
     private readonly uploads: UploadsService,
     private readonly dhash: DHashService,
     private readonly realtime: RealtimeGateway,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ───────────────────────────── reads ─────────────────────────────
@@ -366,7 +359,7 @@ export class CasesService {
 
     // Notifying yourself is noise, not information.
     if (existing.reporterId !== user.sub) {
-      await this.notify(existing.reporterId, { kind: 'help', subject: user.name, href: `/cases/${id}` });
+      await this.notifications.notify(existing.reporterId, 'help', user.name, `/cases/${id}`);
     }
 
     return serialized;
@@ -564,28 +557,6 @@ export class CasesService {
     );
 
     return rows.length > 0;
-  }
-
-  /** Writes the notification row and pushes it to the connected sockets. */
-  private async notify(
-    userId: string,
-    input: { kind: 'help'; subject: string; href: string },
-  ): Promise<void> {
-    const row = await this.prisma.notification.create({
-      data: { userId, kind: input.kind, subject: input.subject, href: input.href },
-    });
-
-    this.realtime.notification({
-      notification: {
-        id: row.id,
-        userId: row.userId,
-        kind: row.kind,
-        subject: row.subject,
-        href: row.href,
-        read: row.read,
-        createdAt: row.createdAt.toISOString(),
-      },
-    });
   }
 }
 

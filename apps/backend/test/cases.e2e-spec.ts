@@ -3,19 +3,21 @@ import { Test } from '@nestjs/testing';
 import type { ThrottlerStorage } from '@nestjs/throttler';
 import { getStorageToken } from '@nestjs/throttler';
 import { PrismaClient } from '@prisma/client';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import request from 'supertest';
 import { io, type Socket } from 'socket.io-client';
 import { configureApp } from '../src/setup';
 import { AppModule } from '../src/app.module';
 import { prismaClientOptions } from '../src/common/prisma/client-options';
 import { bboxContains } from '../src/cases/bbox';
-import { describeWithDatabase, uniqueEmail, uniquePhone } from './support/e2e-gate';
+import { describeWithDatabase, freshExif, uniqueEmail, uniquePhone } from './support/e2e-gate';
 
 /**
  * The Phase 2 acceptance flow (PHASE2_PLAN.md §9 + PHASE2_VERIFICATION.md §5).
  *
  * probe → create → bbox → suspicious held → help + socket → confirm ×2 →
- * flag ×3 → status by role → AI in a second language → 6th report rate-limited.
+ * flag ×3 → status by role → the retired AI route 404s → 6th report rate-limited.
  *
  * Three rules from Phase 1 are kept:
  *
@@ -65,7 +67,8 @@ interface CaseResponse {
     confirmations: number;
     flags: number;
   };
-  ai: {
+  /** Deviation D6: the backend never writes `Case.ai` — the field stays absent. */
+  ai?: {
     triage: string;
     forcedUrgentByRule: boolean;
     disclaimer: string;
@@ -79,7 +82,7 @@ interface CaseResponse {
   updatedAt: string;
 }
 
-describeWithDatabase('Phase 2 — cases, trust, AI, realtime', () => {
+describeWithDatabase('Phase 2 — cases, trust, realtime (AI retired per D6)', () => {
   let app: INestApplication;
   let prisma: PrismaClient;
 
@@ -109,12 +112,19 @@ describeWithDatabase('Phase 2 — cases, trust, AI, realtime', () => {
     return { email, phone, token: verified.body.accessToken as string, id: verified.body.user.id as string };
   }
 
-  /** Uploads one of the checked-in fixtures and returns its probe. */
+  /**
+   * Uploads one of the checked-in fixtures and returns its probe.
+   *
+   * The EXIF date is freshened to "now" on the way out (see `freshExif`): the
+   * `photoFresh` trust rule allows 48 h, and a fixture with a build date would
+   * otherwise make every "verified reporter" assertion rot with the calendar.
+   */
   async function probe(token: string, fixture: string) {
+    const bytes = freshExif(readFileSync(join(__dirname, 'fixtures', fixture)));
     const response = await request(app.getHttpServer())
       .post('/uploads/probe')
       .set('Authorization', `Bearer ${token}`)
-      .attach('file', `${__dirname}/fixtures/${fixture}`)
+      .attach('file', bytes, fixture)
       .expect(200);
 
     probeIds.push(response.body.probeId as string);
@@ -233,7 +243,7 @@ describeWithDatabase('Phase 2 — cases, trust, AI, realtime', () => {
   });
 
   // ── 2. POST /cases — the headline acceptance ──
-  describe('2 · POST /cases — the response carries ai and trust', () => {
+  describe('2 · POST /cases — the response carries trust (and never ai)', () => {
     it('computes trust server-side and stays public for a verified reporter', async () => {
       const withExif = probeIds[0];
 
@@ -249,8 +259,9 @@ describeWithDatabase('Phase 2 — cases, trust, AI, realtime', () => {
         reporterOnSite: true,
       });
 
-      // the headline: both objects are in the response body
-      expect(created.ai).toBeDefined();
+      // the headline: trust is in the response body; `ai` is deliberately absent
+      // (Deviation D6 — the AI lives in apps/Ai/, the backend never writes it)
+      expect(created.ai).toBeUndefined();
       expect(created.trust).toBeDefined();
       expect(created.trust.level).toBe('verified');
       expect(created.moderation).toBeUndefined();
@@ -270,17 +281,6 @@ describeWithDatabase('Phase 2 — cases, trust, AI, realtime', () => {
       ]);
       expect(created.trust.checks.find((c) => c.id === 'account')?.ok).toBe(true);
       expect(created.trust.checks.find((c) => c.id === 'inAlgeria')?.ok).toBe(true);
-
-      // the AI ran, the safety rules raised it, and the disclaimer is there
-      expect(created.ai.triage).toBe('urgent');
-      expect(created.ai.forcedUrgentByRule).toBe(true);
-      expect(created.ai.disclaimer).toMatch(/vétérinaire/i);
-
-      // the suggestions are real PostGIS distances
-      expect(created.ai.suggestedServices.length).toBeGreaterThan(0);
-      for (const service of created.ai.suggestedServices) {
-        expect(service.distanceKm).toBeGreaterThan(0);
-      }
 
       // no secret anywhere in the body
       expect(JSON.stringify(created)).not.toMatch(/passwordHash|accessToken|apiKey/i);
@@ -716,9 +716,9 @@ describeWithDatabase('Phase 2 — cases, trust, AI, realtime', () => {
     });
   });
 
-  // ── 9. the AI, in a language the case was not written in ──
-  describe('9 · POST /ai/analyze — safety rules override the model in every language', () => {
-    it('forces urgent on an Arabic keyword', async () => {
+  // ── 9. the AI surface is gone from the backend (Deviation D6) ──
+  describe('9 · POST /ai/analyze does not exist on the backend', () => {
+    it('answers 404 with the standard error envelope', async () => {
       const response = await request(app.getHttpServer())
         .post('/ai/analyze')
         .set('Authorization', `Bearer ${reporter.token}`)
@@ -729,65 +729,14 @@ describeWithDatabase('Phase 2 — cases, trust, AI, realtime', () => {
           location: { ...KABYLIE },
           lang: 'ar',
         })
-        .expect(201);
+        .expect(404);
 
-      expect(response.body.triage).toBe('urgent');
-      expect(response.body.forcedUrgentByRule).toBe(true);
-      expect(response.body.disclaimer.length).toBeGreaterThan(0);
-      expect(response.body.suggestedServices.length).toBeGreaterThan(0);
-      // never a diagnosis
-      expect(JSON.stringify(response.body)).not.toMatch(/diagnos|traitement|médicament/i);
-    });
-
-    it('forces urgent on a Darija keyword', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/ai/analyze')
-        .set('Authorization', `Bearer ${reporter.token}`)
-        .send({
-          description: 'ضربتو طوموبيل ومش قادر يقوم',
-          species: 'cat',
-          conditionTags: [],
-          location: { ...KABYLIE },
-          lang: 'ar',
-        })
-        .expect(201);
-
-      expect(response.body.triage).toBe('urgent');
-      expect(response.body.forcedUrgentByRule).toBe(true);
-    });
-
-    it('writes the answer in the language asked for', async () => {
-      const body = {
-        description: 'un chat amaigri qui dort dans la rue',
-        species: 'cat',
-        conditionTags: ['thin'],
-        location: { ...KABYLIE },
-      };
-
-      const fr = await request(app.getHttpServer())
-        .post('/ai/analyze')
-        .set('Authorization', `Bearer ${reporter.token}`)
-        .send({ ...body, lang: 'fr' })
-        .expect(201);
-      const en = await request(app.getHttpServer())
-        .post('/ai/analyze')
-        .set('Authorization', `Bearer ${reporter.token}`)
-        .send({ ...body, lang: 'en' })
-        .expect(201);
-
-      expect(fr.body.summary).not.toBe(en.body.summary);
-      expect(en.body.disclaimer).toMatch(/veterinarian/i);
-      expect(fr.body.disclaimer).toMatch(/vétérinaire/i);
-    });
-
-    it('is null for animalDetected when no photo was sent', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/ai/analyze')
-        .set('Authorization', `Bearer ${reporter.token}`)
-        .send({ description: 'un chien dans la rue', species: 'dog', location: { ...KABYLIE } })
-        .expect(201);
-
-      expect(response.body.animalDetected).toBeNull();
+      // the standard envelope, not a Nest HTML page
+      expect(typeof response.body.statusCode).toBe('number');
+      expect(typeof response.body.message).toBe('string');
+      expect(typeof response.body.code).toBe('string');
+      // the AI lives in apps/Ai/ (Deviation D6): no analyze route ever returns data
+      expect(response.body.triage).toBeUndefined();
     });
   });
 

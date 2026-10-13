@@ -289,6 +289,13 @@ _Recorded by the Phase 0 re-audit (2026-10-09, branch `backend1`). Nothing in §
 | D5 | `datasource.url` is not in `schema.prisma`; it lives in `prisma.config.ts`. | Prisma 7 moved connection URLs out of the schema. `SUPABASE_DB_URL` (direct) is used by migrate commands, `DATABASE_URL` (session pooler) at runtime through the adapter. |
 | D6 | **AI removed from the backend scope.** The original §3.4 (`POST /ai/analyze`, `AIProvider`, safety-rule layer, Gemini, 3 cached fallbacks), the `animalDetected` trust signal, `Case.ai` writes, the AI env vars and the Phase 2 AI acceptance are all stripped. The `animalDetected` check and the `Case.ai` column stay in place, always `null`/unwritten. | The AI work belongs to a separate developer in `apps/Ai/`, not to the backend. The team decided there must be **no backend↔AI link at all** until that service is delivered, so the backend neither imports nor calls any AI module. Re-wiring is additive: bring back an `AIProvider` client and feed `animalDetected` + `Case.ai` from it. |
 
+_Recorded by Phase 3 (2026-10-13, marketplace: adoptions, services, zones, notifications)._
+
+| # | Deviation | Justification |
+|---|---|---|
+| D7 | **Phase 3 pre-flight: stale AI e2e assertions aligned to D6.** `test/e2e` cases that still asserted the removed `/ai/analyze` contract were rewritten to the post-D6 reality (and a `freshExif()` helper added in `test/support/e2e-gate.ts` to re-date fixture EXIF at upload). | Required by `docs/PHASE3_PROMPT.md` §2: the AI routes were stripped by D6 but Phase 1's e2e still asserted them, so the suite could never be green before feature code. Recorded here as instructed; no contract changed. |
+| D8 | **Marketplace reads are public.** `GET /adoptions`, `GET /adoptions/:id`, `GET /services`, `GET /services/:id`, `GET /services/:id/reviews` run `@Public()` + `OptionalJwtAuthGuard`, and `GET /emergency-zones` is `@Public()`, instead of "all routes authenticated by default" (PHASE3 §3 preamble). Every write stays behind the global `JwtAuthGuard`. | `apps/web` browses `/adopt`, `/services` and the rescue map logged-out — login gates *actions*, not pages — and the Phase 2 `GET /cases` precedent already reads public-with-optional-viewer. The optional guard preserves viewer-dependent rules (owner sees their own pending listing) while a token is absent for anonymous visitors. |
+
 ### Known cosmetic issue (not a deviation)
 
 `prisma/migrations/20261003000000_init/migration.sql` contains one comment block whose box-drawing

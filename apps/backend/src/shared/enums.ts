@@ -40,6 +40,33 @@ export const CASE_CATEGORY = ['companion', 'livestock'] as const;
 
 export const SERVICE_TYPES = ['vet', 'shelter', 'transport', 'boarding', 'training', 'store'] as const;
 
+export const ADOPTION_STATUSES = ['pending', 'approved', 'rejected'] as const;
+
+export const SEXES = ['male', 'female'] as const;
+
+export const HOUSING = ['apartment', 'house', 'farm'] as const;
+
+export const REQUEST_STATUSES = ['sent', 'accepted', 'declined'] as const;
+
+export const BOOKING_STATUSES = ['sent', 'confirmed', 'declined'] as const;
+
+export const ZONE_TYPES = ['wildfire', 'flood', 'earthquake', 'other'] as const;
+
+export const NOTIFICATION_KINDS = [
+  'adoptRequest',
+  'adoptAccepted',
+  'adoptDeclined',
+  'listingApproved',
+  'listingRejected',
+  'booking',
+  'bookingConfirmed',
+  'bookingDeclined',
+  'help',
+  'review',
+  'serviceApproved',
+  'proActive',
+] as const;
+
 /** Roles a human may pick for themselves. `admin` is deliberately absent. */
 export const SIGNABLE_ROLES = ['reporter', 'volunteer', 'vet'] as const;
 

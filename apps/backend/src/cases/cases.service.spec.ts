@@ -4,6 +4,7 @@ import type { UsersService } from '../users/users.service';
 import type { GeoService } from '../geo/geo.service';
 import type { UploadsService } from '../uploads/uploads.service';
 import type { RealtimeGateway } from '../realtime/realtime.gateway';
+import type { NotificationsService } from '../notifications/notifications.service';
 import { ExifService } from '../uploads/exif.service';
 import { TrustService } from './trust.service';
 import { CasesService } from './cases.service';
@@ -205,6 +206,9 @@ function service(prisma: unknown, overrides: { geo?: unknown; uploads?: unknown 
       (overrides.uploads as UploadsService) ?? { consume: async () => [] },
       { hashOrNull: async () => null } as never,
       realtime,
+      // Phase 3 extracted the notification write + push into a shared service;
+      // cases now delegates to it (the row + socket assertion lives there).
+      { notify: async () => ({ id: 'notification-1' }) } as unknown as NotificationsService,
     ),
   };
 }

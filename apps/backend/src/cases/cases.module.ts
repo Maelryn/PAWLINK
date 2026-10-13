@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { UploadsModule } from '../uploads/uploads.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminCasesController } from '../admin/admin-cases.controller';
 import { CasesController } from './cases.controller';
 import { CasesService } from './cases.service';
@@ -18,7 +19,7 @@ import { TrustService } from './trust.service';
  * has no dependency on it.
  */
 @Module({
-  imports: [UploadsModule, RealtimeModule, AuthModule],
+  imports: [UploadsModule, RealtimeModule, AuthModule, NotificationsModule],
   controllers: [CasesController, AdminCasesController],
   providers: [CasesService, TrustService],
   exports: [CasesService],

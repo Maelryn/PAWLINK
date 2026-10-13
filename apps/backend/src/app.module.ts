@@ -11,6 +11,10 @@ import { UsersModule } from './users/users.module';
 import { GeoModule } from './geo/geo.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { CasesModule } from './cases/cases.module';
+import { AdoptionsModule } from './adoptions/adoptions.module';
+import { ServicesModule } from './services/services.module';
+import { ZonesModule } from './zones/zones.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -33,6 +37,11 @@ import { RolesGuard } from './auth/guards/roles.guard';
     MeModule,
     UploadsModule,
     CasesModule,
+    // Phase 3 — the marketplace
+    NotificationsModule,
+    AdoptionsModule,
+    ServicesModule,
+    ZonesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
