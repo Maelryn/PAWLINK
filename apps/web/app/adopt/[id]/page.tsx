@@ -20,10 +20,10 @@ import { useI18n } from "@/lib/i18n";
 import { store, useStore, reservedRequestOf } from "@/lib/store";
 import { useSession } from "@/lib/auth";
 import { useHideTabBar } from "@/lib/ui";
-import { Segmented } from "@/components/ui/primitives";
 import { AnimatePresence } from "motion/react";
 import { ChevronRight, MessageCircle, Pencil, Phone } from "lucide-react";
 import { UserBadges } from "@/components/account/UserBadges";
+import { AdoptRequestSheet } from "@/components/adopt/AdoptRequestSheet";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { Avatar } from "@/components/ui/primitives";
 import { badgesOf } from "@/lib/badges";
@@ -46,9 +46,6 @@ export default function AdoptionProfilePage() {
   // a cancelled request counts as no request: the person can ask again
   const myReq = allRequests.find((r) => r.adoptionId === id && r.from.id === me?.id && r.status !== "cancelled");
   const [open, setOpen] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [housing, setHousing] = useState<"apartment" | "house" | "farm">("house");
-  const [exp, setExp] = useState(true);
   // listings waiting for moderation (or refused) are only visible to their owner and admins
   // (someone who asked for this animal keeps seeing it, so they know how it ended)
   const visible = !!a && (a.status === "approved" || a.ownerId === me?.id || me?.role === "admin" || !!myReq);
@@ -205,6 +202,9 @@ export default function AdoptionProfilePage() {
                   <div className="truncate text-[16px] font-semibold">{a.shelter.name}</div>
                   {owner && <UserBadges badges={badgesOf(owner, allCases, allAdoptions)} compact className="mt-1" />}
                   <div className="truncate text-[13px] text-label-2">{a.location.address}</div>
+                  {me?.role === "admin" && a.ownerPhone && (
+                    <span className="mt-1 block text-[13px] font-semibold text-accent" dir="ltr">📞 {a.ownerPhone}</span>
+                  )}
                 </div>
                 <ChevronRight className="h-5 w-5 shrink-0 text-label-3 rtl:rotate-180" />
               </Link>
@@ -268,31 +268,6 @@ export default function AdoptionProfilePage() {
                   {a.status !== "adopted" && <div className="text-[12.5px] leading-snug text-label-2">{t.life.reservedBody}</div>}
                 </div>
               </motion.div>
-            ) : open ? (
-              <motion.form
-                key="form"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="space-y-3 overflow-hidden p-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  store.sendRequest({ id: `rq${Date.now()}`, adoptionId: a.id, from: { id: me!.id, name: me!.name, avatar: "" }, fromPhone: me!.phone, message: msg, housing, experience: exp, status: "sent", createdAt: new Date().toISOString() });
-                  toast.success(t.market.sent, { icon: <Emoji3D src="/3d/love.png" size={22} /> });
-                }}
-              >
-                <div className="text-[17px] font-bold">{t.market.requestTitle}</div>
-                <p className="text-[13px] text-label-2">{t.market.requestBody}</p>
-                <textarea required rows={3} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder={t.market.message} className="w-full resize-none rounded-[16px] bg-surface-2 p-3 text-[14.5px] outline-none" />
-                <Segmented layoutId="housing-seg" className="w-full [&>button]:flex-1 [&>button]:px-1" value={housing} onChange={setHousing} options={(["apartment", "house", "farm"] as const).map((h) => ({ value: h, label: t.market.housing[h] }))} />
-                <label className="flex items-center gap-2 text-[14px]">
-                  <input type="checkbox" checked={exp} onChange={(e) => setExp(e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" /> {t.market.experience}
-                </label>
-                <p className="text-[12px] text-label-2">🛡️ {t.market.safety}</p>
-                <div className="flex gap-2">
-                  <Button type="button" variant="glass" onClick={() => setOpen(false)}>{t.common.close}</Button>
-                  <Button type="submit" className="flex-1">{t.market.send}</Button>
-                </div>
-              </motion.form>
             ) : (
               <motion.div key="cta" className="flex items-center gap-3 ps-4">
                 <span className="flex-1 truncate text-[15px] font-semibold">{a.name} · {a.shelter.name}</span>
@@ -304,6 +279,7 @@ export default function AdoptionProfilePage() {
           </AnimatePresence>
         </motion.div>
       </div>
+      {me && <AdoptRequestSheet a={a} me={me} open={open} onClose={() => setOpen(false)} />}
     </div>
   );
 }

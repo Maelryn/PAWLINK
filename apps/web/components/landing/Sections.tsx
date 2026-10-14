@@ -57,19 +57,24 @@ export function MapReveal() {
         <div ref={ref} className="mt-14 [perspective:1400px]">
           <motion.div
             style={{ rotateX, scale, y, willChange: "transform" }}
-            className="relative h-[62svh] min-h-[420px] overflow-hidden rounded-[44px] bg-surface shadow-[0_24px_60px_-28px_rgba(0,0,0,0.3)] ring-1 ring-black/5 dark:ring-white/10 sm:h-[74svh]"
+            className="relative isolate h-[62svh] min-h-[420px] overflow-hidden rounded-[44px] bg-surface shadow-[0_24px_60px_-28px_rgba(0,0,0,0.3)] ring-1 ring-black/5 dark:ring-white/10 sm:h-[74svh]"
           >
             {/* poster shown until the live map has drawn (no more empty dark box) */}
             <div className={cn("pointer-events-none absolute inset-0 z-[1] transition-opacity duration-700", mapReady ? "opacity-0" : "opacity-100")} style={{ background: "radial-gradient(60% 50% at 55% 50%, rgba(255,90,40,0.25), transparent 70%), linear-gradient(160deg,#e9f3e1 0%,#dfeccf 40%,#cfe3f4 100%)" }}>
               <div className="flex h-full items-center justify-center"><Emoji3D src="/3d/fire.png" size={72} className="animate-pulse" /></div>
             </div>
-            {near && <MapView
-              onReady={() => setTimeout(() => setMapReady(true), 600)}
-              cases={cases.filter((c) => c.emergencyZoneId)}
-              zone={ZONE}
-              interactive={false}
-              initialView={{ longitude: ZONE.center.lng + 0.01, latitude: ZONE.center.lat - 0.005, zoom: 11, pitch: 50, bearing: -16 }}
-            />}
+            {/* iPhone Safari ignores rounded corners on a map canvas inside a 3D-tilted box: clip it explicitly */}
+            {near && (
+              <div className="absolute inset-0 overflow-hidden rounded-[44px] [clip-path:inset(0_round_44px)] [transform:translateZ(0)]">
+                <MapView
+                  onReady={() => setTimeout(() => setMapReady(true), 600)}
+                  cases={cases.filter((c) => c.emergencyZoneId)}
+                  zone={ZONE}
+                  interactive={false}
+                  initialView={{ longitude: ZONE.center.lng + 0.01, latitude: ZONE.center.lat - 0.005, zoom: 11, pitch: 50, bearing: -16 }}
+                />
+              </div>
+            )}
             {/* glass overlays */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[rgba(255,90,30,0.12)] via-transparent to-transparent mix-blend-multiply" />
             <div className="absolute start-4 top-4 sm:start-6 sm:top-6">

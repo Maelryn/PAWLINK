@@ -38,7 +38,7 @@ function Login() {
   const params = useSearchParams();
   // only ever redirect inside PawLink (no open redirect to another site)
   const rawNext = params.get("next");
-  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\") ? rawNext : "/map";
+  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\") ? rawNext : "/account"; // signed in → straight to Home
   const [mode, setMode] = useState<"in" | "up">(params.get("mode") === "up" ? "up" : "in");
   const [f, setF] = useState({ email: "", password: "", name: "", phone: "", city: "", bizName: "" });
   const [role, setRole] = useState<SignUpRole>("reporter");

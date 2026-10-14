@@ -54,11 +54,12 @@ function Account() {
 
   const tabs: { id: Tab; label: string; Icon: typeof House; badge?: number }[] = [
     { id: "home", label: t.home.tab, Icon: House },
-    { id: "profile", label: t.acct.tabs.profile, Icon: UserIcon },
     { id: "reports", label: t.acct.tabs.reports, Icon: MapPin },
     { id: "adoption", label: t.acct.tabs.adoption, Icon: Heart },
     ...(me.serviceId ? [{ id: "pro" as Tab, label: t.acct.tabs.pro, Icon: Briefcase }] : []),
     { id: "notifications", label: t.acct.tabs.notifications, Icon: Bell, badge: unread },
+    // the profile comes last: what you do (reports, animals) matters more day to day
+    { id: "profile", label: t.acct.tabs.profile, Icon: UserIcon },
   ];
   const tab = (tabs.find((x) => x.id === params.get("tab"))?.id ?? "home") as Tab;
   const go = (id: Tab) => router.replace(`/account?tab=${id}`, { scroll: false });
@@ -292,6 +293,9 @@ function Profile({ me }: { me: User }) {
         else toast.success(t.acct.saved);
       }}
     >
+      <Link href={`/users/${me.id}`} className="flex items-center justify-between rounded-[20px] bg-accent-soft px-4 py-3 text-[14.5px] font-semibold text-accent transition-transform active:scale-[0.98]">
+        {t.profile.seeMine} <ChevronRight className="h-4 w-4 rtl:rotate-180" />
+      </Link>
       <section className={cn(card, "space-y-3")}>
         <div className="flex items-center gap-4">
           <Avatar name={f.name || me.name} photo={photo} size={72} />

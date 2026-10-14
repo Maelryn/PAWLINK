@@ -1,5 +1,7 @@
 "use client";
 
+import { ProfileLink } from "@/components/account/ProfileLink";
+
 import { useDemoText } from "@/lib/i18n/content";
 
 import { motion } from "motion/react";
@@ -146,9 +148,11 @@ export default function ServicePage() {
                 {reviews.map((r) => (
                   <div key={r.id} className="rounded-[20px] bg-surface-2 p-4">
                     <div className="flex items-center gap-2.5">
-                      <Avatar name={r.author.name} size={32} />
+                      <ProfileLink id={r.author.id}>
+                        <Avatar name={r.author.name} size={32} />
+                      </ProfileLink>
                       <div className="flex-1">
-                        <div className="text-[14px] font-semibold">{r.author.name}</div>
+                        <ProfileLink id={r.author.id} className="text-[14px] font-semibold">{r.author.name}</ProfileLink>
                         <div className="text-[11.5px] text-label-2"><TimeAgo iso={r.createdAt} /></div>
                       </div>
                       <Stars value={r.rating} />

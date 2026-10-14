@@ -1,5 +1,7 @@
 "use client";
 
+import { ProfileLink } from "@/components/account/ProfileLink";
+
 import { Check, MessageCircle, Pencil, Phone, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -68,9 +70,11 @@ export function MyAdoptions({ me }: { me: User }) {
         return (
           <div key={r.id} className="rounded-[20px] bg-surface-2 p-3.5">
             <div className="flex items-center gap-3">
-              <Avatar name={r.from.name} size={36} />
+              <ProfileLink id={r.from.id}>
+                <Avatar name={r.from.name} size={36} />
+              </ProfileLink>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[14.5px] font-semibold">{r.from.name} → {a.name}</div>
+                <div className="truncate text-[14.5px] font-semibold"><ProfileLink id={r.from.id}>{r.from.name}</ProfileLink> → {a.name}</div>
                 <div className="text-[12.5px] text-label-2">{t.market.housing[r.housing]}{r.experience ? ` · ${t.market.experience}` : ""}</div>
               </div>
             </div>

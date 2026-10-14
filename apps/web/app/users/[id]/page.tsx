@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { MapPin, Phone } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { UserBadges } from "@/components/account/UserBadges";
@@ -37,6 +38,7 @@ export default function UserProfilePage() {
     );
 
   const { reported, helped, rehomed } = activityOf(u.id, cases, adoptions);
+  const listings = adoptions.filter((a) => a.ownerId === u.id && (a.status === "approved" || a.status === "adopted"));
   const badges = badgesOf(u, cases, adoptions);
   const role = u.serviceId && u.role !== "vet" ? t.biz.signupAs.split(" (")[0] : t.dashboard.roles[u.role];
 
@@ -77,6 +79,20 @@ export default function UserProfilePage() {
             </div>
           ))}
         </div>
+
+        {listings.length > 0 && (
+          <section className="mt-4">
+            <h2 className="px-1 pb-2 text-[19px] font-bold tracking-[-0.02em]">{t.profile.forAdoption}</h2>
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+              {listings.map((a) => (
+                <Link key={a.id} href={`/adopt/${a.id}`} className="group relative aspect-square overflow-hidden rounded-[18px] bg-surface-2">
+                  <Image src={a.photos[0]} alt={a.name} fill unoptimized={a.photos[0].startsWith("data:")} sizes="(min-width:720px) 230px, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <span className="absolute inset-x-1.5 bottom-1.5 truncate rounded-full bg-black/45 px-2 py-0.5 text-center text-[11.5px] font-semibold text-white backdrop-blur">{a.name}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {service && (
           <Link href={`/services/${service.id}`} className="card mt-4 flex items-center gap-3 rounded-[24px] p-4 transition-transform active:scale-[0.98]">

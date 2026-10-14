@@ -1,5 +1,7 @@
 "use client";
 
+import { ProfileLink } from "@/components/account/ProfileLink";
+
 import { useCaseText } from "@/lib/i18n/content";
 
 import { moderateCase } from "@/lib/cases";
@@ -283,9 +285,12 @@ function Moderation() {
                       <div className="text-[12.5px] text-label-2">{c.location.address}</div>
                     </div>
                   </Link>
+                  <ProfileLink id={c.reporter.id} className="me-2 mt-1 inline-block text-[12.5px] font-semibold">
+                    {c.reporter.name}
+                  </ProfileLink>
                   {phoneOf(c.reporter.id) && (
                     <a href={`tel:${phoneOf(c.reporter.id)!.replace(/\s/g, "")}`} className="mt-1 inline-flex items-center gap-1 text-[12.5px] font-semibold text-accent" dir="ltr">
-                      <Phone className="h-3.5 w-3.5" /> {c.reporter.name} · {phoneOf(c.reporter.id)}
+                      <Phone className="h-3.5 w-3.5" /> {phoneOf(c.reporter.id)}
                     </a>
                   )}
                 </td>

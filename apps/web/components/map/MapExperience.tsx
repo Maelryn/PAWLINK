@@ -1,5 +1,7 @@
 "use client";
 
+import { ProfileLink } from "@/components/account/ProfileLink";
+
 import { useSession } from "@/lib/auth";
 
 import { geoIssue, geoPermission, getPosition } from "@/lib/geo";
@@ -699,7 +701,7 @@ function CaseQuickView({
         </div>
         <div className="min-w-0 flex-1 text-[13px]">
           <div className="truncate font-semibold">
-            {t.common.reportedBy} {c.reporter.name}
+            {t.common.reportedBy} <ProfileLink id={c.reporter.id} className="text-accent">{c.reporter.name}</ProfileLink>
           </div>
           <div className="text-label-2">{t.common.helpers(c.helpers.length)}</div>
         </div>

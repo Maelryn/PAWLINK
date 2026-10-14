@@ -1,5 +1,7 @@
 "use client";
 
+import { ProfileLink } from "@/components/account/ProfileLink";
+
 import { useCaseText } from "@/lib/i18n/content";
 
 import { canResolve, resolveCase } from "@/lib/cases";
@@ -147,6 +149,9 @@ export default function CasePage() {
                     <div className="text-label-2">{t.common.reportedBy}</div>
                     <div className="truncate font-semibold">{c.reporter.name}</div>
                     {reporter && <UserBadges badges={badgesOf(reporter, allCases, allAdoptions)} compact className="mt-1" />}
+                    {user?.role === "admin" && reporter?.phone && (
+                      <span className="mt-1 block text-[13px] font-semibold text-accent" dir="ltr">📞 {reporter.phone}</span>
+                    )}
                   </div>
                   <ChevronRight className="h-5 w-5 shrink-0 text-label-3 rtl:rotate-180" />
                 </Link>
@@ -249,8 +254,10 @@ export default function CasePage() {
                     <div className="mt-2 space-y-2">
                       {c.helpers.map((h) => (
                         <div key={h.user.id} className="flex items-center gap-3">
-                          <Avatar name={h.user.name} size={34} />
-                          <div className="flex-1 text-[14px] font-semibold">{h.user.name}</div>
+                          <ProfileLink id={h.user.id} className="flex min-w-0 flex-1 items-center gap-3">
+                            <Avatar name={h.user.name} size={34} />
+                            <div className="min-w-0 flex-1 truncate text-[14px] font-semibold">{h.user.name}</div>
+                          </ProfileLink>
                           <span className="flex items-center gap-1.5 rounded-full bg-surface-2 py-1 pe-3 ps-1.5 text-[12.5px] font-medium">
                             <Emoji3D src={HELP_EMOJI[h.helpType]} size={18} />
                             {t.common.help[h.helpType]}

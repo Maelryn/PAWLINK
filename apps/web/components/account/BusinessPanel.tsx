@@ -1,5 +1,7 @@
 "use client";
 
+import { ProfileLink } from "@/components/account/ProfileLink";
+
 import { Check, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -126,9 +128,11 @@ export function BusinessPanel({ me }: { me: User }) {
           {bookings.map((b) => (
             <div key={b.id} className="rounded-[18px] bg-surface-2 p-3.5">
               <div className="flex items-center gap-3">
-                <Avatar name={b.from.name} size={34} />
+                <ProfileLink id={b.from.id}>
+                  <Avatar name={b.from.name} size={34} />
+                </ProfileLink>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold">{b.from.name} · {b.animal}</div>
+                  <div className="truncate font-semibold"><ProfileLink id={b.from.id}>{b.from.name}</ProfileLink> · {b.animal}</div>
                   <div className="text-[12.5px] text-label-2">{new Date(`${b.date}T12:00`).toLocaleDateString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { weekday: "short", day: "numeric", month: "short" })} · <span dir="ltr">{b.time}</span></div>
                 </div>
                 {b.status === "sent" ? (
@@ -166,9 +170,11 @@ function ReviewReply({ r, canReply }: { r: Review; canReply: boolean }) {
   return (
     <div className="rounded-[18px] bg-surface-2 p-3.5">
       <div className="flex items-center gap-2.5">
-        <Avatar name={r.author.name} size={30} />
+        <ProfileLink id={r.author.id}>
+          <Avatar name={r.author.name} size={30} />
+        </ProfileLink>
         <div className="flex-1">
-          <div className="text-[14px] font-semibold">{r.author.name}</div>
+          <ProfileLink id={r.author.id} className="text-[14px] font-semibold">{r.author.name}</ProfileLink>
           <div className="text-[11.5px] text-label-2"><TimeAgo iso={r.createdAt} /></div>
         </div>
         <Stars value={r.rating} />
