@@ -488,9 +488,26 @@ function UsersTable() {
               </a>
             )}
             {u.rating && <span className="text-[13px] font-semibold tabular-nums text-label-2">★ {u.rating}</span>}
-            <span className="rounded-full px-3 py-1 text-[12.5px] font-semibold" style={{ color: color[u.role], background: `color-mix(in srgb, ${color[u.role]} 14%, transparent)` }}>
-              {t.dashboard.roles[u.role]}
-            </span>
+            {u.role === "admin" ? (
+              <span className="rounded-full px-3 py-1 text-[12.5px] font-semibold" style={{ color: color[u.role], background: `color-mix(in srgb, ${color[u.role]} 14%, transparent)` }}>
+                {t.dashboard.roles[u.role]}
+              </span>
+            ) : (
+              <select
+                value={u.role}
+                aria-label={t.dashboard.roles[u.role]}
+                onChange={(e) => {
+                  store.setRole(u.id, e.target.value as "reporter" | "volunteer" | "vet");
+                  toast.success(`${u.name} · ${t.dashboard.roles[e.target.value as "reporter"]}`);
+                }}
+                className="h-9 shrink-0 cursor-pointer appearance-none rounded-full px-3 text-[12.5px] font-semibold outline-none"
+                style={{ color: color[u.role], background: `color-mix(in srgb, ${color[u.role]} 14%, transparent)` }}
+              >
+                {(["reporter", "volunteer", "vet"] as const).map((r) => (
+                  <option key={r} value={r}>{t.dashboard.roles[r]}</option>
+                ))}
+              </select>
+            )}
           </div>
         ))}
       </div>

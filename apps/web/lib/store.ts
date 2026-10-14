@@ -163,8 +163,26 @@ export const store = {
   updateUser(id: string, patch: Partial<User>) {
     set({ users: state.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) });
   },
+  /** Deleting an account also takes down what only made sense with that person behind it: their adoption
+      listings (and the requests on them), their own requests, their business listing and appointments.
+      Reports stay: other people may already be helping the animal. DELETE /me */
   deleteAccount(id: string) {
-    set({ users: state.users.filter((u) => u.id !== id), sessionId: null });
+    const listings = state.adoptions.filter((a) => a.ownerId === id).map((a) => a.id);
+    const service = state.users.find((u) => u.id === id)?.serviceId;
+    set({
+      users: state.users.filter((u) => u.id !== id),
+      adoptions: state.adoptions.filter((a) => a.ownerId !== id),
+      requests: state.requests.filter((r) => r.from.id !== id && !listings.includes(r.adoptionId)),
+      services: state.services.filter((s) => s.ownerId !== id),
+      bookings: state.bookings.filter((b) => b.from.id !== id && b.serviceId !== service),
+      notifications: state.notifications.filter((n) => n.userId !== id),
+      favorites: Object.fromEntries(Object.entries(state.favorites).filter(([k]) => k !== id).map(([k, v]) => [k, v.filter((x) => !listings.includes(x))])),
+      sessionId: null,
+    });
+  },
+  /** Admin changes someone's role (never to admin from the app). PATCH /admin/users/:id/role */
+  setRole(id: string, role: Exclude<User["role"], "admin">) {
+    set({ users: state.users.map((u) => (u.id === id && u.role !== "admin" ? { ...u, role, ...(role === "vet" ? { licenseVerified: true } : {}) } : u)) });
   },
 
   /* ── cases ── POST /cases · POST /cases/:id/help · /confirm · /flag */
