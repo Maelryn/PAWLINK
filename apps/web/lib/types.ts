@@ -242,8 +242,6 @@ export interface AdoptionProfile {
   createdAt: string;
   /** Changes the owner made to a live listing: public only once a moderator approves them. */
   pendingEdit?: AdoptionEdit;
-  /** The request the owner accepted: the animal is "reserved" until the owner says how it ended. */
-  reservedFor?: string;
 }
 
 export type AdoptionEdit = Partial<Omit<AdoptionProfile, "id" | "status" | "ownerId" | "shelter" | "createdAt" | "pendingEdit">> & { at: string };

@@ -371,11 +371,11 @@ export const store = {
   markAdopted(id: string) {
     const a = state.adoptions.find((x) => x.id === id);
     if (!a) return;
+    const chosen = reservedRequestOf(a, state.requests);
     // the adopter is thanked, everyone still waiting gets a clear "no" instead of waiting forever
     const waiting = state.requests.filter((r) => r.adoptionId === id && r.status === "sent");
-    const chosen = state.requests.find((r) => r.id === a.reservedFor);
     set({
-      adoptions: state.adoptions.map((x) => (x.id === id ? { ...x, status: "adopted", reservedFor: undefined } : x)),
+      adoptions: state.adoptions.map((x) => (x.id === id ? { ...x, status: "adopted" } : x)),
       requests: state.requests.map((r) => (r.adoptionId === id && r.status === "sent" ? { ...r, status: "declined" } : r)),
       notifications: [
         ...notify(chosen?.from.id, "adoptDone", a.name, `/adopt/${id}`),
@@ -387,9 +387,8 @@ export const store = {
   /** The accepted adoption didn't happen: the animal is available again. */
   reopenAdoption(id: string) {
     const a = state.adoptions.find((x) => x.id === id);
-    const chosen = state.requests.find((r) => r.id === a?.reservedFor);
+    const chosen = a && reservedRequestOf(a, state.requests);
     set({
-      adoptions: state.adoptions.map((x) => (x.id === id ? { ...x, reservedFor: undefined } : x)),
       requests: state.requests.map((r) => (r.id === chosen?.id ? { ...r, status: "declined" } : r)),
       notifications: [...notify(chosen?.from.id, "adoptDeclined", a?.name ?? "", `/adopt/${id}`), ...state.notifications],
     });
@@ -400,7 +399,6 @@ export const store = {
     const a = state.adoptions.find((x) => x.id === r?.adoptionId);
     set({
       requests: state.requests.map((x) => (x.id === id ? { ...x, status: "cancelled" } : x)),
-      adoptions: state.adoptions.map((x) => (x.id === a?.id && x.reservedFor === id ? { ...x, reservedFor: undefined } : x)),
       notifications: [...notify(a?.ownerId, "adoptCancelled", r?.from.name ?? "", "/account?tab=adoption"), ...state.notifications],
     });
   },
@@ -415,10 +413,9 @@ export const store = {
   answerRequest(id: string, status: "accepted" | "declined") {
     const r = state.requests.find((x) => x.id === id);
     const a = state.adoptions.find((x) => x.id === r?.adoptionId);
-    if (status === "accepted" && a?.reservedFor) return; // one adoption at a time
+    if (status === "accepted" && a && reservedRequestOf(a, state.requests)) return; // one adoption at a time
     set({
       requests: state.requests.map((x) => (x.id === id ? { ...x, status } : x)),
-      adoptions: status === "accepted" ? state.adoptions.map((x) => (x.id === a?.id ? { ...x, reservedFor: id } : x)) : state.adoptions,
       notifications: [...notify(r?.from.id, status === "accepted" ? "adoptAccepted" : "adoptDeclined", a?.name ?? "", `/adopt/${a?.id}`), ...state.notifications],
     });
   },
@@ -547,6 +544,11 @@ export function useStore<T>(selector: (s: State) => T): T {
 }
 
 /** Cases visible to the public: moderation-pending and hidden reports stay out of the map. */
+/** "Adoption in progress": the request the owner accepted on a listing that is still open. Worked out from the
+    requests (no extra field), so it means the same thing with the demo data and with the API. */
+export const reservedRequestOf = (a: AdoptionProfile, requests: AdoptionRequest[]) =>
+  a.status === "approved" ? requests.find((r) => r.adoptionId === a.id && r.status === "accepted") : undefined;
+
 /* How long a case stays on the map without any activity (help offered, confirmation, status change,
    or the reporter saying it's still there). A resolved case leaves the map one day later. */
 const DAY = 86_400_000;

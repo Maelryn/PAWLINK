@@ -17,8 +17,9 @@ import { Reveal } from "@/components/motion";
 import { Button } from "@/components/ui/Button";
 import { Emoji3D } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
-import { store, useStore } from "@/lib/store";
+import { store, useStore, reservedRequestOf } from "@/lib/store";
 import { useSession } from "@/lib/auth";
+import { useHideTabBar } from "@/lib/ui";
 import { Segmented } from "@/components/ui/primitives";
 import { AnimatePresence } from "motion/react";
 import { ChevronRight, MessageCircle, Pencil, Phone } from "lucide-react";
@@ -34,6 +35,8 @@ export default function AdoptionProfilePage() {
   const { t, locale } = useI18n();
   const a = useStore((s) => s.adoptions).find((x) => x.id === id);
   const me = useSession();
+  // a detail page with its own action bar: the tab bar slides away (back button brings you home)
+  useHideTabBar();
   const dt = useDemoText();
   const router = useRouter();
   const allRequests = useStore((s) => s.requests);
@@ -49,7 +52,7 @@ export default function AdoptionProfilePage() {
   // listings waiting for moderation (or refused) are only visible to their owner and admins
   // (someone who asked for this animal keeps seeing it, so they know how it ended)
   const visible = !!a && (a.status === "approved" || a.ownerId === me?.id || me?.role === "admin" || !!myReq);
-  const reservedReq = allRequests.find((r) => r.id === a?.reservedFor);
+  const reservedReq = a ? reservedRequestOf(a, allRequests) : undefined;
   const owner = allUsers.find((u) => u.id === a?.ownerId);
   if (!a || !visible)
     return (
@@ -68,7 +71,7 @@ export default function AdoptionProfilePage() {
   const fmt = (d: string) => new Date(d).toLocaleDateString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { day: "numeric", month: "short", year: "numeric" });
 
   return (
-    <div className="min-h-[100svh] pb-36">
+    <div className="min-h-[100svh] pb-28">
       <TopNav back={{ href: "/adopt", label: t.nav.adopt }} actions={<ShareButton title={a.name} text={t.share.adoptText(a.name)} size="lg" className="bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.08)]" />} />
       <div className="mx-auto max-w-[1080px] px-4 pt-[76px] sm:pt-24">
         <div className="mb-4 hidden items-center justify-between md:flex">
@@ -210,11 +213,11 @@ export default function AdoptionProfilePage() {
         </div>
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-[88px] z-40 flex justify-center px-4 md:bottom-6">
-        <motion.div initial={{ y: 80 }} animate={{ y: 0 }} transition={{ type: "spring", stiffness: 220, damping: 24, delay: 0.4 }} className="pointer-events-auto glass-strong w-full max-w-[480px] rounded-[30px] p-2">
+      <div className="pointer-events-none fixed inset-x-0 bottom-[max(14px,env(safe-area-inset-bottom))] z-40 flex justify-center px-4 md:bottom-6">
+        <motion.div initial={{ y: 120, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.25 }} className="pointer-events-auto glass-strong w-full max-w-[480px] rounded-[30px] p-2">
           <AnimatePresence mode="wait" initial={false}>
             {mine ? (
-              a.reservedFor && reservedReq ? (
+              reservedReq ? (
               <motion.div key="reserved" className="space-y-2 p-2">
                 <div className="px-2 text-[14px] font-semibold">{t.life.withName(reservedReq.from.name)}</div>
                 <p className="px-2 text-[12.5px] text-label-2">{t.life.howEnded}</p>
@@ -257,7 +260,7 @@ export default function AdoptionProfilePage() {
                   </ConfirmButton>
                 )}
               </motion.div>
-            ) : a.reservedFor || a.status !== "approved" ? (
+            ) : reservedReq || a.status !== "approved" ? (
               <motion.div key="busy" className="flex items-center gap-3 px-4 py-3">
                 <Emoji3D src="/3d/hug.png" size={30} className="shrink-0" />
                 <div className="min-w-0">

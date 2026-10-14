@@ -8,7 +8,7 @@ import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { store, useStore } from "@/lib/store";
+import { reservedRequestOf, store, useStore } from "@/lib/store";
 import type { User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +48,7 @@ export function MyAdoptions({ me }: { me: User }) {
               {t.market[a.status]}
             </span>
           </Link>
-          {a.status !== "adopted" && !a.reservedFor && (
+          {a.status !== "adopted" && !reservedRequestOf(a, requests) && (
             <ConfirmButton onConfirm={() => { store.removeAdoption(a.id); toast(t.life.deleted); }} className="flex h-10 shrink-0 items-center justify-center rounded-full bg-surface-2 px-3 text-label-2" armedClassName="bg-urgent text-white text-[12px] font-semibold">
               <Trash2 className="h-4 w-4" aria-label={t.life.delete} />
             </ConfirmButton>
@@ -75,7 +75,7 @@ export function MyAdoptions({ me }: { me: User }) {
               </div>
             </div>
             <p className="mt-2 text-[14px]">{r.message}</p>
-            {r.status === "sent" && a.reservedFor ? (
+            {r.status === "sent" && reservedRequestOf(a, requests) ? (
               <div className="mt-2 text-[12.5px] font-medium text-label-2">{t.life.busy}</div>
             ) : r.status === "sent" ? (
               <div className="mt-3 flex gap-2">
@@ -93,7 +93,7 @@ export function MyAdoptions({ me }: { me: User }) {
                     <a href={`https://wa.me/${r.fromPhone.replace(/[\s+]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full bg-stable text-white" aria-label={t.market.whatsapp}><MessageCircle className="h-4 w-4" /></a>
                   </>
                 )}
-                {a.status === "approved" && a.reservedFor === r.id && (
+                {reservedRequestOf(a, requests)?.id === r.id && (
                   <div className="mt-1 w-full space-y-2">
                     <p className="text-[12.5px] text-label-2">{t.life.howEnded}</p>
                     <div className="grid grid-cols-2 gap-2">

@@ -110,7 +110,7 @@ const fr: Dict = {
     civilProtection: "Protection civile · 14",
     nearby: "Cas à proximité",
     latest: "Derniers signalements",
-    show: { title: "Afficher sur la carte", cases: "Tous les cas", mine: "Mes signalements", services: "Services", noMine: "Vous n'avez encore rien signalé." },
+    show: { title: "Afficher sur la carte", cases: "Tous les cas", mine: "Mes signalements", services: "Services", noMine: "Vous n'avez encore rien signalé.", count: (n: number) => `${n} lieux`, short: { cases: "Tous", mine: "Les miens", services: "Services" } },
     locFail: "Position indisponible. Autorisez la localisation dans votre navigateur.",
     results: (n) => (n <= 1 ? `${n} cas` : `${n} cas`),
     layers: "Calques",

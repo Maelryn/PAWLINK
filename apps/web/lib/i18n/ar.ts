@@ -110,7 +110,7 @@ const ar: Dict = {
     civilProtection: "الحماية المدنية · 14",
     nearby: "حالات قريبة",
     latest: "آخر البلاغات",
-    show: { title: "العرض على الخريطة", cases: "كل الحالات", mine: "بلاغاتي", services: "الخدمات", noMine: "لم تبلغ عن أي شيء بعد." },
+    show: { title: "العرض على الخريطة", cases: "كل الحالات", mine: "بلاغاتي", services: "الخدمات", noMine: "لم تبلغ عن أي شيء بعد.", count: (n: number) => `${n} أماكن`, short: { cases: "الكل", mine: "بلاغاتي", services: "الخدمات" } },
     locFail: "الموقع غير متاح. اسمح بتحديد الموقع في متصفحك.",
     results: (n) => `${n} حالة`,
     layers: "الطبقات",

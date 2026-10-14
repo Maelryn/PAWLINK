@@ -108,7 +108,7 @@ const en = {
     civilProtection: "Civil Protection · 14",
     nearby: "Cases nearby",
     latest: "Latest reports",
-    show: { title: "Show on the map", cases: "All cases", mine: "My reports", services: "Services", noMine: "You haven't reported anything yet." },
+    show: { title: "Show on the map", cases: "All cases", mine: "My reports", services: "Services", noMine: "You haven't reported anything yet.", count: (n: number) => `${n} places`, short: { cases: "All", mine: "Mine", services: "Services" } },
     locFail: "Location unavailable. Allow location in your browser.",
     results: (n: number) => (n === 1 ? "1 case" : `${n} cases`),
     layers: "Layers",

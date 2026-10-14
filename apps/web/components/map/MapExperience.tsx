@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { useCaseText } from "@/lib/i18n/content";
 
 import { AnimatePresence, motion, useDragControls, type PanInfo } from "motion/react";
-import { ArrowLeft, ChevronRight, Globe2, Layers, Navigation, Phone, Search, X, Camera, Flame, HandHeart, PawPrint, Tractor } from "lucide-react";
+import { ArrowLeft, ChevronRight, Globe2, Layers, Navigation, Phone, Search, X, Camera, Flame, HandHeart, PawPrint, Stethoscope, Tractor, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -121,12 +121,12 @@ export function MapExperience() {
     [layer, SERVICES.length, ref],
   );
   const pickLayer = (l: typeof layer) => {
-    setLayersOpen(false);
     if (l === "mine" && !me) return router.push("/login?next=/map");
     setLayer(l);
     setSelectedId(null);
     setServiceId(null);
     if (navigator.vibrate) navigator.vibrate(8);
+    setTimeout(() => setLayersOpen(false), 420);
   };
 
   /* ── camera helpers ── */
@@ -317,9 +317,20 @@ export function MapExperience() {
 
       {/* Right control stack (Apple Maps style) */}
       <div className={cn("absolute end-3 z-20 flex flex-col gap-2.5 max-lg:bottom-[164px] lg:end-4 lg:top-[84px]", emergency && "lg:top-[84px]")}>
+        <LayersBar open={layersOpen} value={layer} onPick={pickLayer} onClose={() => setLayersOpen(false)} />
         <div className="glass glass-sheen flex flex-col overflow-hidden rounded-full">
           <ControlBtn label={t.map.show.title} active={layer !== "cases" || layersOpen} onClick={() => setLayersOpen((v) => !v)}>
-            <Layers className="h-[19px] w-[19px]" />
+            <span className="relative">
+              <motion.span className="block" animate={{ rotate: layersOpen ? -90 : 0, scale: layersOpen ? 0.9 : 1 }} transition={{ type: "spring", stiffness: 420, damping: 24 }}>
+                <Layers className="h-[19px] w-[19px]" />
+              </motion.span>
+              {/* a dot tells you the map is filtered */}
+              <AnimatePresence>
+                {layer !== "cases" && !layersOpen && (
+                  <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute -end-1.5 -top-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-surface" />
+                )}
+              </AnimatePresence>
+            </span>
           </ControlBtn>
           <span className="mx-2.5 h-px bg-separator" />
           <ControlBtn label={t.map.locate} onClick={locate} active={!!userLoc}>
@@ -345,8 +356,6 @@ export function MapExperience() {
           <Globe2 className="h-[19px] w-[19px]" />
         </button>
       </div>
-
-      <LayersCard open={layersOpen} value={layer} onPick={pickLayer} onClose={() => setLayersOpen(false)} signedIn={!!me} />
 
       {/* Desktop side panel */}
       {desktop && (
@@ -397,7 +406,7 @@ export function MapExperience() {
                 </div>
                 <div className="flex items-center justify-between px-5 pb-1 pt-2">
                   <span className="text-[17px] font-bold tracking-[-0.02em]">{listTitle}</span>
-                  <span className="text-[13px] font-medium text-label-2">{t.map.results(layer === "services" ? serviceList.length : cases.length)}</span>
+                  <span className="text-[13px] font-medium text-label-2">{layer === "services" ? t.map.show.count(serviceList.length) : t.map.results(cases.length)}</span>
                 </div>
                 <div className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-3 no-scrollbar">
                   {cases.map(({ c, d }, i) => (
@@ -780,7 +789,7 @@ function MobileListSheet({
             <span className="truncate font-display text-[17px] font-extrabold">{title}</span>
             <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold">
               {urgent > 0 && <span className="rounded-full bg-urgent-soft px-2 py-0.5 text-urgent">{urgent}</span>}
-              <span className="text-label-2">{t.map.results(items.length + services.length)}</span>
+              <span className="text-label-2">{services.length ? t.map.show.count(services.length) : t.map.results(items.length)}</span>
               <ChevronRight className={cn("h-4 w-4 text-label-3 transition-transform", open ? "rotate-90" : "-rotate-90")} />
             </span>
           </span>
@@ -838,60 +847,60 @@ function BottomSheet({ children, onClose }: { children: React.ReactNode; onClose
 
 
 const LAYERS = [
-  { id: "cases", emoji: "/3d/paw.png", bg: "#ffe1dc" },
-  { id: "mine", emoji: "/3d/camera.png", bg: "#dcecff" },
-  { id: "services", emoji: "/3d/stethoscope.png", bg: "#d9f5e4" },
+  { id: "cases", Icon: PawPrint },
+  { id: "mine", Icon: UserRound },
+  { id: "services", Icon: Stethoscope },
 ] as const;
 
-/** Apple-Maps-style "what to show" card: pops out of the layers button. */
-function LayersCard({ open, value, onPick, onClose, signedIn }: { open: boolean; value: "cases" | "mine" | "services"; onPick: (v: "cases" | "mine" | "services") => void; onClose: () => void; signedIn: boolean }) {
+/** iOS-style capsule that slides out of the layers button: All · Mine · Services, a pill glides to the choice. */
+function LayersBar({ open, value, onPick, onClose }: { open: boolean; value: "cases" | "mine" | "services"; onPick: (v: "cases" | "mine" | "services") => void; onClose: () => void }) {
   const { t } = useI18n();
+  const rtl = t.meta.dir === "rtl";
+  // grows from the button's side: clip from the start edge to full
+  const closed = rtl ? "inset(0% 100% 0% 0% round 24px)" : "inset(0% 0% 0% 100% round 24px)";
+  useEffect(() => {
+    if (!open) return;
+    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [open, onClose]);
   return (
     <AnimatePresence>
       {open && (
         <>
-          <motion.div key="dim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 z-[24] bg-black/10" />
+          {/* tap anywhere else to fold it back (no dim: the map stays visible) */}
+          <motion.div key="catch" className="fixed inset-0 z-[-1]" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
           <motion.div
-            key="card"
-            role="dialog"
+            key="bar"
+            role="radiogroup"
             aria-label={t.map.show.title}
-            initial={{ opacity: 0, scale: 0.6, x: 30 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.7, x: 24 }}
-            transition={{ type: "spring", stiffness: 460, damping: 30 }}
-            style={{ transformOrigin: "right center" }}
-            className="glass-strong absolute end-[72px] z-[26] w-[268px] rounded-[26px] p-3 max-lg:bottom-[150px] lg:end-[76px] lg:top-[84px] rtl:[transform-origin:left_center]"
+            initial={{ clipPath: closed, opacity: 0.6 }}
+            animate={{ clipPath: "inset(0% 0% 0% 0% round 24px)", opacity: 1 }}
+            exit={{ clipPath: closed, opacity: 0, transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } }}
+            transition={{ type: "spring", stiffness: 380, damping: 34 }}
+            className="glass-strong absolute end-[calc(100%+8px)] top-0 flex h-12 items-center gap-0.5 rounded-full p-1 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.35)]"
           >
-            <div className="flex items-center justify-between px-1 pb-2">
-              <span className="text-[15px] font-bold">{t.map.show.title}</span>
-              <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2" aria-label={t.common.close}>
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {LAYERS.map((l, i) => {
-                const on = value === l.id;
-                return (
-                  <motion.button
-                    key={l.id}
-                    type="button"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.03 + i * 0.04 }}
-                    whileTap={{ scale: 0.92 }}
-                    onClick={() => onPick(l.id)}
-                    aria-pressed={on}
-                    className="flex flex-col items-center gap-1.5 rounded-[18px] p-1.5"
-                  >
-                    <span className={cn("relative flex h-[62px] w-full items-center justify-center rounded-[16px] transition-shadow", on && "ring-[3px] ring-accent")} style={{ background: l.bg }}>
-                      <Emoji3D src={l.emoji} size={34} />
-                      {l.id === "mine" && !signedIn && <span className="absolute end-1 top-1 rounded-full bg-black/60 px-1.5 text-[9px] font-bold text-white">🔒</span>}
-                    </span>
-                    <span className={cn("text-center text-[12px] leading-tight", on ? "font-bold text-accent" : "font-semibold text-label")}>{t.map.show[l.id]}</span>
-                  </motion.button>
-                );
-              })}
-            </div>
+            {LAYERS.map((l, i) => {
+              const on = value === l.id;
+              return (
+                <motion.button
+                  key={l.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => onPick(l.id)}
+                  initial={{ opacity: 0, x: rtl ? -14 : 14 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.06 + (LAYERS.length - 1 - i) * 0.04, type: "spring", stiffness: 420, damping: 30 }}
+                  whileTap={{ scale: 0.94 }}
+                  className={cn("relative flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[13px] font-semibold transition-colors duration-200", on ? "text-white" : "text-label")}
+                >
+                  {on && <motion.span layoutId="layer-pill" className="absolute inset-0 rounded-full bg-accent shadow-[0_6px_16px_-6px_var(--accent)]" transition={{ type: "spring", stiffness: 500, damping: 36 }} />}
+                  <l.Icon className="relative h-4 w-4" strokeWidth={2.2} />
+                  <span className="relative">{t.map.show.short[l.id]}</span>
+                </motion.button>
+              );
+            })}
           </motion.div>
         </>
       )}
