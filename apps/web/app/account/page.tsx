@@ -81,7 +81,10 @@ function Account() {
               </motion.span>
             </h1>
             <div className="flex flex-wrap items-center gap-x-2 text-[13.5px] text-label-2">
-              <span className="font-semibold text-accent">{me.serviceId && me.role !== "vet" ? t.biz.signupAs.split(" (")[0] : t.dashboard.roles[me.role]}</span>
+              {/* a plain blue link, like iOS / Instagram ("Modifier le profil"), not a button */}
+              <button type="button" onClick={() => go("profile")} className="flex items-center gap-0.5 font-semibold text-accent transition-opacity active:opacity-60">
+                {t.acct.editProfile} <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
+              </button>
               {me.city && <span className="flex min-w-0 items-center gap-1"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{me.city}</span></span>}
               {me.pro && new Date(me.pro.until) > new Date() && <span className="rounded-full bg-gradient-to-r from-[#0a7cff] to-[#5e5ce6] px-2 py-0.5 text-[11px] font-bold text-white">{me.pro.plan === "plus" ? "PRO+" : "PRO"}</span>}
             </div>
@@ -126,7 +129,7 @@ function Account() {
 const card = "card rounded-[28px] p-5";
 
 function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const cases = useStore((s) => s.cases);
   const adoptions = useStore((s) => s.adoptions);
   const myService = useStore((s) => s.services).find((x) => x.id === me.serviceId);
@@ -165,9 +168,9 @@ function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { e: "/3d/camera.png", n: myReports, l: t.acct.stats.reports, tab: "reports" as Tab },
-          { e: "/3d/hearthands.png", n: helped, l: t.acct.stats.helped, tab: "reports" as Tab },
-          { e: "/3d/home.png", n: listings, l: t.acct.stats.listings, tab: "adoption" as Tab },
+          { e: "/3d/camera.png", n: myReports, l: t.acct.stats.reports, tab: "reports" as Tab, bg: "from-[#fff0e6] to-[#ffe0cc] dark:from-[#3a2418] dark:to-[#2a1a12]" },
+          { e: "/3d/hearthands.png", n: helped, l: t.acct.stats.helped, tab: "reports" as Tab, bg: "from-[#ffe8f0] to-[#ffd3e2] dark:from-[#3a1826] dark:to-[#2a121c]" },
+          { e: "/3d/home.png", n: listings, l: t.acct.stats.listings, tab: "adoption" as Tab, bg: "from-[#e6f7ee] to-[#cdeedd] dark:from-[#16301f] dark:to-[#112418]" },
         ].map((s, i) => (
           <motion.button
             key={s.l}
@@ -176,7 +179,8 @@ function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 + i * 0.05 }}
-            className="card flex min-w-0 flex-col items-start gap-2 rounded-[24px] p-4 text-start transition-transform active:scale-[0.97]"
+            whileTap={{ scale: 0.94 }}
+            className={cn("flex min-w-0 flex-col items-start gap-2 rounded-[24px] bg-gradient-to-br p-4 text-start", s.bg)}
           >
             <Emoji3D src={s.e} size={34} />
             <div className="text-[26px] font-bold leading-none tabular-nums">{s.n}</div>
@@ -207,7 +211,18 @@ function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
           <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[13px] font-bold text-[#3d3bd6]">{t.home.proCta}</span>
         </button>
       ) : me.serviceId && proActive(me) ? (
-        <PlusSuggestion me={me} busy={busy} />
+        <>
+          {/* Pro is visible: what you have, until when, one tap to manage it */}
+          <Link href="/account?tab=pro" className="relative flex items-center gap-3 overflow-hidden rounded-[24px] bg-gradient-to-r from-[#0a7cff] via-[#3d6bff] to-[#5e5ce6] p-4 text-white transition-transform active:scale-[0.98]">
+            <Emoji3D src="/3d/star.png" size={40} className="shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="font-bold">{me.pro?.plan === "plus" ? `PawLink ${t.pay.tiers.plus}` : t.biz.proTitle} ✓</div>
+              <div className="truncate text-[13px] text-white/85">{t.biz.proActive} {new Date(me.pro!.until).toLocaleDateString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { day: "numeric", month: "long" })}</div>
+            </div>
+            <span className="shrink-0 rounded-full bg-white/20 px-3 py-1.5 text-[13px] font-bold">{t.home.manage}</span>
+          </Link>
+          <PlusSuggestion me={me} busy={busy} />
+        </>
       ) : !me.serviceId ? (
         <Link href="/account?tab=profile#business" className="card flex items-center gap-3 rounded-[24px] p-4 transition-transform active:scale-[0.98]">
           <Emoji3D src="/3d/stethoscope.png" size={40} className="shrink-0" />
@@ -218,6 +233,9 @@ function Overview({ me, go }: { me: User; go: (t: Tab) => void }) {
           <ChevronRight className="h-4 w-4 text-label-3 rtl:rotate-180" />
         </Link>
       ) : null}
+
+      {/* the ad Pro businesses pay for: a featured vet / shop near you, clearly marked */}
+      {!me.serviceId && me.role !== "admin" && <Sponsored near={home} />}
 
       <section className="card rounded-[28px] p-3">
         <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-3">
@@ -438,5 +456,30 @@ function Notifications({ me }: { me: User }) {
         </Link>
       ))}
     </section>
+  );
+}
+
+/** One Pro listing near you, labelled "Sponsored". Pro businesses pay for this placement (PawLink never sells data). */
+function Sponsored({ near }: { near: { lat: number; lng: number } }) {
+  const { t } = useI18n();
+  const s = useStore((st) => st.services)
+    .filter((x) => x.status === "approved" && x.pro)
+    .map((x) => ({ x, d: distanceKm(near, x.location) }))
+    .sort((a, b) => a.d - b.d)[0];
+  if (!s) return null;
+  return (
+    <Link href={`/services/${s.x.id}`} className="card relative flex items-center gap-3 overflow-hidden rounded-[24px] p-4 transition-transform active:scale-[0.98]">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-[#e3efff] to-[#c9dcff]">
+        <Emoji3D src={SERVICE_EMOJI[s.x.type]} size={36} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-label-3">{t.home.sponsored}</div>
+        <div className="truncate font-bold">{s.x.name}</div>
+        <div className="truncate text-[13px] text-label-2">
+          ★ {s.x.rating.toFixed(1)} · {t.common.service[s.x.type]} · {t.common.km(s.d)}
+        </div>
+      </div>
+      <span className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-[13px] font-bold text-white">{t.map.details}</span>
+    </Link>
   );
 }

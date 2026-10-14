@@ -2,7 +2,7 @@
 
 import { useSession } from "@/lib/auth";
 
-import { geoPermission, getPosition } from "@/lib/geo";
+import { geoIssue, geoPermission, getPosition } from "@/lib/geo";
 import { toast } from "sonner";
 
 import { useCaseText } from "@/lib/i18n/content";
@@ -216,7 +216,7 @@ export function MapExperience() {
   const locate = () => {
     getPosition(8000).then((p) => {
       // never invent a position: without one, say so and keep the map where it is
-      if (!p) return toast(t.map.locFail);
+      if (!p) return toast(t.geo.why[geoIssue() ?? "off"]);
       setUserLoc(p);
       mapRef.current?.flyTo({ center: [p.lng, p.lat], zoom: 12, duration: 1600 });
     });

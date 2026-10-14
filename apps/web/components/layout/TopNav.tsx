@@ -139,6 +139,12 @@ export function TopNav({
 
           <div className="ms-auto flex items-center gap-0.5 md:ms-0">
             {actions && <div className="flex items-center gap-1.5 md:hidden">{actions}</div>}
+            {/* phones, on Home: the bell sits next to settings (Klarna-style) */}
+            {pathname.startsWith("/account") && (
+              <div className="me-1.5 md:hidden">
+                <NotificationBell />
+              </div>
+            )}
             <Link href="/settings" aria-label={t.acct.tabs.settings} className={cn(iconBtn, "w-11 px-0 md:w-10 max-md:bg-surface max-md:shadow-[0_2px_10px_rgba(0,0,0,0.08)]", (back || actions) && "max-md:hidden")}>
               <Settings className="h-[18px] w-[18px]" />
             </Link>

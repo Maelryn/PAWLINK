@@ -1,6 +1,6 @@
 "use client";
 
-import { getPosition } from "@/lib/geo";
+import { geoIssue, getPosition } from "@/lib/geo";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { TopNav } from "@/components/layout/TopNav";
@@ -65,7 +65,7 @@ export function GeoGate({ children, bare }: { children: React.ReactNode; bare?: 
         ) : (
           <>
             <h1 className="mt-6 text-[26px] font-extrabold">{status === "outside" ? t.geo.outsideTitle : t.geo.deniedTitle}</h1>
-            <p className="mt-2 text-[15px] leading-relaxed text-label-2">{status === "outside" ? t.geo.outside : t.geo.denied}</p>
+            <p className="mt-2 text-[15px] leading-relaxed text-label-2">{status === "outside" ? t.geo.outside : geoIssue() ? t.geo.why[geoIssue()!] : t.geo.denied}</p>
             <Button size="lg" className="mt-6" onClick={check}>{t.geo.retry}</Button>
           </>
         )}

@@ -473,6 +473,7 @@ const fr: Dict = {
     safety: "Ne payez jamais avant d'avoir vu l'animal. PawLink ne demande jamais d'argent.",
   },
   acct: {
+    editProfile: "Modifier le profil",
     title: "Mon compte",
     tabs: { home: "Accueil", profile: "Profil", reports: "Mes signalements", adoption: "Adoption", pro: "Mon établissement", notifications: "Notifications", settings: "Paramètres" },
     memberSince: "Membre depuis",
@@ -616,6 +617,7 @@ const fr: Dict = {
     adoptText: (name) => `${name} cherche une famille sur PawLink 🐾`,
   },
   geo: {
+    why: { insecure: "La localisation ne marche que sur le vrai lien (https). Ouvrez le lien PawLink, pas l’adresse de l’ordinateur (192.168…).", denied: "La localisation est bloquée pour PawLink. Touchez le cadenas à côté de l’adresse → Autorisations → Position → Autoriser, puis réessayez.", off: "Votre téléphone ne trouve pas sa position. Activez la localisation (GPS) dans les réglages du téléphone et réessayez." },
     demoTitle: "Juste pour essayer ?",
     demoBody: "Utilisez une position de démo. Ce que vous publiez sera marqué « pas sur place » et ne comptera pas comme vérifié.",
     checking: "Vérification de votre position…",
@@ -676,6 +678,8 @@ const fr: Dict = {
     nearBody: "Ouvrez la carte pour voir qui a besoin de quoi, et donner un coup de main.",
     nearCta: "Ouvrir la carte",
     calmBody: "Aucun cas urgent près de vous pour l'instant. Merci de garder l'œil ouvert.",
+    manage: "Gérer",
+    sponsored: "Sponsorisé",
     proCta: "Voir Pro",
     admin: "Console admin",
     adminBody: "Modération, zones d'urgence et statistiques",

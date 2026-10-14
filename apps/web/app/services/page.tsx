@@ -15,6 +15,7 @@ import { ratingOf, useStore } from "@/lib/store";
 import type { Service, ServiceType } from "@/lib/types";
 import { cn, distanceKm } from "@/lib/utils";
 import { useNearMe } from "@/lib/useNearMe";
+import { geoIssue } from "@/lib/geo";
 import { Pager } from "@/components/ui/Pager";
 import { toast } from "sonner";
 
@@ -47,7 +48,7 @@ export default function ServicesPage() {
   const locate = async () => {
     setPage(1);
     if (origin) return near.clear();
-    if (!(await near.locate())) toast(t.svc.locFail);
+    if (!(await near.locate())) toast(geoIssue() ? t.geo.why[geoIssue()!] : t.svc.locFail);
   };
   const query = q.trim().toLowerCase();
 

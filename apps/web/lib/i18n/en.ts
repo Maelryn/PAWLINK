@@ -471,6 +471,7 @@ const en = {
     safety: "Never pay before meeting the animal. PawLink never asks for money.",
   },
   acct: {
+    editProfile: "Edit profile",
     title: "My account",
     tabs: { home: "Overview", profile: "Profile", reports: "My reports", adoption: "Adoption", pro: "My business", notifications: "Notifications", settings: "Settings" },
     memberSince: "Member since",
@@ -614,6 +615,7 @@ const en = {
     adoptText: (name: string) => `${name} is looking for a home on PawLink 🐾`,
   },
   geo: {
+    why: { insecure: "Location only works on the real link (https). Open the PawLink link, not the computer address (192.168…).", denied: "Location is blocked for PawLink. Tap the lock next to the address → Permissions → Location → Allow, then try again.", off: "Your phone can’t find its position. Turn on Location (GPS) in your phone settings and try again." },
     demoTitle: "Just trying it out?",
     demoBody: "Use a demo position. What you post will be marked “not on site” and won't count as verified.",
     checking: "Checking your location…",
@@ -674,6 +676,8 @@ const en = {
     nearBody: "Open the map to see who needs what, and lend a hand.",
     nearCta: "Open the map",
     calmBody: "No urgent case nearby right now. Thank you for keeping an eye out.",
+    manage: "Manage",
+    sponsored: "Sponsored",
     proCta: "See Pro",
     admin: "Admin console",
     adminBody: "Moderation, emergency zones and statistics",

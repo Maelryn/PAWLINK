@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Emoji3D } from "@/components/ui/primitives";
 import { useSession } from "@/lib/auth";
-import { getPosition } from "@/lib/geo";
+import { geoIssue, getPosition } from "@/lib/geo";
 import { distanceKm } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import type { Case, TrustLevel } from "@/lib/types";
@@ -102,7 +102,7 @@ function NearbyCheck({ c }: { c: Case }) {
     const here = await getPosition(10000, true);
     if (!here) {
       setBusy(null);
-      return toast.error(t.verify.noLoc);
+      return toast.error(geoIssue() ? t.geo.why[geoIssue()!] : t.verify.noLoc);
     }
     const km = distanceKm(here, c.location);
     if (km > VERIFY_RADIUS_KM) {

@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { Heart, MapPin, PawPrint } from "lucide-react";
 import { Pager } from "@/components/ui/Pager";
 import { useNearMe } from "@/lib/useNearMe";
+import { geoIssue } from "@/lib/geo";
 import { distanceKm } from "@/lib/utils";
 
 const PAGE = 12;
@@ -78,7 +79,7 @@ export default function AdoptPage() {
             onClick={async () => {
               setPage(1);
               if (near.origin) return near.clear();
-              if (!(await near.locate())) toast(t.svc.locFail);
+              if (!(await near.locate())) toast(geoIssue() ? t.geo.why[geoIssue()!] : t.svc.locFail);
             }}
             aria-pressed={!!near.origin}
             className={cn("flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-semibold transition-[background,transform] active:scale-95", near.origin ? "bg-accent text-white" : "bg-surface-2")}
