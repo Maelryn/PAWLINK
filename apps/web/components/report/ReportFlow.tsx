@@ -775,6 +775,7 @@ function Result({ ai, c, onPublish, onReset }: { ai: AIAnalysis; c: Case; onPubl
 function AskStep({ questions, answers, onAnswer }: { questions: FollowUpId[]; answers: Partial<Record<FollowUpId, boolean>>; onAnswer: (q: FollowUpId, v: boolean | undefined) => void }) {
   const { t } = useI18n();
   const [i, setI] = useState(0);
+  const rtl = t.meta.dir === "rtl"; // questions slide in from the reading side
   const q = questions[Math.min(i, questions.length - 1)];
   const pick = (v: boolean | undefined) => {
     onAnswer(q, v);
@@ -789,7 +790,7 @@ function AskStep({ questions, answers, onAnswer }: { questions: FollowUpId[]; an
         <div className="mt-3 text-[12.5px] font-bold uppercase tracking-wider text-accent">{t.ask.kicker(i + 1, questions.length)}</div>
         <p className="mt-1 text-[13.5px] text-label-2">{t.ask.title}</p>
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={q} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ type: "spring", stiffness: 340, damping: 30 }}>
+          <motion.div key={q} initial={{ opacity: 0, x: rtl ? -40 : 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: rtl ? 40 : -40 }} transition={{ type: "spring", stiffness: 340, damping: 30 }}>
             <h2 className="mt-5 text-[27px] font-black leading-tight tracking-[-0.02em] sm:text-[32px]">{t.ask.q[q]}</h2>
             <p className="mt-2 text-[14.5px] text-label-2">{t.ask.hint[q]}</p>
           </motion.div>

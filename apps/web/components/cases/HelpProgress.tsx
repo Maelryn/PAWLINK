@@ -86,7 +86,7 @@ export function HelperPanel({ c, me, helping }: { c: Case; me: User; helping: He
                 animate={{ scale: step === i ? 1.12 : 1 }}
                 className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold", step >= i ? "bg-stable text-white" : "bg-surface text-label-3")}
               >
-                {step > i ? <Check className="h-4 w-4" strokeWidth={3} /> : i + 1}
+                {step > i || (step === i && i === STEPS.length - 1) ? <Check className="h-4 w-4" strokeWidth={3} /> : i + 1}
               </motion.span>
             </div>
           ))}
