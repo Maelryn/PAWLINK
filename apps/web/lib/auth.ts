@@ -196,6 +196,7 @@ function demoSignUp(input: SignUpInput): User {
     phoneVerified: true,
     licenseVerified: false,
     available: input.role === "volunteer",
+    availability: input.role === "volunteer" ? "now" : undefined,
     helpTypes: input.role === "volunteer" ? (["transport"] as User["helpTypes"]) : undefined,
     createdAt: new Date().toISOString(),
   } as User;

@@ -21,6 +21,7 @@ import type {
   ServiceEdit,
 } from "./types";
 import { distanceKm } from "./utils";
+import { availabilityOf } from "./people";
 
 /** "Do you see this animal?" goes to people within this distance of a new report. */
 const ASK_RADIUS_KM = 3;
@@ -206,12 +207,17 @@ export const store = {
   },
   offerHelp(caseId: string, helpType: HelpType, me: User) {
     const c = state.cases.find((x) => x.id === caseId);
-    updateCase(caseId, (x) => ({
-      ...x,
-      status: x.status === "open" ? "in_progress" : x.status,
-      helpers: [...x.helpers.filter((h) => h.user.id !== me.id), { user: lite(me), helpType }],
-      updatedAt: now(),
-    }));
+    updateCase(caseId, (x) => {
+      // answering a request for more help ticks that need off the list
+      const left = x.nextHelp?.types.filter((h) => h !== helpType) ?? [];
+      return {
+        ...x,
+        status: x.status === "open" ? "in_progress" : x.status,
+        helpers: [...x.helpers.filter((h) => h.user.id !== me.id), { user: lite(me), helpType }],
+        nextHelp: x.nextHelp && left.length ? { ...x.nextHelp, types: left } : undefined,
+        updatedAt: now(),
+      };
+    });
     if (c && c.reporter.id !== me.id) set({ notifications: [...notify(c.reporter.id, "help", me.name, `/cases/${caseId}`), ...state.notifications] });
   },
   /** PATCH /cases/:id/status { status: "resolved" } — reporter, a helper, a vet or an admin */
@@ -286,6 +292,31 @@ export const store = {
       return { ...c, trust: { ...c.trust, flags, flaggedBy: [...(c.trust.flaggedBy ?? []), userId] }, moderation: flags >= 3 ? "pending" : c.moderation };
     });
     return true;
+  },
+  /** The helper says where they are: on the way, then with the animal. The reporter is told; once someone is with
+      the animal, the other helpers are told too (so they don't all go for nothing). PATCH /cases/:id/help */
+  setHelperStage(caseId: string, userId: string, stage: "onway" | "onsite") {
+    const c = state.cases.find((x) => x.id === caseId);
+    const me = c?.helpers.find((h) => h.user.id === userId);
+    if (!c || !me || me.stage === stage || c.status === "resolved") return;
+    updateCase(caseId, (x) => ({ ...x, helpers: x.helpers.map((h) => (h.user.id === userId ? { ...h, stage, stageAt: now() } : h)), updatedAt: now() }));
+    const others = stage === "onsite" ? c.helpers.filter((h) => h.user.id !== userId && h.stage !== "onsite").map((h) => h.user.id) : [];
+    const kind = stage === "onway" ? "helperOnWay" : "helperOnSite";
+    set({
+      notifications: [...[c.reporter.id, ...others].flatMap((id) => notify(id, kind, me.user.name, `/cases/${caseId}`)), ...state.notifications],
+    });
+  },
+  /** The person with the animal asks for the next step: the right people nearby (skill + available + close) are notified. */
+  requestNextHelp(caseId: string, userId: string, types: HelpType[]) {
+    const c = state.cases.find((x) => x.id === caseId);
+    if (!c || !types.length || c.status === "resolved") return;
+    updateCase(caseId, (x) => ({ ...x, nextHelp: { types, by: userId, at: now() }, updatedAt: now() }));
+    const already = new Set([c.reporter.id, ...c.helpers.map((h) => h.user.id)]);
+    const people = state.users
+      .filter((u) => !already.has(u.id) && u.location && (u.role === "volunteer" || u.role === "vet") && availabilityOf(u) !== "away")
+      .filter((u) => u.helpTypes?.some((h) => types.includes(h)) && distanceKm(u.location!, c.location) <= 40)
+      .map((u) => u.id);
+    set({ notifications: [...[c.reporter.id, ...people].flatMap((id) => notify(id, "nextHelp", c.title, `/cases/${caseId}`)), ...state.notifications] });
   },
   /** A helper can't help anymore: they leave the case (with nobody left, it's open again). */
   withdrawHelp(caseId: string, userId: string) {

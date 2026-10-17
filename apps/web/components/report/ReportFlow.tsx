@@ -17,13 +17,13 @@ import { toast } from "sonner";
 import { useSession } from "@/lib/auth";
 import { computeTrust, inAlgeria } from "@/lib/trust";
 import { useDemoPosition, useDevicePosition } from "@/components/layout/GeoGate";
-import { analyze, analyzeAsync } from "@/lib/ai/analyze";
+import { analyze, analyzeAsync, type AnalyzeInput } from "@/lib/ai/analyze";
 import { casesFromApi, createCaseRemote } from "@/lib/cases";
 import { activeZoneAt } from "@/lib/zones";
 import { useI18n } from "@/lib/i18n";
 import { ALL_SPECIES, LIVESTOCK, SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
-import type { AIAnalysis, Case, GeoPoint, Species } from "@/lib/types";
+import type { AIAnalysis, Case, FollowUpId, GeoPoint, Species } from "@/lib/types";
 import { CASES } from "@/lib/mock/data";
 import { cn, distanceKm } from "@/lib/utils";
 
@@ -31,7 +31,9 @@ const DEMO_PHOTOS = ["/mock/dog-brown.jpg", "/mock/goat-1.jpg", "/mock/cat-bw.jp
 export const TAGS = ["injured", "bleeding", "burned", "trapped", "smoke", "breathing", "lost", "abandoned", "thin", "dehydrated", "limping", "not-eating", "eyes", "sneezing", "skin", "coughing", "young", "needs-food"];
 const DEFAULT_POINT: GeoPoint = { lat: 36.6455, lng: 4.1979, address: "Larbaâ Nath Irathen, Tizi Ouzou" };
 
-type Phase = "form" | "analyzing" | "result";
+type Phase = "form" | "analyzing" | "ask" | "result";
+/** Wall clock, read in event handlers only. */
+const nowMs = () => Date.now();
 /** You must be this close to the animal to report it. */
 const MAX_KM = 2;
 type Exif = { gps: GeoPoint | null; date: Date | null; old?: boolean };
@@ -67,6 +69,9 @@ export function ReportFlow() {
   const [desc, setDesc] = useState("");
   const [ai, setAi] = useState<AIAnalysis | null>(null);
   const [created, setCreated] = useState<Case | null>(null);
+  // the triage's quick questions: asked after the analysis, before the case is published
+  const [pending, setPending] = useState<null | { input: AnalyzeInput; base: Omit<Case, "triage" | "ai" | "answers">; questions: FollowUpId[] }>(null);
+  const [answers, setAnswers] = useState<Partial<Record<FollowUpId, boolean>>>({});
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -103,7 +108,7 @@ export function ReportFlow() {
 
     // Real API (backend Phase 2): the server uploads/checks the photo, runs the AI and the trust checks
     if (casesFromApi()) {
-      const started = Date.now();
+      const started = nowMs();
       // until the AI service (apps/Ai) is connected, the safety rules run here and give the server its baseline triage
       const local = analyze({ species: species!, count, description: desc, conditionTags: tags, location }, t);
       const r = await createCaseRemote(
@@ -111,7 +116,7 @@ export function ReportFlow() {
         photo,
       );
       // keep the "analyzing" moment long enough to read, even when the server is fast
-      await new Promise((res) => setTimeout(res, Math.max(0, 2400 - (Date.now() - started))));
+      await new Promise((res) => setTimeout(res, Math.max(0, 2400 - (nowMs() - started))));
       if (!r.ok) {
         setPhase("form");
         return toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
@@ -122,21 +127,21 @@ export function ReportFlow() {
       return;
     }
 
-    const result = await analyzeAsync({ species: species!, count, description: desc, conditionTags: tags, location }, t, 3600);
-    const c: Case = {
-      id: `new-${Date.now()}`,
+    // matched against the real members (new volunteers included, people "away" left out)
+    const input: AnalyzeInput = { species: species!, count, description: desc, conditionTags: tags, location, people: store.get().users };
+    const result = await analyzeAsync(input, t, 3600);
+    const base: Omit<Case, "triage" | "ai" | "answers"> = {
+      id: `new-${nowMs()}`,
       title,
       species: species!,
       category,
       count: count > 1 ? count : undefined,
       status: "open",
-      triage: result.triage,
       location,
       photos: photo ? [photo] : [],
       description,
       conditionTags: tags,
       reporter: { id: me.id, name: me.name, avatar: me.avatar },
-      ai: result,
       emergencyZoneId,
       reporterOnSite: !demoPosition,
       trust,
@@ -145,10 +150,33 @@ export function ReportFlow() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    if (result.followUps?.length) {
+      setAnswers({});
+      setPending({ input, base, questions: result.followUps });
+      setPhase("ask");
+      return;
+    }
+    publishCase(base, result, {});
+  };
+
+  const publishCase = (base: Omit<Case, "triage" | "ai" | "answers">, result: AIAnalysis, given: Partial<Record<FollowUpId, boolean>>) => {
+    const c: Case = { ...base, triage: result.triage, ai: result, answers: Object.keys(given).length ? given : undefined };
     store.addCase(c);
     setAi(result);
     setCreated(c);
+    setPending(null);
     setPhase("result");
+  };
+
+  /** One answer (or "not sure"); after the last question the triage is computed again with the answers. */
+  const answer = (q: FollowUpId, value: boolean | undefined) => {
+    if (!pending) return;
+    const next = value === undefined ? answers : { ...answers, [q]: value };
+    setAnswers(next);
+    if (navigator.vibrate) navigator.vibrate(8);
+    const i = pending.questions.indexOf(q);
+    if (i < pending.questions.length - 1) return;
+    publishCase(pending.base, analyze({ ...pending.input, answers: next }, t), next);
   };
 
   const publish = (to: "map" | "case") => {
@@ -168,6 +196,8 @@ export function ReportFlow() {
     setAddress("");
     setAi(null);
     setCreated(null);
+    setPending(null);
+    setAnswers({});
   };
 
   return (
@@ -231,6 +261,12 @@ export function ReportFlow() {
           {phase === "analyzing" && (
             <motion.div key="analyzing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.05 }} transition={{ duration: 0.5 }}>
               <Analyzing photo={photo} species={species!} />
+            </motion.div>
+          )}
+
+          {phase === "ask" && pending && (
+            <motion.div key="ask" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ type: "spring", stiffness: 300, damping: 30 }}>
+              <AskStep questions={pending.questions} answers={answers} onAnswer={answer} />
             </motion.div>
           )}
 
@@ -330,7 +366,7 @@ function PhotoStep({
       setExif({
         gps: meta?.latitude ? { lat: meta.latitude, lng: meta.longitude } : null,
         date: meta?.DateTimeOriginal ? new Date(meta.DateTimeOriginal) : null,
-        old: !!meta?.DateTimeOriginal && Date.now() - new Date(meta.DateTimeOriginal).getTime() > 48 * 3_600_000,
+        old: !!meta?.DateTimeOriginal && nowMs() - new Date(meta.DateTimeOriginal).getTime() > 48 * 3_600_000,
       });
     } catch {
       setExif({ gps: null, date: null });
@@ -731,6 +767,63 @@ function Result({ ai, c, onPublish, onReset }: { ai: AIAnalysis; c: Case; onPubl
           </Button>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+/** The triage asks what's missing, one question at a time, big buttons (Duolingo style). The answers can only raise the urgency. */
+function AskStep({ questions, answers, onAnswer }: { questions: FollowUpId[]; answers: Partial<Record<FollowUpId, boolean>>; onAnswer: (q: FollowUpId, v: boolean | undefined) => void }) {
+  const { t } = useI18n();
+  const [i, setI] = useState(0);
+  const q = questions[Math.min(i, questions.length - 1)];
+  const pick = (v: boolean | undefined) => {
+    onAnswer(q, v);
+    if (i < questions.length - 1) setI(i + 1);
+  };
+  return (
+    <div className="flex min-h-[calc(100svh-56px)] flex-col pt-6 md:min-h-0 md:pt-0">
+      <div className="glass-strong relative overflow-hidden rounded-[32px] px-5 pb-6 pt-7 text-center sm:rounded-[36px] sm:px-8">
+        <motion.div className="mx-auto w-fit" animate={{ y: [0, -6, 0], rotate: [0, -4, 4, 0] }} transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}>
+          <Emoji3D src="/3d/owl.png" size={76} />
+        </motion.div>
+        <div className="mt-3 text-[12.5px] font-bold uppercase tracking-wider text-accent">{t.ask.kicker(i + 1, questions.length)}</div>
+        <p className="mt-1 text-[13.5px] text-label-2">{t.ask.title}</p>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={q} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ type: "spring", stiffness: 340, damping: 30 }}>
+            <h2 className="mt-5 text-[27px] font-black leading-tight tracking-[-0.02em] sm:text-[32px]">{t.ask.q[q]}</h2>
+            <p className="mt-2 text-[14.5px] text-label-2">{t.ask.hint[q]}</p>
+          </motion.div>
+        </AnimatePresence>
+        {/* progress */}
+        <div className="mt-6 flex justify-center gap-1.5">
+          {questions.map((x, k) => (
+            <motion.span key={x} animate={{ width: k === i ? 22 : 8 }} className={cn("h-2 rounded-full", k <= i ? "bg-accent" : "bg-surface-3", answers[x] !== undefined && "bg-accent")} />
+          ))}
+        </div>
+      </div>
+
+      {/* under the thumb on phones */}
+      <div className="sticky bottom-0 mt-auto space-y-2 pb-[max(12px,env(safe-area-inset-bottom))] pt-5 md:static md:mt-6 md:pb-0">
+        <div className="grid grid-cols-2 gap-3">
+          {([true, false] as const).map((v) => (
+            <motion.button
+              key={String(v)}
+              type="button"
+              whileTap={{ scale: 0.95 }}
+              onClick={() => pick(v)}
+              className="flex h-16 items-center justify-center gap-2 rounded-[22px] bg-surface text-[18px] font-bold shadow-[0_6px_18px_-8px_rgba(0,0,0,0.25)] ring-1 ring-separator transition-colors hover:bg-surface-2"
+            >
+              <span className={cn("flex h-8 w-8 items-center justify-center rounded-full text-white", v ? "bg-stable" : "bg-urgent")}>
+                {v ? <Check className="h-4 w-4" strokeWidth={3} /> : <X className="h-4 w-4" strokeWidth={3} />}
+              </span>
+              {v ? t.ask.yes : t.ask.no}
+            </motion.button>
+          ))}
+        </div>
+        <button type="button" onClick={() => pick(undefined)} className="mx-auto block h-11 px-4 text-[14.5px] font-semibold text-label-2 transition-opacity active:opacity-60">
+          {t.ask.unsure}
+        </button>
+      </div>
     </div>
   );
 }

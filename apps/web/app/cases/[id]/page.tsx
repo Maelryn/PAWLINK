@@ -32,6 +32,7 @@ import { UserBadges } from "@/components/account/UserBadges";
 import { badgesOf } from "@/lib/badges";
 import { Suspense, useState } from "react";
 import { ReporterTools } from "@/components/cases/ReporterTools";
+import { PhoneActions, StagePill } from "@/components/cases/HelpProgress";
 import { useSession } from "@/lib/auth";
 import { gmaps, gmapsDirections } from "@/lib/trust";
 import { TrustBadge, TrustPanel } from "@/components/cases/Trust";
@@ -47,7 +48,9 @@ export default function CasePage() {
   const zones = useStore((s) => s.zones);
   const allCases = useStore((s) => s.cases);
   const allAdoptions = useStore((s) => s.adoptions);
-  const reporter = useStore((s) => s.users).find((u) => u.id === c?.reporter.id);
+  const people = useStore((s) => s.users);
+  const reporter = people.find((u) => u.id === c?.reporter.id);
+  const phoneOf = (id: string) => people.find((u) => u.id === id)?.phone;
 
   if (!c)
     return (
@@ -251,6 +254,7 @@ export default function CasePage() {
                 {c.helpers.length > 0 && (
                   <div className="mt-5 border-t border-separator pt-4">
                     <div className="text-[13px] font-semibold text-label-2">{t.common.helpers(c.helpers.length)}</div>
+                    {user?.id === c.reporter.id && <p className="mt-0.5 text-[12px] text-label-3">{t.flow.contactHint}</p>}
                     <div className="mt-2 space-y-2">
                       {c.helpers.map((h) => (
                         <div key={h.user.id} className="flex items-center gap-3">
@@ -258,10 +262,15 @@ export default function CasePage() {
                             <Avatar name={h.user.name} size={34} />
                             <div className="min-w-0 flex-1 truncate text-[14px] font-semibold">{h.user.name}</div>
                           </ProfileLink>
-                          <span className="flex items-center gap-1.5 rounded-full bg-surface-2 py-1 pe-3 ps-1.5 text-[12.5px] font-medium">
-                            <Emoji3D src={HELP_EMOJI[h.helpType]} size={18} />
-                            {t.common.help[h.helpType]}
+                          <span className="flex flex-col items-end gap-1">
+                            <span className="flex items-center gap-1.5 rounded-full bg-surface-2 py-1 pe-3 ps-1.5 text-[12.5px] font-medium">
+                              <Emoji3D src={HELP_EMOJI[h.helpType]} size={18} />
+                              {t.common.help[h.helpType]}
+                            </span>
+                            <StagePill h={h} />
                           </span>
+                          {/* the reporter (and admins) can reach the people helping */}
+                          {(user?.id === c.reporter.id || user?.role === "admin") && <PhoneActions phone={phoneOf(h.user.id)} />}
                         </div>
                       ))}
                     </div>

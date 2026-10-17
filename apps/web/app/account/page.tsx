@@ -19,6 +19,7 @@ import { useSession, saveProfile } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, proActive, store, useStore } from "@/lib/store";
+import { availabilityOf, type Availability } from "@/lib/people";
 import { openPaywall } from "@/lib/ui";
 import type { HelpType, User, ServiceType } from "@/lib/types";
 import { cn, distanceKm } from "@/lib/utils";
@@ -279,7 +280,7 @@ function Profile({ me }: { me: User }) {
   const { t } = useI18n();
   const [f, setF] = useState({ name: me.name, phone: me.phone ?? "", city: me.city ?? "", bio: me.bio ?? "" });
   const [skills, setSkills] = useState<HelpType[]>(me.helpTypes ?? []);
-  const [available, setAvailable] = useState(!!me.available);
+  const [availability, setAvailability] = useState<Availability>(availabilityOf(me));
   const [photo, setPhoto] = useState(me.photo);
   const up = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
 
@@ -288,9 +289,11 @@ function Profile({ me }: { me: User }) {
       className="space-y-5"
       onSubmit={async (e) => {
         e.preventDefault();
-        const r = await saveProfile(me.id, { ...f, photo, helpTypes: skills, available });
-        if ("error" in r) toast.error(r.message ?? t.auth.errors.UNKNOWN);
-        else toast.success(t.acct.saved);
+        // the API keeps the on/off flag; the 3-level choice is kept with the demo data for now
+        const r = await saveProfile(me.id, { ...f, photo, helpTypes: skills, available: availability === "now" });
+        if ("error" in r) return toast.error(r.message ?? t.auth.errors.UNKNOWN);
+        store.updateUser(me.id, { availability });
+        toast.success(t.acct.saved);
       }}
     >
       <Link href={`/users/${me.id}`} className="flex items-center justify-between rounded-[20px] bg-accent-soft px-4 py-3 text-[14.5px] font-semibold text-accent transition-transform active:scale-[0.98]">
@@ -328,13 +331,32 @@ function Profile({ me }: { me: User }) {
 
       <section className={cn(card, "space-y-3")}>
         <h2 className="text-[18px] font-bold">{t.acct.skills}</h2>
-        <button type="button" onClick={() => setAvailable((v) => !v)} className={cn("flex w-full items-center gap-3 rounded-[18px] p-3.5", available ? "bg-stable-soft" : "bg-surface-2")}>
-          <span className={cn("h-3 w-3 rounded-full", available ? "bg-stable" : "bg-label-3")} />
-          <span className="flex-1 text-start text-[15px] font-semibold">{t.acct.available}</span>
-          <span className={cn("relative h-[31px] w-[51px] rounded-full p-[2px] transition-colors", available ? "bg-stable" : "bg-label-3/50")}>
-            <motion.span layout transition={{ type: "spring", stiffness: 600, damping: 34 }} className={cn("block h-[27px] w-[27px] rounded-full bg-white shadow", available && "ms-auto")} />
-          </span>
-        </button>
+        {/* availability: now / usually / not right now (only "away" stops new case suggestions) */}
+        <div>
+          <div className="text-[14px] font-semibold">{t.availability.title}</div>
+          <p className="text-[12.5px] text-label-2">{t.availability.hint}</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            {AVAIL.map((a) => {
+              const on = availability === a.id;
+              return (
+                <motion.button
+                  key={a.id}
+                  type="button"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setAvailability(a.id)}
+                  aria-pressed={on}
+                  className={cn("flex min-h-12 items-center gap-3 rounded-[16px] border px-3.5 py-2.5 text-start text-[14px] font-semibold transition-colors", on ? a.on : "border-separator")}
+                >
+                  <span className={cn("relative flex h-3 w-3 shrink-0 rounded-full", a.dot)}>
+                    {on && a.id === "now" && <span className="pulse-ring absolute inset-0 rounded-full bg-stable" />}
+                  </span>
+                  <span className="flex-1">{t.availability[a.id]}</span>
+                  {on && <Check className="h-4 w-4 shrink-0" strokeWidth={3} />}
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {(Object.keys(HELP_EMOJI) as HelpType[]).map((h) => {
             const on = skills.includes(h);
@@ -351,6 +373,12 @@ function Profile({ me }: { me: User }) {
     </form>
   );
 }
+
+const AVAIL: { id: Availability; dot: string; on: string }[] = [
+  { id: "now", dot: "bg-stable", on: "border-stable bg-stable-soft text-stable" },
+  { id: "usually", dot: "bg-monitor", on: "border-monitor bg-monitor-soft text-monitor" },
+  { id: "away", dot: "bg-label-3", on: "border-label-3 bg-surface-2 text-label" },
+];
 
 const BIZ_TYPES: ServiceType[] = ["vet", "shelter", "transport", "boarding", "training", "store"];
 

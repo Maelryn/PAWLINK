@@ -45,6 +45,8 @@ export interface User extends UserLite {
   /** Profile photo (data URL until Cloudinary is plugged in). */
   photo?: string;
   available?: boolean;
+  /** Finer than `available`: "now" = can go right away, "usually" = most days, "away" = not suggested for cases. */
+  availability?: "now" | "usually" | "away";
   /** Business account: the service listing it manages. */
   serviceId?: string;
   /** PawLink Pro subscription (income). */
@@ -75,6 +77,9 @@ export interface Trust {
   flaggedBy?: string[];
 }
 
+/** Quick yes/no questions the triage asks when something important is missing. */
+export type FollowUpId = "conscious" | "bleeding" | "walk" | "eating";
+
 export interface AIAnalysis {
   triage: Triage;
   confidence: number;
@@ -87,6 +92,8 @@ export interface AIAnalysis {
   suggestedServices: { serviceId: string; type: ServiceType; name: string; distanceKm: number }[];
   suggestedHelpers?: { userId: string; name: string; helpType: HelpType; distanceKm: number }[];
   forcedUrgentByRule: boolean;
+  /** Questions still worth asking (answered ones are removed). */
+  followUps?: FollowUpId[];
   disclaimer: string;
   model: string;
 }
@@ -111,7 +118,12 @@ export interface Case {
   trust?: Trust;
   /** Low-trust reports wait for a moderator before appearing publicly. */
   moderation?: "pending" | "approved" | "hidden";
-  helpers: { user: UserLite; helpType: HelpType }[];
+  /** People helping, and where they are: offered → on the way → with the animal. */
+  helpers: { user: UserLite; helpType: HelpType; stage?: "onway" | "onsite"; stageAt?: string }[];
+  /** The person with the animal asked for the next step (a vet, transport, a shelter…). */
+  nextHelp?: { types: HelpType[]; by: string; at: string };
+  /** The reporter's answers to the triage's quick questions. */
+  answers?: Partial<Record<FollowUpId, boolean>>;
   createdAt: string;
   updatedAt: string;
   /** The reporter's changes to a public report: shown once a moderator approves them. */
@@ -194,7 +206,10 @@ export type NotificationKind =
   | "caseConfirmed"
   | "adoptCancelled"
   | "adoptDone"
-  | "bookingCancelled";
+  | "bookingCancelled"
+  | "helperOnWay"
+  | "helperOnSite"
+  | "nextHelp";
 
 export interface AppNotification {
   id: string;

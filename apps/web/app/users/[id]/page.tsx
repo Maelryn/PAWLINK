@@ -15,6 +15,8 @@ import { activityOf, badgesOf } from "@/lib/badges";
 import { useI18n } from "@/lib/i18n";
 import { SERVICE_EMOJI } from "@/lib/species";
 import { useStore } from "@/lib/store";
+import { availabilityOf } from "@/lib/people";
+import { cn } from "@/lib/utils";
 
 /** Public profile: who they are and what they did. No phone or e-mail (admins see the phone). */
 export default function UserProfilePage() {
@@ -58,6 +60,12 @@ export default function UserProfilePage() {
             )}
           </div>
           <UserBadges badges={badges} className="mt-3 justify-center" />
+          {(u.role === "volunteer" || u.role === "vet") && (
+            <span className={cn("mt-2 inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold", availabilityOf(u) === "now" ? "bg-stable-soft text-stable" : availabilityOf(u) === "usually" ? "bg-monitor-soft text-monitor" : "bg-surface-2 text-label-2")}>
+              <span className={cn("h-2 w-2 rounded-full", availabilityOf(u) === "now" ? "bg-stable" : availabilityOf(u) === "usually" ? "bg-monitor" : "bg-label-3")} />
+              {t.availability[availabilityOf(u)]}
+            </span>
+          )}
           {u.bio && <p className="mt-3 max-w-[460px] text-[15px] leading-relaxed text-label-2">{u.bio}</p>}
           {me?.role === "admin" && u.phone && (
             <a href={`tel:${u.phone.replace(/\s/g, "")}`} className="mt-4 flex h-11 items-center gap-2 rounded-full bg-accent px-4 text-[14px] font-semibold text-white" dir="ltr" title={t.profile.adminPhone}>

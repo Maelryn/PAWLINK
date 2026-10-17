@@ -1,10 +1,10 @@
 "use client";
 
-import { ConfirmButton } from "@/components/ui/ConfirmButton";
 
 import { useCaseText } from "@/lib/i18n/content";
 
-import { offerHelp, withdrawHelp } from "@/lib/cases";
+import { offerHelp } from "@/lib/cases";
+import { HelperPanel, OnSiteNotice } from "@/components/cases/HelpProgress";
 
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Clock, MapPin } from "lucide-react";
@@ -95,26 +95,15 @@ export function HelpPicker({ c, onDone }: { c: Case; onDone?: () => void }) {
   const user = useSession();
   const router = useRouter();
   const [picked, setPicked] = useState<HelpType | null>(null);
-  const options: HelpType[] = ["transport", "medical", "foster", "food", "search", "boarding", "funds"];
+  // what the person with the animal asked for comes first
+  const asked = c.nextHelp?.types ?? [];
+  const options: HelpType[] = (["transport", "medical", "foster", "food", "search", "boarding", "funds"] as HelpType[]).sort((a, b) => Number(asked.includes(b)) - Number(asked.includes(a)));
   if (user && user.id === c.reporter.id) return <OwnReport c={c} />;
   const helping = user ? c.helpers.find((h) => h.user.id === user.id) : undefined;
-  if (helping && user)
-    return (
-      <div className="rounded-[20px] bg-stable-soft p-4">
-        <div className="flex items-center gap-3">
-          <Emoji3D src={HELP_EMOJI[helping.helpType]} size={34} className="shrink-0" />
-          <div className="min-w-0">
-            <div className="text-[16px] font-bold">{t.life.helping}</div>
-            <div className="text-[13.5px] text-label-2">{t.common.help[helping.helpType]}</div>
-          </div>
-        </div>
-        <ConfirmButton onConfirm={() => { withdrawHelp(c, user); toast(t.life.stopped); }} className="mt-3 h-10 w-full rounded-full bg-surface text-[13.5px] font-semibold text-label-2">
-          {t.life.stopHelp}
-        </ConfirmButton>
-      </div>
-    );
+  if (helping && user) return <HelperPanel c={c} me={user} helping={helping} />;
   return (
     <div>
+      <OnSiteNotice c={c} />
       <div className="text-[19px] font-bold tracking-[-0.02em]">{t.case.helpTitle}</div>
       <p className="mt-1 text-[13.5px] text-label-2">{t.case.helpBody}</p>
       <div className="mt-4 grid grid-cols-2 gap-2">
@@ -132,7 +121,10 @@ export function HelpPicker({ c, onDone }: { c: Case; onDone?: () => void }) {
               )}
             >
               <Emoji3D src={HELP_EMOJI[h]} size={30} />
-              {t.common.help[h]}
+              <span className="min-w-0">
+                {t.common.help[h]}
+                {asked.includes(h) && <span className="mt-0.5 block w-fit rounded-full bg-monitor-soft px-1.5 py-px text-[10.5px] font-bold text-monitor">{t.flow.tag}</span>}
+              </span>
               <AnimatePresence>
                 {on && (
                   <motion.span
@@ -185,6 +177,10 @@ export function OwnReport({ c }: { c: Case }) {
       <div>
         <div className="text-[16px] font-bold">{t.case.yourReport}</div>
         <p className="mt-0.5 text-[13.5px] text-label-2">{c.helpers.length ? t.common.helpers(c.helpers.length) + " · " : ""}{t.case.yourReportBody}</p>
+        {/* live: who's coming, who's there, what more is needed */}
+        <div className="mt-3 empty:hidden">
+          <OnSiteNotice c={c} />
+        </div>
       </div>
     </div>
   );

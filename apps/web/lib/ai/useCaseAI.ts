@@ -2,18 +2,20 @@
 
 import { useMemo } from "react";
 import { useI18n } from "../i18n";
+import { useStore } from "../store";
 import type { Case } from "../types";
 import { analyze } from "./analyze";
 
 /** AI analysis for a case: the stored one if present, otherwise computed (mock) in the current language. */
 export function useCaseAI(c: Case | undefined | null) {
   const { t } = useI18n();
+  const people = useStore((s) => s.users);
   return useMemo(() => {
     if (!c) return null;
     if (c.ai) return c.ai;
     return analyze(
-      { species: c.species, count: c.count, description: c.description, conditionTags: c.conditionTags, location: c.location, baseline: c.triage },
+      { species: c.species, count: c.count, description: c.description, conditionTags: c.conditionTags, location: c.location, baseline: c.triage, answers: c.answers, people },
       t,
     );
-  }, [c, t]);
+  }, [c, t, people]);
 }

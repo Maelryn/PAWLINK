@@ -1,6 +1,7 @@
 import type { Dict } from "../i18n/en";
 import { SERVICES, USERS } from "../mock/data";
-import type { AIAnalysis, GeoPoint, HelpType, Service, ServiceType, Species, Triage } from "../types";
+import type { AIAnalysis, FollowUpId, GeoPoint, HelpType, Service, ServiceType, Species, Triage, User } from "../types";
+import { availabilityOf } from "../people";
 import { distanceKm, hashHue } from "../utils";
 
 /* Mock provider for the AI triage. Mirrors what the backend (Gemini Flash) returns, including
@@ -14,7 +15,14 @@ export interface AnalyzeInput {
   location: GeoPoint;
   /** Baseline triage (e.g. already set on a stored case). Rules can only raise it. */
   baseline?: Triage;
+  /** Answers to the quick questions: they can only raise the urgency. */
+  answers?: Partial<Record<FollowUpId, boolean>>;
+  /** The members to match (defaults to the demo list). */
+  people?: User[];
 }
+
+const RANK: Triage[] = ["stable", "monitoring", "urgent"];
+const raise = (t: Triage, to: Triage) => (RANK.indexOf(to) > RANK.indexOf(t) ? to : t);
 
 const URGENT_TAGS = ["trapped", "bleeding", "breathing", "fire", "burned"];
 const URGENT_KEYWORDS = [
@@ -39,13 +47,22 @@ export function analyze(input: AnalyzeInput, t: Dict): AIAnalysis {
     tags.some((x) => CONTAGIOUS_TAGS.includes(x)) || CONTAGIOUS_KEYWORDS.some((k) => text.includes(k.toLowerCase()));
 
   let triage: Triage = input.baseline ?? (tags.some((x) => MONITOR_TAGS.includes(x)) || contagious ? "monitoring" : "stable");
-  const forcedUrgentByRule = ruleHit && triage !== "urgent";
-  if (ruleHit) triage = "urgent";
+  // the reporter's answers: not conscious or heavy bleeding = urgent; can't walk = one level up; not eating = at least "to watch"
+  const ans = input.answers ?? {};
+  const answeredUrgent = ans.conscious === false || ans.bleeding === true;
+  if (ans.walk === false) triage = raise(triage, triage === "stable" ? "monitoring" : "urgent");
+  if (ans.eating === false) triage = raise(triage, "monitoring");
+  const forcedUrgentByRule = (ruleHit || answeredUrgent) && triage !== "urgent";
+  if (ruleHit || answeredUrgent) triage = "urgent";
 
   const speciesName = t.common.species[input.species];
   const count = input.count ?? 1;
 
   const observedSigns = tags.map((tag) => t.ai.signsMap[tag]).filter(Boolean);
+  if (ans.conscious === false) observedSigns.unshift(t.ask.signs.notConscious);
+  if (ans.bleeding === true) observedSigns.unshift(t.ask.signs.heavyBleeding);
+  if (ans.walk === false) observedSigns.push(t.ask.signs.cantWalk);
+  if (ans.eating === false) observedSigns.push(t.ask.signs.notEating);
   if (observedSigns.length === 0) observedSigns.push(t.ai.signsMap.healthy);
 
   const a = t.ai.advice;
@@ -56,7 +73,7 @@ export function analyze(input: AnalyzeInput, t: Dict): AIAnalysis {
     advice.add(a.noOintment);
   }
   if (tags.includes("smoke") || tags.includes("breathing")) advice.add(a.smoke);
-  if (tags.includes("bleeding")) advice.add(a.pressure);
+  if (tags.includes("bleeding") || ans.bleeding === true) advice.add(a.pressure);
   if (tags.includes("dehydrated") || tags.includes("heat") || tags.includes("burned")) advice.add(a.water);
   if (tags.includes("young")) advice.add(a.warm);
   if (count > 2 && ["sheep", "goat", "cow", "camel", "chicken"].includes(input.species)) advice.add(a.herd);
@@ -84,15 +101,29 @@ export function analyze(input: AnalyzeInput, t: Dict): AIAnalysis {
     distanceKm: Math.round(d * 10) / 10,
   }));
 
-  // Volunteers / vets nearby whose declared skills match what the case needs
-  const suggestedHelpers = USERS.filter((u) => u.location && u.helpTypes && (u.role === "volunteer" || u.role === "vet"))
+  // Members nearby whose skills match what the case needs: the people available now first, never the ones "away".
+  // Uses the real member list (new volunteers included), not a fixed demo list.
+  const suggestedHelpers = (input.people ?? USERS)
+    .filter((u) => u.location && u.helpTypes?.length && (u.role === "volunteer" || u.role === "vet") && availabilityOf(u) !== "away")
     .flatMap((u) => {
       const h = u.helpTypes!.find((x) => help.has(x));
-      return h ? [{ userId: u.id, name: u.name, helpType: h, distanceKm: Math.round(distanceKm(input.location, u.location!) * 10) / 10 }] : [];
+      return h ? [{ userId: u.id, name: u.name, helpType: h, distanceKm: Math.round(distanceKm(input.location, u.location!) * 10) / 10, now: availabilityOf(u) === "now" }] : [];
     })
     .filter((x) => x.distanceKm < 60)
-    .sort((a, b) => a.distanceKm - b.distanceKm)
-    .slice(0, 3);
+    .sort((a, b) => Number(b.now) - Number(a.now) || a.distanceKm - b.distanceKm)
+    .slice(0, 3)
+    .map((x) => ({ userId: x.userId, name: x.name, helpType: x.helpType, distanceKm: x.distanceKm }));
+
+  // What's still worth asking: the most important first, at most 2, never what the report already says
+  const injured = tags.some((x) => ["injured", "limping", "trapped", "burned", "breathing", "bleeding"].includes(x)) || ruleHit;
+  const followUps = (
+    [
+      injured && ans.conscious === undefined && "conscious",
+      injured && !tags.includes("bleeding") && ans.bleeding === undefined && "bleeding",
+      (injured || tags.includes("young")) && !tags.includes("limping") && ans.walk === undefined && "walk",
+      tags.some((x) => ["thin", "lost", "abandoned", "young"].includes(x)) && !tags.some((x) => ["not-eating", "dehydrated"].includes(x)) && ans.eating === undefined && "eating",
+    ].filter(Boolean) as FollowUpId[]
+  ).slice(0, 2);
 
   const seed = hashHue(input.description + input.species) / 360;
 
@@ -108,6 +139,7 @@ export function analyze(input: AnalyzeInput, t: Dict): AIAnalysis {
     suggestedServices,
     suggestedHelpers,
     forcedUrgentByRule,
+    followUps: followUps.length ? followUps : undefined,
     disclaimer: t.ai.disclaimer,
     model: "gemini-flash (mock)",
   };
