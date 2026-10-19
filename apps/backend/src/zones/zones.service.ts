@@ -52,7 +52,7 @@ export class ZonesService {
     const page = Math.max(1, query.page ?? 1);
     const pageSize = Math.min(200, Math.max(1, query.pageSize ?? 50));
 
-    const where = query.active === undefined ? Prisma.empty : Prisma.sql`active = ${query.active}`;
+    const where = query.active === undefined ? Prisma.sql`TRUE` : Prisma.sql`active = ${query.active}`;
 
     const rows = await this.prisma.$queryRaw<ZoneSqlRow[]>(Prisma.sql`
       SELECT
