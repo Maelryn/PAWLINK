@@ -1,8 +1,22 @@
-import { Body, Controller, Param, Patch, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiForbiddenResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiForbiddenResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AdminGuard } from '../auth/guards/admin.guard';
+import { CurrentUser } from '../common/decorators/auth.decorators';
+import type { AuthenticatedUser } from '../common/decorators/auth.decorators';
 import { ServicesService } from './services.service';
 import { ModerateServiceDto } from './dto/service.dto';
+import { QueryServicesDto } from './dto/query-services.dto';
+import type { Paginated } from '../shared/pagination';
+import type { Viewer } from '../shared/pagination';
+import type { ServiceWithDistance } from './serialize';
 import type { Service } from '../shared/types';
 
 /**
@@ -16,6 +30,22 @@ import type { Service } from '../shared/types';
 @Controller('admin/services')
 export class AdminServicesController {
   constructor(private readonly services: ServicesService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Every service listing, including pending ones (moderation queue).' })
+  @ApiQuery({ name: 'type', required: false })
+  @ApiQuery({ name: 'q', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'pageSize', required: false })
+  @ApiOkResponse({ description: '`{ items, total, page, pageSize }`.' })
+  @ApiForbiddenResponse({ description: 'FORBIDDEN — admin only.' })
+  async list(
+    @Query() query: QueryServicesDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<Paginated<ServiceWithDistance>> {
+    const viewer: Viewer = { sub: user.sub, role: user.role };
+    return this.services.list(query, viewer);
+  }
 
   @Patch(':id')
   @ApiOperation({

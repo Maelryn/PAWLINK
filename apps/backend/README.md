@@ -4,15 +4,15 @@ The API the PawLink web + mobile apps consume. Built against **`../docs/TEAM_HAN
 **`../docs/BACKEND_PROMPT.md`** — response shapes must match `../apps/web/lib/types.ts`
 field-for-field, because the frontend generates its typed client from this service's Swagger.
 
-**Status: Phase 0 — Foundation** ✅ · **Phase 1 — Auth + profile** ✅ · **Phase 2 — cases, trust, AI, realtime** ✅ · Phase 3 (marketplace) · Phase 4 (admin/hardening)
+**Status: Phase 0 — Foundation** ✅ · **Phase 1 — Auth + profile** ✅ · **Phase 2 — cases, trust, AI, realtime** ✅ · **Phase 3 — marketplace** ✅ · **Phase 4 — admin + hardening** 🚧
 
 | Phase | What |
 |---|---|
 | 0 ✅ | NestJS scaffold · Swagger · Prisma schema (15 tables + PostGIS) · error envelope · health · seed |
 | 1 ✅ | register → OTP → verify → login → refresh (rotated cookie) → logout · `/me` GET/PATCH/DELETE · guards · SMS providers |
 | 2 ✅ | cases + the PostGIS bbox map query · the 8-check trust pipeline · `/ai/analyze` · Socket.IO on `/realtime` |
-| 3 ⬜ | adoptions, services, reviews, bookings, zones, notifications |
-| 4 ⬜ | admin, moderation queues, hardening |
+| 3 ✅ | adoptions, services, reviews, bookings, zones, notifications |
+| 4 🚧 | admin (stats, users/roles, moderation queues), hardening |
 
 ## Run it
 
@@ -71,6 +71,41 @@ npm run dev                # http://localhost:4000
 > Nest defaults `POST` to **201**. `/cases/:id/help`, `/confirm`, `/flag` and `/uploads/probe`
 > answer **200** and declare it with `@HttpCode(HttpStatus.OK)` — exactly the omission the
 > Phase 1 e2e caught, now covered by the Phase 2 suite.
+
+### Phase 3 surface (marketplace)
+
+| Method | Route | Auth | Success | Notes |
+|---|---|---|---|---|
+| GET | `/adoptions` | public (optional bearer) | 200 `{items,total,page,pageSize}` | approved only, plus caller's own |
+| GET | `/adoptions/:id` | public (optional bearer) | 200 | 404 unless approved/owner/admin |
+| POST | `/adoptions` | bearer + verified phone | 201 | EXIF/pHash photo validation |
+| PATCH | `/adoptions/:id` | owner | 200 | |
+| DELETE | `/adoptions/:id` | owner | 204 | |
+| POST | `/adoptions/:id/requests` | bearer | 201 | adoption request |
+| GET | `/me/requests` · `/me/requests/received` | bearer | 200 | |
+| PATCH | `/requests/:id` | owner | 200 | accept/decline → phone reveal matrix |
+| GET/POST | `/services` · `/services/:id` | public (optional bearer) | 200 | geo filter when lat+lng |
+| POST | `/services` | bearer | 201 | |
+| PATCH | `/services/:id` | owner | 200 | |
+| GET/POST | `/services/:id/reviews` | public (optional bearer) / bearer | 200/201 | one review per user |
+| POST | `/services/:id/bookings` | bearer | 201 | |
+| GET/PATCH | `/bookings/:id` · `/me/bookings` | bearer | 200 | |
+| GET/POST/PATCH/DELETE | `/emergency-zones` | public (GET) / admin (write) | 200/201 | PostGIS polygon + ST_Centroid |
+| GET/PATCH | `/me/notifications` · `/me/notifications/read-all` | bearer | 200/204 | |
+| PATCH | `/admin/adoptions/:id` | admin | 200 | approve/reject + notify |
+| PATCH | `/admin/services/:id` | admin | 200 | approve publishes + verifies |
+
+### Phase 4 surface (admin + hardening)
+
+| Method | Route | Auth | Success | Notes |
+|---|---|---|---|---|
+| GET | `/admin/stats` | admin | 200 | aggregate counts |
+| GET | `/admin/users` | admin | 200 `{items,total,page,pageSize}` | filter by role/q |
+| PATCH | `/admin/users/:id/role` | admin | 200 | role change (+ licenseVerified) |
+| GET | `/admin/cases` | admin | 200 | moderation queue (Phase 2) |
+| PATCH | `/admin/cases/:id/moderation` | admin | 200 | approve/hidden |
+| GET | `/admin/adoptions` | admin | 200 | moderation queue |
+| GET | `/admin/services` | admin | 200 | moderation queue |
 
 ### The trust pipeline (`src/cases/trust.service.ts`)
 

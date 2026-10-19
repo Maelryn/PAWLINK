@@ -102,6 +102,40 @@ export class AdoptionsService {
     };
   }
 
+  /**
+   * Moderation queue: every listing, ungated, with an optional status filter.
+   * Admin only — the controller enforces it.
+   */
+  async listForAdmin(query: QueryAdoptionsDto): Promise<Paginated<AdoptionProfile>> {
+    const page = Math.max(1, query.page ?? 1);
+    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, query.pageSize ?? DEFAULT_PAGE_SIZE));
+
+    const where: Prisma.AdoptionWhereInput = {};
+    if (query.status) where.status = query.status;
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.adoption.findMany({
+        where,
+        include: ADOPTION_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.adoption.count({ where }),
+    ]);
+
+    // Admin viewer: accepted set not needed for phone reveal (admin always sees phone),
+    // but pass an admin viewer for consistent serialization.
+    const adminViewer: Viewer = { sub: '', role: 'admin' };
+    const accepted = await this.acceptedAdoptionIds(adminViewer, rows.map((r) => r.id));
+    return {
+      items: rows.map((row) => adoptionRowToProfile(row, adminViewer, accepted)),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
   /** One listing. A non-approved listing is a 404 unless the caller owns it or is admin. */
   async findOne(id: string, viewer?: Viewer): Promise<AdoptionProfile> {
     const row = await this.prisma.adoption.findUnique({

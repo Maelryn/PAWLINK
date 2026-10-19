@@ -1,9 +1,19 @@
-import { Body, Controller, Param, Patch, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiForbiddenResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiForbiddenResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { AdoptionsService } from './adoptions.service';
 import { ModerateAdoptionDto } from './dto/adoption.dto';
+import { QueryAdoptionsDto } from './dto/query-adoptions.dto';
 import type { AdoptionProfile } from '../shared/types';
+import type { Paginated } from '../shared/pagination';
 
 /**
  * `/admin/adoptions` — the listing moderation decision. The **queue** (the
@@ -16,6 +26,19 @@ import type { AdoptionProfile } from '../shared/types';
 @Controller('admin/adoptions')
 export class AdminAdoptionsController {
   constructor(private readonly adoptions: AdoptionsService) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'Every adoption listing, including pending ones (moderation queue).',
+  })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'pageSize', required: false })
+  @ApiOkResponse({ description: '`{ items, total, page, pageSize }`.' })
+  @ApiForbiddenResponse({ description: 'FORBIDDEN — admin only.' })
+  async list(@Query() query: QueryAdoptionsDto): Promise<Paginated<AdoptionProfile>> {
+    return this.adoptions.listForAdmin(query);
+  }
 
   @Patch(':id')
   @ApiOperation({
