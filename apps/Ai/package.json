@@ -1,0 +1,18 @@
+{
+  "name": "pawlink-ai",
+  "version": "1.0.0",
+  "description": "PawLink AI triage module — analyses animal rescue reports and produces structured results for the backend.",
+  "type": "module",
+  "scripts": {
+    "test": "node --env-file=.env tests/run-suite.mjs",
+    "test:local": "node tests/run-suite.mjs --local",
+    "run-case": "node --env-file=.env run-case.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^2.27.0",
+    "zod": "^4.6.5"
+  }
+}
