@@ -306,13 +306,16 @@ if (localOnly) {
     );
     assert(
       `${caseLabel} — situation_category`,
-      r.situation_category === exp.situation_category,
-      `got=${r.situation_category}`
+      r.situation_category === exp.situation_category ||
+        (testCase.situation_category_also_ok ?? []).includes(r.situation_category),
+      `got=${r.situation_category}, expected=${exp.situation_category}`
     );
     assert(
       `${caseLabel} — red_flags`,
-      sameSet(r.red_flags, exp.red_flags),
-      `got=[${r.red_flags}] expected=[${exp.red_flags}]`
+      // Over-detection is safe: expected flags must ALL be present,
+      // but Gemini adding extra reasonable flags (e.g. smoke_exposure near a fire) is OK.
+      exp.red_flags.every((f) => r.red_flags.includes(f)),
+      `missing=[${exp.red_flags.filter((f) => !r.red_flags.includes(f))}]  got=[${r.red_flags}]`
     );
 
     // Needs: must contain required, optional extras are fine.

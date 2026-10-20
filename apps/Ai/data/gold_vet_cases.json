@@ -1,0 +1,246 @@
+{
+  "_meta": {
+    "source": "VET-PDF: reports, expected urgency, questions, first aid, do-nots, professional intervention come from the vet PDF.",
+    "architect_additions": "Mapping to schema fields (situation_category, red_flags, hazards, needs, guidance_keys) was done by Claude from the PDF text. The vet should skim it.",
+    "how_to_use": "Compare Gemini's output to `expected`. `needs_optional` and `dropped_questions` are NOT penalized/required.",
+    "variants_note": "Variants (fr/ar/darija/kabyle) copied from your PDF as-is. Expected output is IDENTICAL for every language."
+  },
+  "cases": [
+    {
+      "id": "vet-01", "title": "Heavy bleeding",
+      "report": {
+        "en": "My dog got cut on his leg and there is a lot of blood. I'm pressing a cloth on it but it's still bleeding",
+        "variants": {
+          "fr": "Mon chien s’est coupé à la patte et il saigne beaucoup. J’appuie avec un tissu sur la plaie, mais ça continue de saigner.",
+          "ar": "كلبي جرح رجله وينزف دمًا كثيرًا. أضغط على الجرح بقطعة قماش، لكنه ما زال ينزف.",
+          "darija": "الكلب تاعي تجرحت رجلو و راهو يسيل الدم زيرت عليها بقماش بصح محبش يحبس الدم مازالو يسيل",
+          "kabyle": "Akjoun ynou yjreh g tharis , tsefghend atass ithamen , zeyragh ljer7iss suvahnouk gouman adhefssen ithamen"
+        }
+      },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "dog", "category": "companion" },
+        "situation_category": "bleeding_wound",
+        "red_flags": ["heavy_bleeding"],
+        "hazards": [],
+        "urgency": "urgent",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["How long has it been bleeding?", "Is the bleeding slowing down with pressure?", "Is the dog awake and breathing normally?", "Does he look weak or about to faint?", "Is anything stuck in the wound?"],
+        "guidance_keys": ["bleeding_pressure", "keep_calm_still", "contact_vet_immediately", "dont_remove_cloth_or_pull_objects", "dont_give_medication"]
+      },
+      "needs_optional": [], "dropped_questions": [], "label_source": "VET-PDF"
+    },
+    {
+      "id": "vet-02", "title": "Breathing problem",
+      "report": { "en": "My cat is breathing very fast and with her mouth open she looks scared and doesn’t want to move", "variants": {} },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "cat", "category": "companion" },
+        "situation_category": "breathing_problem",
+        "red_flags": ["breathing_problem"],
+        "hazards": [],
+        "urgency": "urgent",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["When did it start?", "Is she still breathing with her mouth open?", "Is she coughing or making strange sounds?", "Could she have been hit or fallen?", "What color are her gums or tongue?"],
+        "guidance_keys": ["keep_calm_still", "quiet_ventilated_place", "contact_vet_immediately", "dont_force_food_water", "dont_make_walk", "dont_give_medication"]
+      },
+      "needs_optional": [], "dropped_questions": [], "label_source": "VET-PDF"
+    },
+    {
+      "id": "vet-03", "title": "Possible broken leg after car accident",
+      "report": {
+        "en": "A car hit this dog he is awake but he can’t stand properly and one of his back legs looks swollen",
+        "variants": {
+          "fr": "Une voiture a renversé ce chien. Il est conscient mais il n’arrive pas à se tenir correctement debout et une de ses pattes arrière semble gonflée.",
+          "ar": "سيارة صدمت هذا الكلب. هو واعٍ، لكنه لا يستطيع الوقوف بشكل جيد، وإحدى رجليه الخلفيتين تبدو متورمة.",
+          "darija": "هاذ الكلب ضرباتو طونوبيل راهو واعي بصح ميقدرش يوقف مليح و رجلو راهي تبان متورمة",
+          "kabyle": "Akjoun agi thewthith takarroust , yukhi meena wyezmirara athived , athariss yejreh"
+        }
+      },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "dog", "category": "companion" },
+        "situation_category": "trauma_accident",
+        "red_flags": ["major_trauma"],
+        "hazards": [],
+        "urgency": "urgent",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["Is he breathing normally?", "Is there any bleeding?", "Can he move his other legs?", "Did he hit his head?", "When did the accident happen?"],
+        "guidance_keys": ["approach_carefully_bite_risk", "keep_calm_still", "support_body_when_moving", "contact_vet_immediately", "dont_straighten_leg", "dont_make_walk", "dont_give_medication"]
+      },
+      "needs_optional": ["transport"], "dropped_questions": [],
+      "label_source": "VET-PDF", "optional_note": "transport comes from the student scope example, not from the PDF."
+    },
+    {
+      "id": "vet-04", "title": "Unresponsive animal",
+      "report": { "en": "I found my cat lying on the floor she doesn’t react when I call her and I’m not sure if she is breathing", "variants": {} },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "cat", "category": "companion" },
+        "situation_category": "unresponsive_collapse",
+        "red_flags": ["unresponsive", "breathing_problem"],
+        "hazards": [],
+        "urgency": "urgent",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["Is she breathing?", "Does she respond to touch?", "Could she have fallen or eaten something?", "Is there any visible bleeding?", "Does anyone know what happened?"],
+        "guidance_keys": ["check_responsive_breathing", "keep_calm_still", "contact_vet_immediately", "dont_shake_animal", "dont_force_food_water", "dont_give_medication"]
+      },
+      "needs_optional": [], "dropped_questions": [], "label_source": "VET-PDF"
+    },
+    {
+      "id": "vet-05", "title": "House fire / smoke inhalation",
+      "report": {
+        "en": "There was a fire in the house while my dog was inside we got him out but he was coughing a lot and his breathing sounds strange. His fur looks okay",
+        "variants": {
+          "fr": "Il y a eu un incendie dans la maison pendant que mon chien était à l’intérieur. On l’a sorti, mais il toussait beaucoup et sa respiration semble anormale. Son pelage a l’air normal.",
+          "ar": "اندلع حريق في المنزل وكان كلبي بداخله. أخرجناه، لكنه كان يسعل كثيرًا وتنفسه يبدو غير طبيعي. فروه يبدو سليمًا.",
+          "darija": "شعلت النار في دارنا و الكلب تاعي كان لداخل خرجناه بصح راهو يسعل بزاف و ماراه يتنفس مليح الفرو تاعو متقاسش",
+          "kabyle": "Thechaal thimess gou kham enegh , akjoun eynou yella thakhey nsoufghith meaana ytsousou atass yerna owetnifissara myih , meaana akssumis ouyerghara"
+        }
+      },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "dog", "category": "companion" },
+        "situation_category": "fire_smoke_burns",
+        "red_flags": ["smoke_exposure", "breathing_problem"],
+        "hazards": [],
+        "urgency": "urgent",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["How long was he inside?", "Is he still coughing or having trouble breathing?", "Was he unconscious at any point?", "Is there smoke around his nose or mouth?", "Is he acting normally now?"],
+        "guidance_keys": ["keep_away_from_fire_smoke", "keep_calm_still", "contact_vet_immediately", "dont_assume_ok_smoke", "dont_make_walk", "dont_give_medication"]
+      },
+      "needs_optional": [], "dropped_questions": [], "label_source": "VET-PDF",
+      "situation_category_also_ok": ["breathing_problem"],
+      "optional_note": "Gemini may classify this as breathing_problem instead of fire_smoke_burns — both are valid when the dog is coughing/breathing strangely after smoke exposure."
+    },
+    {
+      "id": "vet-06", "title": "Seizure",
+      "report": { "en": "My dog suddenly fell down and started shaking his legs were moving and he was drooling It lasted around one minute", "variants": {} },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "dog", "category": "companion" },
+        "situation_category": "seizure",
+        "red_flags": ["seizure"],
+        "hazards": [],
+        "urgency": "urgent",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["How long did it last?", "Is this the first time?", "Is he normal again now?", "Could he have eaten medicine or something dangerous?", "Did it happen more than once?"],
+        "guidance_keys": ["seizure_safe_environment", "seizure_dont", "contact_vet_asap"]
+      },
+      "needs_optional": [], "dropped_questions": [],
+      "label_source": "VET-PDF", "optional_note": "PDF says vet assessment is 'necessary' (no 'immediately'), hence contact_vet_asap."
+    },
+    {
+      "id": "vet-07", "title": "Poisoning",
+      "report": { "en": "My dog ate some pills that were on the floor I don’t know how many he is awake but he is drooling and acting strange", "variants": {} },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "dog", "category": "companion" },
+        "situation_category": "poisoning",
+        "red_flags": ["suspected_poisoning"],
+        "hazards": [],
+        "urgency": "urgent",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["What were the pills?", "How many could be missing?", "When did he eat them?", "How much does the dog weigh?", "Is he vomiting or shaking?"],
+        "guidance_keys": ["poisoning_secure_and_inform", "contact_vet_immediately", "poisoning_dont"]
+      },
+      "needs_optional": [], "dropped_questions": ["Is the package still available? (covered by the poisoning_secure_and_inform key)"],
+      "label_source": "VET-PDF"
+    },
+    {
+      "id": "vet-08", "title": "Cat trapped under debris",
+      "report": { "en": "Part of a wall fell down and my cat is trapped underneath I can hear her but I can’t get her out", "variants": {} },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "cat", "category": "companion" },
+        "situation_category": "trapped",
+        "red_flags": ["trapped"],
+        "hazards": ["unstable_structure"],
+        "urgency": "urgent",
+        "needs": ["specialized_rescue"],
+        "follow_up_questions": ["Is the building still unstable?", "Is the cat awake and breathing?", "Is she bleeding?", "How long has she been trapped?", "Can someone reach her without moving dangerous debris?"],
+        "guidance_keys": ["trapped_unstable_area_safety", "debris_dont"]
+      },
+      "needs_optional": ["veterinarian", "rescue_volunteer"], "dropped_questions": [],
+      "label_source": "VET-PDF", "optional_note": "PDF: rescue assistance when unsafe; vet assessment after extraction if trauma suspected (conditional, so optional)."
+    },
+    {
+      "id": "vet-09", "title": "Wildfire / goat burned",
+      "report": { "en": "The fire reached the area near our goats we got them away but one of them has burns on the side of his body and some of his hair is burned he is still standing", "variants": {} },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "goat", "category": "livestock" },
+        "situation_category": "fire_smoke_burns",
+        "red_flags": ["burns"],
+        "hazards": ["active_fire_or_smoke"],
+        "urgency": "urgent",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["How large is the burned area?", "Does the goat have burns on the face or around the mouth?", "Is he coughing or having trouble breathing?", "Is he able to walk normally?", "Was he exposed to the fire or smoke for a long time?"],
+        "guidance_keys": ["keep_away_from_fire_smoke", "burns_cool_water", "keep_calm_still", "contact_vet_asap", "burns_dont"]
+      },
+      "needs_optional": [], "dropped_questions": [],
+      "label_source": "VET-PDF", "optional_note": "Backend should match a large-animal-capable vet (category = livestock). hazard active_fire_or_smoke is a judgment call (report says they got the goats away)."
+    },
+    {
+      "id": "vet-10", "title": "Cow with swollen udder",
+      "report": { "en": "My cow’s udder looks swollen and one side feels harder than usual she is eating normally but she doesn’t seem comfortable when I touch it", "variants": {} },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "cow", "category": "livestock" },
+        "situation_category": "illness",
+        "red_flags": [],
+        "hazards": [],
+        "urgency": "needs_attention",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["When did the swelling start?", "Does the milk look different?", "Is the udder hot or painful?", "Does she have a fever or seem weak?", "Is she eating and drinking normally?"],
+        "guidance_keys": ["udder_clean_dry_milking", "contact_vet_exam", "dont_give_medication", "udder_dont"]
+      },
+      "needs_optional": [], "dropped_questions": [],
+      "label_source": "VET-PDF", "optional_note": "Large-animal vet needed (category = livestock). Gemini must NOT name the condition."
+    },
+    {
+      "id": "vet-11", "title": "Possibly contagious illness (puppy)",
+      "report": { "en": "My puppy has been vomiting and has really bad diarrhea since yesterday he is very weak and he hasn’t eaten he isn’t vaccinated yet", "variants": {} },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "dog", "category": "companion" },
+        "situation_category": "illness",
+        "red_flags": ["suspected_contagious_serious"],
+        "hazards": ["contagion_risk"],
+        "urgency": "urgent",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["How old is he?", "Is there blood in the diarrhea?", "How many times has he vomited?", "Is he drinking?", "Have other dogs around him become sick?"],
+        "guidance_keys": ["separate_from_other_animals", "keep_clean_quiet_place", "contact_vet_asap", "dont_mix_with_other_animals", "dont_give_medication", "dont_assume_stomach_trouble"]
+      },
+      "needs_optional": [], "dropped_questions": ["Are his vaccines completely up to date? (report already says he is not vaccinated)"],
+      "label_source": "VET-PDF", "optional_note": "The PDF names a specific disease in its explanation. The AI must NEVER name or diagnose it; it only flags 'suspected_contagious_serious'."
+    },
+    {
+      "id": "vet-12", "title": "Abandoned / weak animal",
+      "report": {
+        "en": "I found this dog near the road he is very thin and looks tired but he can walk and he is drinking water I don’t see any big wounds",
+        "variants": {
+          "fr": "J’ai trouvé ce chien près de la route. Il est très maigre et a l’air fatigué, mais il peut marcher et il boit de l’eau. Je ne vois pas de blessures importantes.",
+          "ar": "وجدت هذا الكلب بالقرب من الطريق. جسمه نحيف جدًا ويبدو متعبًا، لكنه يستطيع المشي ويشرب الماء. لا أرى عليه أي جروح كبيرة..",
+          "darija": "لقيت هاذا الكلب في الطريق بزاف رقيق و راه يبان بزاف عيان مسكين بصح يقدر يمشي و يشرب الماء و ماراهوش مجروح",
+          "kabyle": "Owfigh akjoun agi gouvrith rkik atass w yetsvin yeaaya nagh yehlek emeaana yezmar athived yezmer athisouw amen , owyejrihara"
+        }
+      },
+      "expected": {
+        "is_animal_report": true,
+        "animal": { "type": "dog", "category": "companion" },
+        "situation_category": "abandoned_weak",
+        "red_flags": [],
+        "hazards": [],
+        "urgency": "needs_attention",
+        "needs": ["veterinarian"],
+        "follow_up_questions": ["How long has he been there?", "Is he eating?", "Does he have vomiting or diarrhea?", "Is he coughing or having discharge from his eyes or nose?", "Does he have a collar or identification?"],
+        "guidance_keys": ["provide_clean_water", "keep_safe_place", "separate_from_other_animals", "contact_vet_or_rescue", "dont_mix_with_other_animals", "dont_give_medication", "dont_force_food_water"]
+      },
+      "needs_optional": ["rescue_volunteer", "shelter"], "dropped_questions": ["Does he have any wounds? (report says no big wounds)"],
+      "label_source": "VET-PDF (AMBIGUOUS: resolved by architect)",
+      "label_note": "PDF label is literally 'Stable / Needs attention'. Resolved to needs_attention because the PDF's own section 5 recommends a veterinary examination for the weight loss and weakness. If the vet prefers non_urgent, change this one value. The PDF's section 5 is also cut off mid-sentence."
+    }
+  ],
+  "distribution": { "urgent": 10, "needs_attention": 2, "non_urgent": 0, "note": "Matches the PDF. Over-triage is tested by the separate robustness file, not here." }
+}
