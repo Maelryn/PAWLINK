@@ -9,3 +9,6 @@ node_modules/
 .claude/
 AGENTS.md
 CLAUDE.md
+
+# Playwright MCP artifacts
+.playwright-mcp/

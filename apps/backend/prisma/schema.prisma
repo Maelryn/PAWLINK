@@ -1,0 +1,583 @@
+// PawLink — Prisma schema
+// Contract: docs/TEAM_HANDOFF.md §Data shapes + apps/web/lib/types.ts (response shapes must match field-for-field).
+//
+// Geospatial pattern (BACKEND_PROMPT §4):
+//   - lat/lng live as plain Double columns → Prisma reads/writes them normally.
+//   - `location geography(Point,4326)` is maintained by a SQL trigger (see migration), declared here as
+//     Unsupported("geography") so migrate-diffing never models it, and used ONLY from $queryRaw.
+//   - GIST index on the geography column is declared in the schema (extended index syntax) so
+//     `prisma migrate dev` sees it and never drops it.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────── enums ───────────────────────────
+
+enum Role {
+  reporter
+  volunteer
+  vet
+  admin
+}
+
+enum Triage {
+  urgent
+  monitoring
+  stable
+}
+
+enum Species {
+  dog
+  cat
+  bird
+  horse
+  cow
+  sheep
+  goat
+  camel
+  donkey
+  rabbit
+  chicken
+  other
+}
+
+enum HelpType {
+  transport
+  foster
+  food
+  medical
+  search
+  boarding
+  funds
+}
+
+enum ServiceType {
+  vet
+  shelter
+  transport
+  boarding
+  training
+  store
+}
+
+enum CaseStatus {
+  open
+  in_progress
+  resolved
+}
+
+enum CaseCategory {
+  companion
+  livestock
+}
+
+enum TrustLevel {
+  verified
+  unverified
+  suspicious
+}
+
+/// ids of the anti-abuse checks — same values as TrustCheckId in apps/web/lib/types.ts
+enum TrustCheckId {
+  account
+  inAlgeria
+  photoGps
+  photoFresh
+  onSite
+  animalDetected
+  duplicate
+  rateLimit
+}
+
+/// null = not moderated yet (public, per TEAM_HANDOFF §3.3); pending = hidden until approved
+enum ModerationStatus {
+  pending
+  approved
+  hidden
+}
+
+enum ZoneType {
+  wildfire
+  flood
+  earthquake
+  other
+}
+
+enum ServiceStatus {
+  pending
+  approved
+  rejected
+}
+
+enum AdoptionStatus {
+  pending
+  approved
+  rejected
+}
+
+enum Sex {
+  male
+  female
+}
+
+enum Housing {
+  apartment
+  house
+  farm
+}
+
+/// Why a refresh token stopped being usable.
+///
+/// The reason is what separates "somebody is replaying a copy" from "this is a
+/// stale client". A token that was *rotated* coming back means it was copied;
+/// a token that was *logged out* coming back is usually a client that had not
+/// noticed the session ended. Only the first is treated as theft.
+enum RefreshRevokeReason {
+  /// The token was spent by a rotation — the normal, expected end of a token.
+  rotated
+  /// The account holder logged out.
+  logout
+  /// The account was killed because a replayed token was detected.
+  reuse
+}
+
+enum RequestStatus {
+  sent
+  accepted
+  declined
+}
+
+enum BookingStatus {
+  sent
+  confirmed
+  declined
+}
+
+enum NotificationKind {
+  adoptRequest
+  adoptAccepted
+  adoptDeclined
+  listingApproved
+  listingRejected
+  booking
+  bookingConfirmed
+  bookingDeclined
+  help
+  review
+  serviceApproved
+  proActive
+}
+
+// ─────────────────────────── models ───────────────────────────
+
+model User {
+  @@map("users")
+  id              String    @id @default(cuid())
+  name            String
+  avatar          String    @default("")
+  role            Role      @default(reporter)
+  email           String?   @unique
+  passwordHash    String?
+  phone           String?
+  phoneVerified   Boolean   @default(false)
+  licenseVerified Boolean   @default(false)
+  helpTypes       HelpType[]
+  lat             Float?
+  lng             Float?
+  address         String?
+  rating          Float?
+  city            String?
+  bio             String?
+  photo           String?
+  available       Boolean?
+  /// The service listing this account manages. No FK: services.ownerId already points back here.
+  serviceId       String?
+  /// PawLink Pro subscription, shape { plan: "pro", since, until } (User.pro in types.ts)
+  pro             Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  casesReported     Case[]             @relation("CaseReporter")
+  caseHelpers       CaseHelper[]
+  caseConfirms      CaseConfirm[]
+  caseFlags         CaseFlag[]
+  servicesOwned     Service[]          @relation("ServiceOwner")
+  reviews           Review[]
+  bookingsFrom      Booking[]          @relation("BookingFrom")
+  adoptionsOwned    Adoption[]         @relation("AdoptionOwner")
+  requestsSent      AdoptionRequest[]  @relation("RequestFrom")
+  notifications     Notification[]
+  phoneOtps         PhoneOtp[]
+  photoProbes       PhotoProbe[]
+  refreshTokens     RefreshToken[]
+
+  @@index([role], map: "users_role_idx")
+  @@index([email], map: "users_email_idx")
+}
+
+model PhoneOtp {
+  @@map("phone_otps")
+  id        String   @id @default(cuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "phone_otps_user_idx")
+}
+
+/// Server-side refresh-token store — PHASE1_PLAN.md risk R1.
+///
+/// A refresh JWT is stateless on its own: rotation mints a new cookie, but with
+/// no row to check, a stolen cookie stays usable until it expires (30 days) and
+/// a logout cannot end the session server-side. This table is that row.
+///
+/// Two properties make it more than a list:
+///
+///   - **Revocation is real.** `revokedAt` is set on rotation and on logout, and
+///     a token whose row is revoked is refused — so "log out everywhere" is a
+///     single UPDATE.
+///   - **Reuse is detectable.** A rotated token is *marked*, not deleted, so a
+///     replayed one is recognised as a copy in someone else's hands and every
+///     session of that account is killed. A revoked row is therefore kept until
+///     the token would have expired anyway.
+///
+/// Deviation from docs/BACKEND_PROMPT.md §4's table list — see README §Deviations.
+model RefreshToken {
+  @@map("refresh_tokens")
+  id String @id @default(cuid())
+  /// The JWT `jti` — unique, so a token is found by the id it carries.
+  jti String @unique
+  userId String
+  /// The JWT `exp`: the moment the token stops being usable anyway.
+  expiresAt DateTime
+  /// Set when the token is rotated or logged out; null while it is live.
+  revokedAt DateTime?
+  /// Why it was revoked — the difference between a stolen copy and a stale client.
+  revokedReason RefreshRevokeReason?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "refresh_tokens_user_idx")
+  @@index([expiresAt], map: "refresh_tokens_expiry_idx")
+}
+
+model EmergencyZone {
+  @@map("emergency_zones")
+  id        String   @id
+  name      String
+  region    String
+  type      ZoneType
+  lat       Float
+  lng       Float
+  /// geography(Polygon, 4326), written with ST_GeomFromGeoJSON(...) — never through Prisma
+  polygon   Unsupported("geography")?
+  active    Boolean  @default(true)
+  startedAt DateTime
+  /// { cases, urgent, helpers } — recomputed from live data when zones are read
+  stats     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cases Case[]
+
+  @@index([polygon], map: "zones_polygon_gist", type: Gist)
+  @@index([active], map: "zones_active_idx")
+}
+
+model Case {
+  @@map("cases")
+  id              String            @id @default(cuid())
+  title           String
+  species         Species
+  category        CaseCategory
+  /// herd size for livestock cases
+  count           Int?
+  status          CaseStatus        @default(open)
+  triage          Triage
+  lat             Float
+  lng             Float
+  address         String?
+  /// geography(Point, 4326) maintained by trigger — read/write only via $queryRaw
+  location        Unsupported("geography")?
+  photos          String[]
+  description     String
+  conditionTags   String[]
+  reporterId      String
+  /// AIAnalysis (types.ts) exactly as POST /ai/analyze returned it
+  ai              Json?
+  emergencyZoneId String?
+  reporterOnSite  Boolean?
+  /// null = public · pending = hidden until an admin approves · hidden = removed from the map
+  moderation      ModerationStatus?
+  trustLevel      TrustLevel
+  trustScore      Float             @default(0)
+  trustConfirmations Int            @default(0)
+  trustFlags      Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  reporter      User           @relation("CaseReporter", fields: [reporterId], references: [id])
+  emergencyZone EmergencyZone? @relation(fields: [emergencyZoneId], references: [id])
+  helpers       CaseHelper[]
+  confirms      CaseConfirm[]
+  flags         CaseFlag[]
+  trustChecks   TrustCheck[]
+
+  @@index([location], map: "cases_location_gist", type: Gist)
+  @@index([triage, status, moderation, createdAt], map: "cases_triage_status_idx")
+  @@index([reporterId], map: "cases_reporter_idx")
+  @@index([emergencyZoneId], map: "cases_zone_idx")
+}
+
+model CaseHelper {
+  @@map("case_helpers")
+  id        String   @id @default(cuid())
+  caseId    String
+  userId    String
+  helpType  HelpType
+  message   String?
+  createdAt DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, userId, helpType], map: "case_helpers_unique")
+}
+
+model CaseConfirm {
+  @@map("case_confirms")
+  id        String   @id @default(cuid())
+  caseId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, userId], map: "case_confirms_unique")
+}
+
+model CaseFlag {
+  @@map("case_flags")
+  id        String   @id @default(cuid())
+  caseId    String
+  userId    String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, userId], map: "case_flags_unique")
+}
+
+model TrustCheck {
+  @@map("trust_checks")
+  id     String        @id @default(cuid())
+  caseId String
+  check  TrustCheckId
+  /// true = passed · false = failed · null = not enough data
+  ok     Boolean?
+  detail String?
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, check], map: "trust_checks_case_check")
+}
+
+/// Perceptual hashes (dHash, 16 hex chars) for the "reused photo" check (§3.5).
+model PhotoHash {
+  @@map("photo_hashes")
+  id          String   @id @default(cuid())
+  subjectType String
+  subjectId   String
+  hash        String
+  createdAt   DateTime @default(now())
+
+  @@index([subjectType, hash], map: "photo_hashes_subject_hash_idx")
+  @@index([subjectId], map: "photo_hashes_subject_idx")
+}
+
+/// Server-side truth about an uploaded original (PHASE2_PLAN.md §6 option A).
+///
+/// Cloudinary strips metadata on upload, so the EXIF and the perceptual hash are
+/// read from the raw bytes at `POST /uploads/probe` and kept here, keyed by an
+/// opaque `probeId`, until `POST /cases` consumes them. That is what makes the
+/// `photoGps` / `photoFresh` / `duplicate` trust checks server-computed instead
+/// of client claims.
+///
+/// Deviation from docs/BACKEND_PROMPT.md §4's table list — see README §Deviations.
+/// Rows live one hour; `photo_hashes` (above) holds the permanent record.
+model PhotoProbe {
+  @@map("photo_probes")
+  id        String   @id @default(cuid())
+  userId    String
+  /// exifr output: { gps?: { lat, lng }, takenAt?: ISO string, camera?: string }
+  exif      Json?
+  /// 64-bit dHash, 16 hex chars
+  hash      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt], map: "photo_probes_user_idx")
+  @@index([createdAt], map: "photo_probes_expiry_idx")
+}
+
+model Service {
+  @@map("services")
+  id          String        @id @default(cuid())
+  type        ServiceType
+  name        String
+  lat         Float
+  lng         Float
+  address     String?
+  /// geography(Point, 4326) maintained by trigger
+  location    Unsupported("geography")?
+  phone       String?
+  openNow     Boolean?
+  rating      Float         @default(0)
+  reviewCount Int           @default(0)
+  photo       String?
+  tags        String[]
+  description String?
+  hours       String?
+  ownerId     String?
+  verified    Boolean       @default(false)
+  /// PawLink Pro: featured first in listings
+  pro         Boolean       @default(false)
+  status      ServiceStatus @default(pending)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  owner    User?      @relation("ServiceOwner", fields: [ownerId], references: [id])
+  reviews  Review[]
+  bookings Booking[]
+  adoptions Adoption[]
+
+  @@index([location], map: "services_location_gist", type: Gist)
+  @@index([type], map: "services_type_idx")
+  @@index([status], map: "services_status_idx")
+  @@index([ownerId], map: "services_owner_idx")
+}
+
+model Review {
+  @@map("reviews")
+  id        String   @id @default(cuid())
+  serviceId String
+  authorId  String
+  rating    Int
+  text      String
+  /// Pro feature: the business answers
+  reply     String?
+  createdAt DateTime @default(now())
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  /// one review per user per service (§3.6)
+  @@unique([serviceId, authorId], map: "reviews_service_author_unique")
+  @@index([serviceId], map: "reviews_service_idx")
+}
+
+model Booking {
+  @@map("bookings")
+  id        String        @id @default(cuid())
+  serviceId String
+  fromId    String
+  date      String
+  time      String
+  animal    String
+  reason    String
+  status    BookingStatus @default(sent)
+  createdAt DateTime      @default(now())
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  from    User    @relation("BookingFrom", fields: [fromId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId], map: "bookings_service_idx")
+  @@index([fromId], map: "bookings_from_idx")
+}
+
+model Adoption {
+  @@map("adoptions")
+  id             String         @id @default(cuid())
+  name           String
+  species        Species
+  breed          String?
+  sex            Sex
+  ageMonths      Int
+  photos         String[]
+  healthStatus   String
+  vaccinations   Json[]
+  medicalHistory Json[]
+  behavior       String[]
+  careNeeds      String[]
+  story          String
+  /// shelter is a Service listing (AdoptionProfile.shelter = { id, name }, name read via join)
+  shelterId      String?
+  ownerId        String
+  /// revealed only to an accepted requester (§3.6)
+  ownerPhone     String?
+  lat            Float
+  lng            Float
+  address        String?
+  /// geography(Point, 4326) maintained by trigger
+  location       Unsupported("geography")?
+  status         AdoptionStatus @default(pending)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  shelter  Service?         @relation(fields: [shelterId], references: [id])
+  owner    User             @relation("AdoptionOwner", fields: [ownerId], references: [id])
+  requests AdoptionRequest[]
+
+  @@index([location], map: "adoptions_location_gist", type: Gist)
+  @@index([status], map: "adoptions_status_idx")
+  @@index([ownerId], map: "adoptions_owner_idx")
+}
+
+model AdoptionRequest {
+  @@map("adoption_requests")
+  id         String        @id @default(cuid())
+  adoptionId String
+  fromId     String
+  message    String
+  housing    Housing
+  experience Boolean
+  status     RequestStatus @default(sent)
+  createdAt  DateTime      @default(now())
+
+  adoption Adoption @relation(fields: [adoptionId], references: [id], onDelete: Cascade)
+  from     User     @relation("RequestFrom", fields: [fromId], references: [id], onDelete: Cascade)
+
+  /// one request per user per listing (§3.6)
+  @@unique([adoptionId, fromId], map: "adoption_requests_adoption_user_unique")
+  @@index([fromId], map: "adoption_requests_from_idx")
+}
+
+model Notification {
+  @@map("notifications")
+  id        String         @id @default(cuid())
+  userId    String
+  kind      NotificationKind
+  /// name of the person / animal / place mentioned
+  subject   String
+  href      String
+  read      Boolean        @default(false)
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt], map: "notifications_user_read_idx")
+}
