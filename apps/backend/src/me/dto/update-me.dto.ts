@@ -9,11 +9,14 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { HELP_TYPES } from '../../shared/enums';
+import { PHONE_ERROR_MESSAGE, PHONE_MAX_LENGTH, PHONE_PATTERN } from '../../shared/phone';
 
 /** `{ lat, lng }` — the wire shape in `GeoPoint` (apps/web/lib/types.ts). */
 @ApiSchema({ description: 'A point on the map — the wire shape of `GeoPoint`.' })
@@ -64,11 +67,15 @@ export class UpdateMeDto {
 
   @ApiPropertyOptional({
     example: '+213 26 00 00 07',
-    description: 'A new phone. It clears `phoneVerified` until the new number is confirmed.',
+    maxLength: PHONE_MAX_LENGTH,
+    description:
+      'A new phone. It clears `phoneVerified` until the new number is confirmed. ' +
+      'An empty string means "no phone" — the profile form always sends the field.',
   })
   @IsOptional()
   @IsString()
-  @MaxLength(20)
+  @ValidateIf((_object, value) => value !== '')
+  @Matches(PHONE_PATTERN, { message: PHONE_ERROR_MESSAGE })
   phone?: string;
 
   @ApiPropertyOptional({ example: 'Oran', description: 'The city.' })

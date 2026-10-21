@@ -11,6 +11,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { HELP_TYPES, SIGNABLE_ROLES } from '../../shared/enums';
+import { PHONE_ERROR_MESSAGE, PHONE_MAX_LENGTH, PHONE_PATTERN } from '../../shared/phone';
 
 /**
  * `POST /auth/register` (docs/BACKEND_PROMPT.md §3.2).
@@ -56,9 +57,15 @@ export class RegisterDto {
   @MaxLength(72)
   password!: string;
 
-  @ApiProperty({ example: '+213 26 00 00 07', description: 'Also the SMS OTP destination.' })
+  @ApiProperty({
+    example: '+213 26 00 00 07',
+    maxLength: PHONE_MAX_LENGTH,
+    description:
+      'Also the SMS OTP destination. The same rule applies to ' +
+      '`POST /auth/verify-phone` and `POST /auth/resend-code`.',
+  })
   @IsString()
-  @Matches(/^\+?[0-9\s().-]{8,20}$/, { message: 'Numéro de téléphone invalide.' })
+  @Matches(PHONE_PATTERN, { message: PHONE_ERROR_MESSAGE })
   phone!: string;
 
   @ApiProperty({

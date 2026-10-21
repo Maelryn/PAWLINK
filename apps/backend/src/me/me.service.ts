@@ -28,10 +28,15 @@ export class MeService {
   async update(userId: string, dto: UpdateMeDto): Promise<User> {
     const current = await this.liveRow(userId);
 
+    // An empty phone means "no phone": the column is cleared, not filled with
+    // an empty string. The profile form always sends the field, so a user
+    // without a number must not be told their profile is invalid.
+    const phone = dto.phone === '' ? null : dto.phone;
+
     const patch: UpdateProfileData = {
       name: dto.name,
       avatar: dto.avatar,
-      phone: dto.phone,
+      phone,
       city: dto.city,
       bio: dto.bio,
       photo: dto.photo,
@@ -48,8 +53,9 @@ export class MeService {
     }
 
     // `phone` is the OTP channel: changing it drops `phoneVerified`, so the new
-    // number has to be confirmed before login is allowed again.
-    const phoneChanged = dto.phone !== undefined && dto.phone !== current.phone;
+    // number has to be confirmed before login is allowed again. Sending the
+    // number it already has changes nothing.
+    const phoneChanged = phone !== undefined && phone !== current.phone;
     const updated = await this.users.updateProfile(userId, patch);
     if (phoneChanged) {
       return userRowToUser(await this.users.setPhoneVerified(userId, false));

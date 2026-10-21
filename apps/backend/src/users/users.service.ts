@@ -41,7 +41,8 @@ export interface CreateUserData {
 export interface UpdateProfileData {
   name?: string;
   avatar?: string;
-  phone?: string;
+  /** `null` clears the number; `undefined` leaves it alone. */
+  phone?: string | null;
   city?: string;
   bio?: string;
   photo?: string;

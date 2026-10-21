@@ -291,6 +291,7 @@ src/common/decorators  @Roles() · @Public() · @CurrentUser()
 src/health             GET /health
 src/shared/types.ts    verbatim copy of apps/web/lib/types.ts — the response contract
 src/shared/enums.ts    runtime mirrors of the Prisma enums (class-validator needs values)
+src/shared/phone.ts    the one phone rule — every DTO that takes a number uses it
 src/seed/data.ts       verbatim copy of apps/web/lib/mock/data.ts — the demo scenario
 src/users              UsersService + userRowToUser(), the only row → User mapper
 src/sms                SmsProvider interface · console (default) · twilio · SmsService
@@ -317,6 +318,14 @@ Decisions taken while building Phase 1, all consistent with `docs/BACKEND_PROMPT
   `@UseGuards`. A new route is protected the moment it exists; forgetting a guard is impossible.
 - **`phone_otps` has no phone column**, so `POST /auth/verify-phone` accepts an optional `phone`
   that scopes the lookup to one account. Without it the code-only lookup scans live codes.
+- **One phone rule** (`src/shared/phone.ts`), used by every DTO that takes a number:
+  `POST /auth/register`, `POST /auth/verify-phone`, `POST /auth/resend-code` and `PATCH /me`. It
+  counts the **whole** string — the leading `+` included — so what registration accepts,
+  verification accepts too. It used to be written four times in two incompatible spellings: the
+  regex in the auth DTOs counted only the characters *inside* its class, so the `+` was free and
+  21 characters were accepted, while `verify-phone` capped the string at 20. An account registered
+  with a 21-character phone could never confirm its code (register → 202, verify → 400, forever).
+  A new DTO must use `PHONE_PATTERN`, never a second spelling of it.
 - **`DELETE /me` anonymises** instead of deleting: `passwordHash` becomes the "this account is
   gone" marker, so `/me` can refuse a dead account without a schema change and the foreign keys on
   `cases.reporterId` / `reviews.authorId` keep resolving.

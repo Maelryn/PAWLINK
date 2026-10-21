@@ -122,6 +122,39 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
     expect(duplicate.body.code).toBe('AUTH_EMAIL_TAKEN');
   });
 
+  it('1b. POST /auth/register with a 21-character phone → 400, so no account is stranded', async () => {
+    // The bug this pins: the register regex counted the digits but not the
+    // leading `+`, so it accepted 21 characters while /auth/verify-phone
+    // refused anything over 20 — an account that could never confirm its code
+    // (register → 202, verify → 400, forever).
+    const tooLong = `${uniquePhone()}12345`;
+    expect(tooLong).toHaveLength(21);
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ name: 'E2E Too Long', email: uniqueEmail(), password, phone: tooLong, role: 'reporter' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('1c. a 20-character phone registers AND verifies — the round trip the bug broke', async () => {
+    const boundary = `${uniquePhone()}1234`;
+    expect(boundary).toHaveLength(20);
+
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ name: 'E2E Boundary', email: uniqueEmail(), password, phone: boundary, role: 'reporter' })
+      .expect(202);
+
+    expect(registered.body.phone).toBe(boundary);
+
+    await request(app.getHttpServer())
+      .post('/auth/verify-phone')
+      .send({ code: registered.body.code, phone: boundary })
+      .expect(200);
+  });
+
   it('2. POST /auth/verify-phone → { accessToken, user } + httpOnly refresh cookie', async () => {
     const verified = await request(app.getHttpServer())
       .post('/auth/verify-phone')
@@ -307,6 +340,29 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
 
     expect(response.body.role).toBe('reporter');
     expect(response.body.email).toBe(email);
+  });
+
+  it('10c. PATCH /me with an empty phone → the number is cleared, not refused', async () => {
+    // The profile form always sends the field, so a user without a number
+    // sends "": that must clear the phone, not fail the whole save.
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ name: 'E2E Clear', email: uniqueEmail(), password, phone: uniquePhone(), role: 'reporter' })
+      .expect(202);
+
+    const session = await request(app.getHttpServer())
+      .post('/auth/verify-phone')
+      .send({ code: registered.body.code, phone: registered.body.phone })
+      .expect(200);
+
+    const cleared = await request(app.getHttpServer())
+      .patch('/me')
+      .set('Authorization', `Bearer ${session.body.accessToken}`)
+      .send({ phone: '' })
+      .expect(200);
+
+    expect(cleared.body.phone).toBeUndefined();
+    expect(cleared.body.phoneVerified).toBe(false);
   });
 
   it('11. DELETE /me → 204, then /me with the same token → 401 AUTH_ACCOUNT_DELETED', async () => {

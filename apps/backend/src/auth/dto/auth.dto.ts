@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { OTP_LENGTH } from '../otp.service';
+import { PHONE_ERROR_MESSAGE, PHONE_MAX_LENGTH, PHONE_PATTERN } from '../../shared/phone';
 
 @ApiSchema({ description: 'Credentials for `POST /auth/login`.' })
 export class LoginDto {
@@ -50,11 +51,12 @@ export class VerifyPhoneDto {
 
   @ApiPropertyOptional({
     example: '+213 26 00 00 07',
+    maxLength: PHONE_MAX_LENGTH,
     description: 'The phone the code was sent to. Narrows the lookup to one account.',
   })
   @IsOptional()
   @IsString()
-  @MaxLength(20)
+  @Matches(PHONE_PATTERN, { message: PHONE_ERROR_MESSAGE })
   phone?: string;
 }
 
@@ -62,9 +64,10 @@ export class VerifyPhoneDto {
 export class ResendCodeDto {
   @ApiProperty({
     example: '+213 26 00 00 07',
+    maxLength: PHONE_MAX_LENGTH,
     description: 'The phone to text. Must match an account awaiting verification.',
   })
   @IsString()
-  @Matches(/^\+?[0-9\s().-]{8,20}$/, { message: 'Numéro de téléphone invalide.' })
+  @Matches(PHONE_PATTERN, { message: PHONE_ERROR_MESSAGE })
   phone!: string;
 }
