@@ -4,15 +4,20 @@ The API the PawLink web + mobile apps consume. Built against **`../docs/TEAM_HAN
 **`../docs/BACKEND_PROMPT.md`** — response shapes must match `../apps/web/lib/types.ts`
 field-for-field, because the frontend generates its typed client from this service's Swagger.
 
-**Status: Phase 0 — Foundation** ✅ · **Phase 1 — Auth + profile** ✅ · **Phase 2 — cases, trust, AI, realtime** ✅ · **Phase 3 — marketplace** ✅ · **Phase 4 — admin + hardening** 🚧
+**Status: Phase 0 — Foundation** ✅ · **Phase 1 — Auth + profile** ✅ · **Phase 2 — cases, trust, realtime** ✅ · **Phase 3 — marketplace** ✅ · **Phase 4 — admin + hardening** ✅
 
 | Phase | What |
 |---|---|
-| 0 ✅ | NestJS scaffold · Swagger · Prisma schema (15 tables + PostGIS) · error envelope · health · seed |
+| 0 ✅ | NestJS scaffold · Swagger · Prisma schema (17 tables + PostGIS) · error envelope · health · seed |
 | 1 ✅ | register → OTP → verify → login → refresh (rotated cookie) → logout · `/me` GET/PATCH/DELETE · guards · SMS providers |
-| 2 ✅ | cases + the PostGIS bbox map query · the 8-check trust pipeline · `/ai/analyze` · Socket.IO on `/realtime` |
+| 2 ✅ | cases + the PostGIS bbox map query · the 8-check trust pipeline · Socket.IO on `/realtime` |
 | 3 ✅ | adoptions, services, reviews, bookings, zones, notifications |
-| 4 🚧 | admin (stats, users/roles, moderation queues), hardening |
+| 4 ✅ | admin (stats, users/roles, moderation queues) · the refresh-token store · Swagger completeness |
+
+> **The AI is not in the backend.** It is a separate service in `apps/Ai/`, owned by the AI
+> developer, and the backend has **no** dependency on it (deviation D6). There is no `/ai/analyze`
+> route, no `AI_PROVIDER`, and no `src/ai/`. `Case.ai` is always absent and the `animalDetected`
+> trust check is always `null` — both are the seam where the AI service will be wired in later.
 
 ## Run it
 
@@ -25,9 +30,10 @@ npm run seed:admin -- --email you@pawlink.dz --password <secret>   # admin (neve
 npm run dev                # http://localhost:4000
 ```
 
-- Swagger UI → <http://localhost:4000/docs> · machine-readable → `/docs-json` — every Phase 2 route
-  is listed there with its request and response schemas, because the frontend generates its typed
-  client from it
+- Swagger UI → <http://localhost:4000/docs> · machine-readable → `/docs-json` — every route is
+  listed there with its request and response schemas, because the frontend generates its typed
+  client from it. `npm run docs:check` exits non-zero if a schema, a property or a parameter is
+  left undocumented.
 - Realtime → `ws://localhost:4000/realtime` (Socket.IO, `auth: { token }`)
 - Health → <http://localhost:4000/health> (`status: ok|degraded`, `db: up|down`)
 - `pg` is a **direct** dependency: Prisma 7 has no bundled Postgres driver and reaches the database
@@ -57,7 +63,7 @@ npm run dev                # http://localhost:4000
 | GET | `/cases?bbox=…` | public (optional bearer) | 200 `{items,total,page,pageSize}` | **one raw PostGIS statement** on the GIST index; ordered `triage` then `createdAt DESC`; `moderation` null or `approved` only |
 | GET | `/cases/nearby?lat=&lng=&radiusKm=` | bearer | 200 | `ST_DWithin`, ordered by the KNN operator; each item carries `distanceKm` |
 | GET | `/cases/:id` | public (optional bearer) | 200 | a held case is a 404 unless the caller is its reporter |
-| POST | `/cases` | bearer + verified phone | 201 | response **includes `ai` and `trust`**; `@Throttle` 15/h per IP, 5/h per account |
+| POST | `/cases` | bearer + verified phone | 201 | response **includes `trust`**; `@Throttle` 15/h per IP, 5/h per account |
 | PATCH | `/cases/:id/status` | volunteer / vet / admin | 200 | a reporter gets `403 FORBIDDEN` |
 | POST | `/cases/:id/help` | bearer | 200 | `open → in_progress`; emits `help.offered` + `case.updated`; writes a `help` notification |
 | POST | `/cases/:id/confirm` | bearer | 200 | confirming twice raises `unverified` to `verified` |
@@ -66,7 +72,6 @@ npm run dev                # http://localhost:4000
 | GET | `/admin/cases` | admin | 200 | no moderation gating — this is the queue |
 | POST | `/uploads/signature` | bearer | 201 | Cloudinary signed params; **501 `UPLOADS_NOT_CONFIGURED`** without keys |
 | POST | `/uploads/probe` | bearer | 200 | multipart → EXIF + 64-bit dHash, returns an opaque `probeId` |
-| POST | `/ai/analyze` | bearer | 201 | `AIAnalysis` + `animalDetected` + `isRealPhoto` |
 
 > Nest defaults `POST` to **201**. `/cases/:id/help`, `/confirm`, `/flag` and `/uploads/probe`
 > answer **200** and declare it with `@HttpCode(HttpStatus.OK)` — exactly the omission the
@@ -164,7 +169,7 @@ The eight checks, and where each one now reads from:
 | `photoGps` | `exifr`-read GPS from the probed original vs the pin, `< 2 km` |
 | `photoFresh` | EXIF `DateTimeOriginal`, `< 48 h` |
 | `onSite` | device GPS `< 5 km`, else `null` |
-| `animalDetected` | the AI provider; `null` when it could not tell |
+| `animalDetected` | always `null` — the AI service (`apps/Ai/`) is not delivered yet (D6). The check keeps its place in the order because the web UI renders it. |
 | `duplicate` | `sharp` → 64-bit dHash, **Hamming distance computed in SQL**, `≤ 8` against `photo_hashes` |
 | `rateLimit` | ≤ 5 reports/hour/account in the service, ≤ 15/hour/IP by the throttler |
 
@@ -177,24 +182,33 @@ the API, which reads EXIF and a perceptual hash and hands back an opaque `probeI
 `photoGps`, `photoFresh` or `duplicate` is to hand the server a real file first. A probe is usable
 for one hour, only by the account that created it.
 
-### The AI (`src/ai/`)
+### The AI is not in the backend
 
-The order is the contract: **provider → safety rules → geography → validation**.
+There is **no** `/ai/analyze` route, **no** `AI_PROVIDER`, **no** `src/ai/`. The AI is a separate
+service in `apps/Ai/`, owned by the AI developer, and the team decided (deviation D6) that the
+backend must have **no dependency on it at all** until that service is delivered — not a stub, not
+a mock, no import. Re-wiring it later is additive.
 
-1. `AI_PROVIDER=mock` (default) is a faithful port of `apps/web/lib/ai/analyze.ts` with the text
-   moved server-side into `src/ai/templates/{fr,en,ar}.ts` — same tags, same advice selection, same
-   confidence seed. `AI_PROVIDER=gemini` calls Gemini Flash with
-   `responseMimeType: application/json` and a strict schema, in under 4 s.
-2. The **safety-rule layer then overrides the model**. The keyword lists are the web's own, in
-   French, English, Arabic and Darija, copied as-is. A hit forces `triage: "urgent"` and sets
-   `forcedUrgentByRule: true`. Rules can only ever *raise* a triage.
-3. `suggestedServices` and `suggestedHelpers` are real: `ST_DWithin`/`ST_Distance` against
-   `services.location` (KNN-sorted, GIST-indexed) for the top 3 nearest vet / transport / shelter,
-   and the volunteers whose declared skills match, measured with the same great-circle formula the
-   trust pipeline uses.
-4. On a timeout, a model error or an answer that fails validation, one of the **three cached
-   examples** in `src/ai/fallbacks/` is returned with `model: "gemini-flash (fallback)"`, so it can
-   never be mistaken for a real answer. The disclaimer is always the template's — never the model's.
+What the backend keeps, and why:
+
+| what | where | why it stays |
+|---|---|---|
+| the `Case.ai` column | `prisma/schema.prisma` | the seam where the AI service's answer will be stored |
+| `src/shared/ai-analysis.ts` | `isAIAnalysis()` / `aiOrUndefined()` | the `AIAnalysis` contract as a runtime guard. `ai` is a `Json` column, so it accepts anything, and the frontend's generated client trusts the Swagger type — so the value is validated on the way out |
+| the `animalDetected` trust check | `src/cases/trust.service.ts` | always `null` for now, but it keeps its place in the check order because the web UI renders it. It flips to a real pass/fail when the link is wired in |
+
+The consequence for a caller: `Case.ai` is **absent** from every response, and the `animalDetected`
+trust check always reads `null` / *"Analyse IA indisponible"*. The trust score is computed
+without it, exactly as it was before the AI existed.
+
+Two rules the AI service has to honour, and that the backend already models:
+
+- **No diagnosis, ever.** Every AI answer carries a veterinarian disclaimer.
+- **Safety rules can only raise a triage.** A keyword hit (`bleeding`, `fire`, `trapped`,
+  `not breathing`, `saignement`, `feu`, `coincé`…) forces `urgent` and sets
+  `forcedUrgentByRule: true`.
+
+The web app carries its own mock of both (`apps/web/lib/ai/analyze.ts`) so the demo works today.
 
 ### Realtime (`src/realtime/`)
 
@@ -248,7 +262,7 @@ Security model:
 
 ```bash
 npm run test       # unit: 291 tests — error envelope, users, SMS, OTP, tokens, auth, bbox,
-                   # EXIF, dHash, geo, serialize, trust, safety rules, AI, realtime, cases
+                   # EXIF, dHash, geo, serialize, trust, realtime, cases, refresh-token store
 npm run test:e2e   # boots the app against a real database: 79 tests
 npm run docs:check # every schema, property and parameter is documented
 npm run lint
@@ -261,13 +275,13 @@ npx tsc --noEmit  # the only gate that also sees scripts/
 ## Environment
 
 Copy `.env.example` → `.env`. The API must start with **only** the two database URLs set —
-`AI_PROVIDER=mock`, `SMS_PROVIDER=console`, no Cloudinary ⇒ everything else degrades gracefully
+`SMS_PROVIDER=console`, no Cloudinary ⇒ everything else degrades gracefully
 (uploads answer a typed `UPLOADS_NOT_CONFIGURED` error), so the demo never needs paid services.
 
 ## Layout
 
 ```
-prisma/schema.prisma   15 tables · PostGIS geography columns (trigger-maintained) · GIST indexes
+prisma/schema.prisma   17 tables · PostGIS geography columns (trigger-maintained) · GIST indexes
 src/main.ts            Swagger + CORS + configureApp()
 src/setup.ts           pipes/filters — shared by server and tests
 src/common/filters     { statusCode, message, code } global error envelope
@@ -285,13 +299,13 @@ src/auth               controller/service · OtpService · TokensService · Refr
 src/me                 GET/PATCH/DELETE /me
 src/cases              the map query (bbox.ts) · the trust pipeline · caseRowToCase · DTOs
 src/uploads            POST /uploads/probe (EXIF + dHash) · /uploads/signature (Cloudinary)
-src/ai                 AIProvider interface · mock · gemini · safety rules · templates · fallbacks
 src/geo                the checked-in Algeria boundary + ST_Within / ST_DWithin helpers
 src/realtime           the Socket.IO gateway on /realtime + the four typed events
-src/admin              /admin/cases — the moderation queue
-src/shared/ai-analysis the AIAnalysis contract as a runtime guard, shared by both readers
+src/admin              /admin/stats · /admin/users · the three moderation queues
+src/shared/ai-analysis the AIAnalysis contract as a runtime guard — the seam where apps/Ai/ lands
 scripts/seed.ts        ports the demo scenario into PostgreSQL (re-runnable)
 scripts/create-admin.ts the ONLY way an admin account is created
+scripts/docs-check.ts  the Swagger completeness gate — every schema/property/parameter documented
 test/global-setup.ts   decides whether the e2e suites run or are reported as skipped
 ```
 
@@ -321,6 +335,11 @@ Decisions taken while building Phase 1, all consistent with `docs/BACKEND_PROMPT
 The same throwaway **PostgreSQL 17.5 + PostGIS 3.5.2** container, recreated and re-seeded for this
 phase. Every row below was produced by running the command, not by reasoning about it.
 
+> **This is the Phase 2 record and it predates deviation D6.** It is kept as the history of what
+> was proven at that time. The `/ai/analyze` rows that were verified then have been dropped from
+> this table — the AI moved to `apps/Ai/` — and the counts are as they were in Phase 2, not as they
+> are today. **The current state is the [Phase 4 record](#phase-4-verified-against-the-real-supabase-project) below.**
+
 | Check | Result |
 |---|---|
 | `prisma migrate deploy` | applied cleanly — **2 migrations** (`…_init`, `20261010200738_photo_probes`) |
@@ -337,7 +356,7 @@ phase. Every row below was produced by running the command, not by reasoning abo
 | `POST /uploads/probe` on `no-exif.jpg` | `exif: {}` **and no error** — `exifr` returns `undefined`, not `null` |
 | the same dHash for `with-exif.jpg` and `recompressed.jpg` | confirmed — that is what catches a reused photo |
 | `POST /uploads/signature` with no keys | **501 `UPLOADS_NOT_CONFIGURED`**, never a 500 |
-| `POST /cases` | response contains **`ai` and `trust`**; `moderation` null for a verified reporter |
+| `POST /cases` | response contains **`trust`**; `moderation` null for a verified reporter |
 | a client-supplied `trust: {level:"verified", confirmations:99}` | ignored — recomputed, `confirmations: 0` |
 | an out-of-Algeria pin (Paris) | `trust.level: "suspicious"`, `moderation: "pending"`, absent from the public bbox, present for an admin |
 | the same photo twice | `duplicate: false` with a detail string → `pending` |
@@ -346,9 +365,6 @@ phase. Every row below was produced by running the command, not by reasoning abo
 | `POST /cases/:id/confirm` twice by one account | 409 `CONFLICT` — one per account |
 | `POST /cases/:id/flag` ×3 by three accounts | `moderation: "pending"`, gone from the public map |
 | `PATCH /cases/:id/status` by a volunteer / by the reporter | **200** / **403 `FORBIDDEN`** |
-| `POST /ai/analyze` with an Arabic description | `triage: "urgent"`, `forcedUrgentByRule: true` |
-| `POST /ai/analyze` with a Darija description | `triage: "urgent"`, `forcedUrgentByRule: true` |
-| `animalDetected` with no photo | `null` |
 | `suggestedServices` | the nearest vet at **1.0 km**, transport 10 km, shelter 12.9 km — matches an independent `ST_Distance` query |
 | the 6th report in an hour | **429 `TRUST_RATE_LIMITED`** |
 | Socket.IO with no handshake token | `connect_error` — the socket never joins |
@@ -401,17 +417,59 @@ breaks Prisma's prepared statements. The seed failed on exactly that before it p
 `.env.example` now states both rules.
 
 **One security finding, reported rather than acted on.** Supabase's advisories flag **Row Level
-Security disabled on all 18 tables**. That is deliberate — `docs/BACKEND_PROMPT.md` §2 says "only
+Security disabled on all 19 tables** (the 17 application tables, `_prisma_migrations` and PostGIS's
+`spatial_ref_sys`). That is deliberate — `docs/BACKEND_PROMPT.md` §2 says "only
 NestJS talks to the DB, RLS stays off", and the API connects as `postgres` — but it becomes live the
 moment anyone hands the anon key to a browser or subscribes to Realtime. Enabling RLS without
 policies would block all access, so the policies have to be designed first. Flagged, not applied.
 
-Still unproven for want of credentials: real Gemini vision, a valid Cloudinary signature, Twilio
-delivery, and the `gemini-flash-latest` alias. Each degrades gracefully.
+Still unproven for want of credentials: a valid Cloudinary signature and Twilio delivery. Each
+degrades gracefully. (Real Gemini vision is no longer the backend's problem — the AI moved to
+`apps/Ai/`, see D6.)
+
+## Phase 4 verified against the real Supabase project
+
+**This is the current record.** The Phase 1, Phase 2 and Tier B sections above are the history of
+what was proven at the time; this one is where the API stands today.
+
+Verified on the real project `PawLink` (`fymwcbevypwvtiocreuh`, eu-west-1, PostgreSQL 17) through
+the **session pooler**, on 2026-10-21.
+
+| Check | Result |
+|---|---|
+| `prisma migrate deploy` | ✅ applied cleanly — **4 migrations** (`…_init`, `…_photo_probes`, `…_refresh_tokens`, `…_refresh_token_reason`) |
+| `prisma migrate status` | ✅ **Database schema is up to date!** |
+| drift (`migrate diff --exit-code`) | ✅ **No difference detected** (exit 0) |
+| the schema | ✅ **17 tables** + PostGIS; `refresh_tokens` present with its `jti` unique index |
+| `npm run build` · `npm run lint` · `npx tsc --noEmit` | ✅ exit 0 · exit 0 · exit 0 |
+| `npm test` | ✅ **21 suites / 291 tests** |
+| `npm run test:e2e` | ✅ **6 suites / 79 tests** — 7 of them new, on the refresh-token store |
+| `npm run docs:check` | ✅ 54 operations · 30 schemas · 137 properties · 83 parameters, all documented |
+| `npm run seed` | ✅ users:11 zones:1 cases:27 helpers:13 trustChecks:189 services:14 reviews:5 adoptions:6 |
+| the e2e suites' footprint | ✅ **0** `refresh_tokens` rows and **0** leftover accounts left behind |
+
+The refresh-token store, against the real database:
+
+| Check | Result |
+|---|---|
+| signing in | ✅ a row is written, live, with the token's own expiry |
+| `POST /auth/refresh` | ✅ the spent row is marked `rotated` and a new row is written |
+| `POST /auth/logout` | ✅ the row is marked `logout`; the dead cookie is then refused |
+| a stale cookie after a logout | ✅ refused — and the account's **other** sessions keep working |
+| a **rotated** cookie replayed | ✅ `401 AUTH_TOKEN_REUSED` — every session of the account dies |
+| a token signed with the real secret but never issued | ✅ refused, `401 AUTH_TOKEN_INVALID` |
+| `DELETE /me` | ✅ every session of the account is revoked |
+
+**One environment note.** The direct Supabase host is unreachable from some networks (IPv6-only
+hosts). When `prisma migrate` cannot reach it, point `SUPABASE_DB_URL` at the **session pooler**
+string — the same one as `DATABASE_URL` — and the migrations apply normally. `prisma.config.ts`
+says so, and this is how the run above was done.
 
 ## Deviations from the spec documents
 
-Each one is a deliberate departure from `docs/BACKEND_PROMPT.md` or `PHASE2_PLAN.md`, with the reason.
+Each one is a deliberate departure from `docs/BACKEND_PROMPT.md`, `PHASE1_PLAN.md` or
+`PHASE2_PLAN.md`, with the reason. The full list with the same numbering lives in
+`docs/BACKEND_PROMPT.md` §Deviations (D1–D9).
 
 1. **`photo_probes` is a new table** (migration `20261010200738_photo_probes`). §4's table list does
    not include it. It is PHASE2_PLAN §6 option A, and the alternative — trusting client-extracted
@@ -431,8 +489,9 @@ Each one is a deliberate departure from `docs/BACKEND_PROMPT.md` or `PHASE2_PLAN
 5. **`GET /cases` is public** (R9, `BACKEND_PROMPT` §3.3 wins over `TEAM_HANDOFF` §5). It accepts an
    **optional** bearer token so a signed-in reporter still sees their own held report; an admin's
    full view is `GET /admin/cases`.
-6. **`animalDetected` stays `null` whenever the provider cannot tell** (R5) — including for every
-   cached fallback, which has seen nothing.
+6. **`animalDetected` is always `null`.** The AI service that would answer it is not delivered yet
+   (D6), so the check has no data to work with and says so (`"Analyse IA indisponible"`). The
+   field keeps its place in the check order because the web UI renders it.
 7. **`socket.io-client` is a devDependency.** The e2e suite connects a real socket; without it the
    "the broadcast actually arrives" rows above could only be asserted with a mock, which would
    defeat the point.
@@ -457,8 +516,6 @@ Decisions taken while building this phase, all consistent with `docs/BACKEND_PRO
 - **One trust scorer, pure and exported.** `scoreTrust()` in `src/cases/trust.service.ts` is the
   web's arithmetic with no I/O in it, so the web's own five scenarios are asserted against the same
   function the server runs rather than against a paraphrase of it.
-- **The rule layer runs after the provider, always.** `AIProvider` returns a pre-rules answer; the
-  keywords are ported verbatim so a hit means the same thing on both sides of the wire.
 - **The bbox is one raw statement; the relations are Prisma's.** `location &&` on the GIST index does
   the spatial work, `COUNT(*) OVER ()` gives the matching total in the same round trip, and
   `include` loads the reporter, helpers and checks — then the SQL's ordering is preserved in
@@ -468,9 +525,9 @@ Decisions taken while building this phase, all consistent with `docs/BACKEND_PRO
 - **`OptionalJwtAuthGuard`** is paired with `@Public()` on the case reads: the global
   `JwtAuthGuard` runs first and would otherwise reject the anonymous caller before the optional
   guard could attach one.
-- **`src/shared/ai-analysis.ts`** holds the `AIAnalysis` contract as a runtime guard, shared by the
-  row mapper and the AI service, because a `Json` column accepts anything and the frontend's
-  generated client trusts the Swagger type.
+- **`src/shared/ai-analysis.ts`** holds the `AIAnalysis` contract as a runtime guard, used by the
+  row mapper, because a `Json` column accepts anything and the frontend's generated client trusts
+  the Swagger type. It is the seam where the `apps/Ai/` service will be wired in.
 - **`caseRowToCase` is the only row → `Case` mapper**, and it strips `animalDetected`/`isRealPhoto`
   on the way in: those two are internal facts for the trust checks, not part of the web's `Case`.
 
@@ -478,6 +535,9 @@ Decisions taken while building this phase, all consistent with `docs/BACKEND_PRO
 
 1. Never trust the client — roles, moderation, trust, EXIF, rate limits are server-side.
 2. Response fields match `src/shared/types.ts` exactly.
-3. No diagnosis, ever; every AI answer carries a veterinarian disclaimer.
+3. No diagnosis, ever. The AI service must attach a veterinarian disclaimer to every answer; the
+   backend's own contract carries no AI answer at all (D6).
 4. Admin exists only via `seed:admin`; every `/admin/*` route checks the JWT role.
 5. Adoption phone numbers are revealed only when a request is `accepted`.
+6. A refresh token is only usable while the server says so. The store is the authority, not the
+   cookie's signature.

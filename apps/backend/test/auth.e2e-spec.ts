@@ -87,15 +87,20 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
   });
 
   afterAll(async () => {
-    // The account is anonymised by `DELETE /me`, so its email is gone and the
-    // rows are matched by id. The refresh-token rows cascade with the user, but
+    // This suite creates several accounts: the main one, plus the ones in steps
+    // 8b and 9. The main one is anonymised by `DELETE /me`, so its email is
+    // gone and it is matched by id; the others are matched by the `e2e-` prefix
+    // their emails carry. The refresh-token rows cascade with the user, but
     // they are removed explicitly so a failed run cannot leave a session behind.
-    if (userId) {
-      const prisma = new PrismaClient(prismaClientOptions());
-      await prisma.refreshToken.deleteMany({ where: { userId } });
-      await prisma.user.deleteMany({ where: { id: userId } });
-      await prisma.$disconnect();
-    }
+    const prisma = new PrismaClient(prismaClientOptions());
+    const users = await prisma.user.findMany({
+      where: { OR: [{ email: { startsWith: 'e2e-' } }, { id: userId }].filter(Boolean) },
+      select: { id: true },
+    });
+    const ids = users.map((u) => u.id);
+    await prisma.refreshToken.deleteMany({ where: { userId: { in: ids } } });
+    await prisma.user.deleteMany({ where: { id: { in: ids } } });
+    await prisma.$disconnect();
     await app.close();
   });
 

@@ -24,8 +24,9 @@ import { RolesGuard } from './auth/guards/roles.guard';
     // Loads .env from apps/backend/.env (never committed; see .env.example)
     ConfigModule.forRoot({ isGlobal: true }),
     // Baseline abuse protection (§2). Per-route limits (register, login, …) are
-    // `@Throttle` decorators; `POST /cases` carries the 5-per-hour per-IP half
-    // of the trust rate limit.
+    // `@Throttle` decorators; `POST /cases` carries the 15-per-hour per-IP
+    // backstop of the trust rate limit (the account half is 5/h, enforced in
+    // the service). See README §Deviations 3.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
     UsersModule,
