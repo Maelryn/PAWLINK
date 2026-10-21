@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { CASE_CATEGORY, CASE_STATUS, SPECIES, TRIAGE } from '../../shared/enums';
@@ -9,6 +9,7 @@ import { CASE_CATEGORY, CASE_STATUS, SPECIES, TRIAGE } from '../../shared/enums'
  * rest are plain columns added to the same `WHERE`. Every invalid combination
  * becomes one `VALIDATION_ERROR`, so a client bug is never a Postgres error.
  */
+@ApiSchema({ description: 'The `GET /cases` filters — the map’s query.' })
 export class QueryCasesDto {
   @ApiPropertyOptional({
     description: '`minLng,minLat,maxLng,maxLat`. Required by the map; omit to list without a box.',
@@ -18,22 +19,22 @@ export class QueryCasesDto {
   @IsString()
   bbox?: string;
 
-  @ApiPropertyOptional({ enum: TRIAGE })
+  @ApiPropertyOptional({ enum: TRIAGE, description: 'Only cases at this triage level.' })
   @IsOptional()
   @IsIn(TRIAGE)
   triage?: (typeof TRIAGE)[number];
 
-  @ApiPropertyOptional({ enum: SPECIES })
+  @ApiPropertyOptional({ enum: SPECIES, description: 'Only cases of this species.' })
   @IsOptional()
   @IsIn(SPECIES)
   species?: (typeof SPECIES)[number];
 
-  @ApiPropertyOptional({ enum: CASE_CATEGORY })
+  @ApiPropertyOptional({ enum: CASE_CATEGORY, description: 'Only companion or only livestock cases.' })
   @IsOptional()
   @IsIn(CASE_CATEGORY)
   category?: (typeof CASE_CATEGORY)[number];
 
-  @ApiPropertyOptional({ enum: CASE_STATUS })
+  @ApiPropertyOptional({ enum: CASE_STATUS, description: 'Only cases at this lifecycle status.' })
   @IsOptional()
   @IsIn(CASE_STATUS)
   status?: (typeof CASE_STATUS)[number];
@@ -43,7 +44,7 @@ export class QueryCasesDto {
   @IsString()
   zoneId?: string;
 
-  @ApiPropertyOptional({ default: 1 })
+  @ApiPropertyOptional({ default: 1, description: 'Page number, 1-based.' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -60,22 +61,27 @@ export class QueryCasesDto {
 }
 
 /** `GET /cases/nearby?lat=&lng=&radiusKm=` — the dashboards' radius query. */
+@ApiSchema({ description: 'The `GET /cases/nearby` query — a radius around a point.' })
 export class NearbyCasesDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Latitude of the search point.', example: 36.632 })
   @Type(() => Number)
   @IsNumber()
   @Min(-90)
   @Max(90)
   lat!: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Longitude of the search point.', example: 4.205 })
   @Type(() => Number)
   @IsNumber()
   @Min(-180)
   @Max(180)
   lng!: number;
 
-  @ApiPropertyOptional({ default: 25, maximum: 200 })
+  @ApiPropertyOptional({
+    default: 25,
+    maximum: 200,
+    description: 'The search radius, in kilometres.',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -83,14 +89,14 @@ export class NearbyCasesDto {
   @Max(200)
   radiusKm?: number;
 
-  @ApiPropertyOptional({ default: 1 })
+  @ApiPropertyOptional({ default: 1, description: 'Page number, 1-based.' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number;
 
-  @ApiPropertyOptional({ default: 50, maximum: 200 })
+  @ApiPropertyOptional({ default: 50, maximum: 200, description: 'How many rows per page.' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

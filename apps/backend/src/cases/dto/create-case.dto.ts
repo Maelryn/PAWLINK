@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -35,22 +35,23 @@ export function isPhotoUrl(value: string): boolean {
   return PHOTO_URL_PATTERN.test(value);
 }
 
+@ApiSchema({ description: 'Where the animal is — the wire shape of `GeoPoint`.' })
 export class CreateCaseLocationDto {
-  @ApiProperty({ example: 36.632 })
+  @ApiProperty({ example: 36.632, description: 'Latitude, in decimal degrees.' })
   @Type(() => Number)
   @IsNumber()
   @Min(-90)
   @Max(90)
   lat!: number;
 
-  @ApiProperty({ example: 4.205 })
+  @ApiProperty({ example: 4.205, description: 'Longitude, in decimal degrees.' })
   @Type(() => Number)
   @IsNumber()
   @Min(-180)
   @Max(180)
   lng!: number;
 
-  @ApiPropertyOptional({ maxLength: 200 })
+  @ApiPropertyOptional({ maxLength: 200, description: 'A human-readable address.' })
   @IsOptional()
   @IsString()
   @MaxLength(200)
@@ -68,17 +69,25 @@ export class CreateCaseLocationDto {
  * `triage` is a *baseline* — the caller's own urgency guess. The safety-rule
  * layer may raise it; nothing may lower it.
  */
+@ApiSchema({
+  description:
+    'Reports an animal needing help. The response carries the server-computed `trust` object — ' +
+    'the client never sends it — and the case may be held for moderation.',
+})
 export class CreateCaseDto {
-  @ApiProperty({ maxLength: 120 })
+  @ApiProperty({ maxLength: 120, description: 'A short headline for the report.' })
   @IsString()
   @MaxLength(120)
   title!: string;
 
-  @ApiProperty({ enum: SPECIES })
+  @ApiProperty({ enum: SPECIES, description: 'The species.' })
   @IsIn(SPECIES)
   species!: (typeof SPECIES)[number];
 
-  @ApiProperty({ enum: CASE_CATEGORY })
+  @ApiProperty({
+    enum: CASE_CATEGORY,
+    description: '`companion` for a pet, `livestock` for a herd.',
+  })
   @IsIn(CASE_CATEGORY)
   category!: (typeof CASE_CATEGORY)[number];
 

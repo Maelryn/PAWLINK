@@ -44,12 +44,12 @@ export class CasesController {
       '`approved` is public; a signed-in reporter also sees their own held report. ' +
       '`total` is the matching count, not the page length.',
   })
-  @ApiQuery({ name: 'bbox', required: false, example: '3.9,36.5,4.4,36.9' })
-  @ApiQuery({ name: 'triage', required: false, enum: ['urgent', 'monitoring', 'stable'] })
-  @ApiQuery({ name: 'species', required: false })
-  @ApiQuery({ name: 'category', required: false, enum: ['companion', 'livestock'] })
-  @ApiQuery({ name: 'status', required: false, enum: ['open', 'in_progress', 'resolved'] })
-  @ApiQuery({ name: 'zoneId', required: false })
+  @ApiQuery({ name: 'bbox', required: false, example: '3.9,36.5,4.4,36.9', description: 'The map box: `minLng,minLat,maxLng,maxLat`.' })
+  @ApiQuery({ name: 'triage', required: false, enum: ['urgent', 'monitoring', 'stable'], description: 'Only cases at this triage level.' })
+  @ApiQuery({ name: 'species', required: false, description: 'Only cases of this species.' })
+  @ApiQuery({ name: 'category', required: false, enum: ['companion', 'livestock'], description: 'Only companion or only livestock cases.' })
+  @ApiQuery({ name: 'status', required: false, enum: ['open', 'in_progress', 'resolved'], description: 'Only cases at this lifecycle status.' })
+  @ApiQuery({ name: 'zoneId', required: false, description: 'Only cases inside this emergency zone.' })
   @ApiOkResponse({ description: '`{ items, total, page, pageSize }` — the pagination envelope.' })
   async list(
     @Query() query: QueryCasesDto,
@@ -96,7 +96,7 @@ export class CasesController {
       'Public when public. A held case is a 404 for everyone except its reporter, exactly as ' +
       'invisible as it is on the map.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
   @ApiOkResponse({ description: 'The `Case` shape from apps/web/lib/types.ts.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND — or a case the caller may not see.' })
   async findOne(@Param('id') id: string, @CurrentUser() viewer?: Viewer): Promise<Case> {
@@ -137,6 +137,7 @@ export class CasesController {
   })
   @ApiOkResponse({ description: 'The updated case; `case.updated` is broadcast.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
   updateStatus(
     @Param('id') id: string,
     @Body() dto: PatchCaseStatusDto,
@@ -154,6 +155,7 @@ export class CasesController {
       '`help.offered` and writes a `help` notification for the reporter.',
   })
   @ApiOkResponse({ description: 'The updated case.' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
   offerHelp(
     @Param('id') id: string,
     @Body() dto: OfferHelpDto,
@@ -170,6 +172,7 @@ export class CasesController {
       'One confirmation per account. Two confirmations raise an `unverified` case to `verified`.',
   })
   @ApiOkResponse({ description: 'The updated case.' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
   confirm(
     @Param('id') id: string,
     @Body() dto: ConfirmCaseDto,
@@ -185,6 +188,7 @@ export class CasesController {
     description: 'Three distinct flags put the case back into `pending` and off the public map.',
   })
   @ApiOkResponse({ description: 'The updated case.' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
   flag(@Param('id') id: string, @Body() dto: FlagCaseDto, @CurrentUser() user: Viewer): Promise<Case> {
     return this.cases.flag(id, dto, user as never);
   }

@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
 import { SERVICE_TYPES } from '../../shared/enums';
@@ -12,6 +12,7 @@ export const DEFAULT_RADIUS_KM = 50;
  * With `lat`+`lng`: `ST_DWithin` on the geography column (GIST index), ordered
  * `pro DESC, distance ASC`. Without: ordered `pro DESC, rating DESC`.
  */
+@ApiSchema({ description: 'The `GET /services` filters — the directory query.' })
 export class QueryServicesDto {
   @ApiPropertyOptional({ description: 'Latitude of the search point.', example: 36.632 })
   @IsOptional()
@@ -29,7 +30,7 @@ export class QueryServicesDto {
   @Max(180)
   lng?: number;
 
-  @ApiPropertyOptional({ enum: SERVICE_TYPES })
+  @ApiPropertyOptional({ enum: SERVICE_TYPES, description: 'Only services of this type.' })
   @IsOptional()
   @IsIn(SERVICE_TYPES)
   type?: (typeof SERVICE_TYPES)[number];
@@ -47,14 +48,14 @@ export class QueryServicesDto {
   @Type(() => String)
   q?: string;
 
-  @ApiPropertyOptional({ default: 1 })
+  @ApiPropertyOptional({ default: 1, description: 'Page number, 1-based.' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number;
 
-  @ApiPropertyOptional({ default: 20, maximum: 100 })
+  @ApiPropertyOptional({ default: 20, maximum: 100, description: 'How many rows per page.' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

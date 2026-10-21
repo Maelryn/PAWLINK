@@ -60,7 +60,7 @@ export class AdoptionsController {
     summary: 'One listing',
     description: 'A non-approved listing is a 404 unless the caller owns it or is an admin.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The adoption listing id.' })
   @ApiOkResponse({ description: 'The `AdoptionProfile` shape from apps/web/lib/types.ts.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND — or a listing the caller may not see.' })
   async findOne(@Param('id') id: string, @CurrentUser() viewer?: Viewer): Promise<AdoptionProfile> {
@@ -90,7 +90,7 @@ export class AdoptionsController {
     summary: 'Edit my listing',
     description: 'Owner only. Content fields only — `status` and `ownerId` are never accepted from a body.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The adoption listing id.' })
   @ApiOkResponse({ description: 'The updated listing.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND, or ADOPTION_NOT_OWNER.' })
   async update(
@@ -110,7 +110,7 @@ export class AdoptionsController {
       'One request per user per listing — a second one answers `409 ADOPTION_REQUEST_EXISTS`. ' +
       'The listing owner receives an `adoptRequest` notification.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The adoption listing id.' })
   @ApiCreatedResponse({ description: 'The stored `AdoptionRequest`.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND, ADOPTION_OWN_LISTING or ADOPTION_REQUEST_EXISTS.' })
   async createRequest(

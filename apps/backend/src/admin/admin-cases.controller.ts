@@ -40,8 +40,8 @@ export class AdminCasesController {
       'No moderation gating — this is the queue. Sorted the same way as the public map, so an ' +
       'admin sees urgent reports first.',
   })
-  @ApiQuery({ name: 'bbox', required: false, example: '3.9,36.5,4.4,36.9' })
-  @ApiQuery({ name: 'triage', required: false })
+  @ApiQuery({ name: 'bbox', required: false, example: '3.9,36.5,4.4,36.9', description: 'The map box: `minLng,minLat,maxLng,maxLat`.' })
+  @ApiQuery({ name: 'triage', required: false, description: 'Only cases at this triage level.' })
   @ApiOkResponse({ description: '`{ items, total, page, pageSize }`.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN — admin only.' })
   list(@Query() query: QueryCasesDto): Promise<Paginated<Case>> {
@@ -64,7 +64,7 @@ export class AdminCasesController {
       '`approved` puts a held case on the public map; `hidden` removes it. Either way the case ' +
       'is re-broadcast as `case.updated`.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
   @ApiOkResponse({ description: 'The moderated case.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN — admin only.' })
   moderate(

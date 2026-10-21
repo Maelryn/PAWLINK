@@ -33,10 +33,10 @@ export class AdminServicesController {
 
   @Get()
   @ApiOperation({ summary: 'Every service listing, including pending ones (moderation queue).' })
-  @ApiQuery({ name: 'type', required: false })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiQuery({ name: 'page', required: false })
-  @ApiQuery({ name: 'pageSize', required: false })
+  @ApiQuery({ name: 'type', required: false, description: 'Only listings of this type.' })
+  @ApiQuery({ name: 'q', required: false, description: 'Substring match on name or description.' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number, 1-based.' })
+  @ApiQuery({ name: 'pageSize', required: false, description: 'How many rows per page.' })
   @ApiOkResponse({ description: '`{ items, total, page, pageSize }`.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN — admin only.' })
   async list(
@@ -55,7 +55,7 @@ export class AdminServicesController {
       'and notifies the owner `serviceApproved`. Reject only sets `status: rejected` — no ' +
       'notification, matching the web client’s `moderateService` exactly.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The service listing id.' })
   @ApiOkResponse({ description: 'The moderated listing.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN — the caller is not an admin.' })
   async moderate(@Param('id') id: string, @Body() dto: ModerateServiceDto): Promise<Service> {

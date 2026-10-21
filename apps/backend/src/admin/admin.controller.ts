@@ -37,10 +37,10 @@ export class AdminController {
 
   @Get('users')
   @ApiOperation({ summary: 'List users (admin only).' })
-  @ApiQuery({ name: 'role', required: false })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiQuery({ name: 'page', required: false })
-  @ApiQuery({ name: 'pageSize', required: false })
+  @ApiQuery({ name: 'role', required: false, description: 'Only accounts with this role.' })
+  @ApiQuery({ name: 'q', required: false, description: 'Substring match on name or email.' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number, 1-based.' })
+  @ApiQuery({ name: 'pageSize', required: false, description: 'How many rows per page.' })
   @ApiOkResponse({ description: '`{ items, total, page, pageSize }`.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN — admin only.' })
   listUsers(@Query() query: QueryUsersDto): Promise<Paginated<User>> {
@@ -49,7 +49,7 @@ export class AdminController {
 
   @Patch('users/:id/role')
   @ApiOperation({ summary: 'Change a user role (admin only).' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The user id.' })
   @ApiOkResponse({ description: 'The updated user.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN — admin only.' })
   updateRole(

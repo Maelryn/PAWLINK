@@ -25,7 +25,7 @@ export class BookingsController {
       '`409 BOOKING_ALREADY_ANSWERED` on a second attempt. The booker receives ' +
       '`bookingConfirmed` / `bookingDeclined`.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The booking id.' })
   @ApiOkResponse({ description: 'The decided `Booking`.' })
   async decide(
     @Param('id') id: string,

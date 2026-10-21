@@ -24,7 +24,7 @@ export class RequestsController {
       'The listing owner only, and terminal — a decided request answers `409 REQUEST_ALREADY_ANSWERED` ' +
       'on a second attempt. The requester receives `adoptAccepted` / `adoptDeclined`.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The adoption request id.' })
   @ApiOkResponse({ description: 'The decided `AdoptionRequest`.' })
   async decide(
     @Param('id') id: string,

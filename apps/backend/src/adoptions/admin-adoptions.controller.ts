@@ -31,9 +31,9 @@ export class AdminAdoptionsController {
   @ApiOperation({
     summary: 'Every adoption listing, including pending ones (moderation queue).',
   })
-  @ApiQuery({ name: 'status', required: false })
-  @ApiQuery({ name: 'page', required: false })
-  @ApiQuery({ name: 'pageSize', required: false })
+  @ApiQuery({ name: 'status', required: false, description: 'Only listings with this moderation status.' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number, 1-based.' })
+  @ApiQuery({ name: 'pageSize', required: false, description: 'How many rows per page.' })
   @ApiOkResponse({ description: '`{ items, total, page, pageSize }`.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN — admin only.' })
   async list(@Query() query: QueryAdoptionsDto): Promise<Paginated<AdoptionProfile>> {
@@ -47,7 +47,7 @@ export class AdminAdoptionsController {
       '`approved` publishes it and notifies the owner `listingApproved`; `rejected` keeps it off the ' +
       'marketplace and notifies `listingRejected`. There is no other way a listing changes status.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The adoption listing id.' })
   @ApiOkResponse({ description: 'The moderated listing.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN — the caller is not an admin.' })
   async moderate(@Param('id') id: string, @Body() dto: ModerateAdoptionDto): Promise<AdoptionProfile> {

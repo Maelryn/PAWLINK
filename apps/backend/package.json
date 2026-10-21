@@ -17,7 +17,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:status": "prisma migrate status",
     "seed": "ts-node scripts/seed.ts",
-    "seed:admin": "ts-node scripts/create-admin.ts"
+    "seed:admin": "ts-node scripts/create-admin.ts",
+    "docs:check": "ts-node scripts/docs-check.ts"
   },
   "prisma": {
     "seed": "ts-node scripts/seed.ts"

@@ -60,7 +60,7 @@ export class ServicesController {
   @Public()
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'One service', description: 'Approved, or the owner’s own, or an admin’s view.' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The service listing id.' })
   @ApiOkResponse({ description: 'The `Service` shape from apps/web/lib/types.ts.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND — or a listing the caller may not see.' })
   async findOne(@Param('id') id: string, @CurrentUser() viewer?: Viewer): Promise<Service> {
@@ -87,7 +87,7 @@ export class ServicesController {
     summary: 'Edit my listing',
     description: 'Owner only. Content fields only — moderation, billing and identity are not yours.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The service listing id.' })
   @ApiOkResponse({ description: 'The updated listing.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND, or SERVICE_NOT_OWNER.' })
   async update(
@@ -102,7 +102,7 @@ export class ServicesController {
   @Public()
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Reviews of a listing', description: 'Newest first, with the business reply when present.' })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The service listing id.' })
   @ApiOkResponse({ description: '`{ items, total, page, pageSize }` of `Review`.' })
   async reviews(@Param('id') id: string, @Query() query: PageQueryDto) {
     return this.services.reviews(id, query.page, query.pageSize);
@@ -118,7 +118,7 @@ export class ServicesController {
       '1–5 server-side; the listing’s `rating` (AVG, 1 decimal) and `reviewCount` are recomputed ' +
       'in the same transaction. Not on your own listing (`REVIEW_OWNER`).',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The service listing id.' })
   @ApiCreatedResponse({ description: 'The stored `Review`.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND, REVIEW_OWNER or REVIEW_EXISTS.' })
   async addReview(
@@ -134,8 +134,8 @@ export class ServicesController {
     summary: 'Reply to a review',
     description: 'The service owner only — this is the Pro reply the services screen renders.',
   })
-  @ApiParam({ name: 'id' })
-  @ApiParam({ name: 'reviewId' })
+  @ApiParam({ name: 'id', description: 'The service listing id.' })
+  @ApiParam({ name: 'reviewId', description: 'The review id.' })
   @ApiOkResponse({ description: 'The review, now with `reply`.' })
   async reply(
     @Param('id') id: string,
@@ -153,7 +153,7 @@ export class ServicesController {
     summary: 'Request an appointment',
     description: 'Stored as `sent`; the service owner confirms or declines it. They receive a `booking` notification.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The service listing id.' })
   @ApiCreatedResponse({ description: 'The stored `Booking`.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND — the listing is not visible to the caller.' })
   async book(

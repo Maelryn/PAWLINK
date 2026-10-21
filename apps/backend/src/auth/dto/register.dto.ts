@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   IsArray,
@@ -19,19 +19,38 @@ import { HELP_TYPES, SIGNABLE_ROLES } from '../../shared/enums';
  * any typo) must come back as `AUTH_ROLE_NOT_ALLOWED`, a stable machine code the
  * client can switch on — not as a generic `VALIDATION_ERROR`.
  */
+@ApiSchema({
+  description:
+    'Creates an unverified account and texts it an SMS code. The account cannot sign in until ' +
+    '`POST /auth/verify-phone` succeeds.',
+})
 export class RegisterDto {
-  @ApiProperty({ example: 'Nour Benali', minLength: 2, maxLength: 80 })
+  @ApiProperty({
+    example: 'Nour Benali',
+    minLength: 2,
+    maxLength: 80,
+    description: 'The display name shown on reports and helper offers.',
+  })
   @IsString()
   @MinLength(2)
   @MaxLength(80)
   name!: string;
 
-  @ApiProperty({ example: 'nour@pawlink.dz', maxLength: 160 })
+  @ApiProperty({
+    example: 'nour@pawlink.dz',
+    maxLength: 160,
+    description: 'The sign-in email. Unique across accounts.',
+  })
   @IsEmail()
   @MaxLength(160)
   email!: string;
 
-  @ApiProperty({ example: 'pawlink2026', minLength: 8, maxLength: 72 })
+  @ApiProperty({
+    example: 'pawlink2026',
+    minLength: 8,
+    maxLength: 72,
+    description: 'The sign-in password, in plaintext. Hashed with argon2 server-side.',
+  })
   @IsString()
   @MinLength(8)
   @MaxLength(72)
@@ -51,7 +70,7 @@ export class RegisterDto {
   @MaxLength(20)
   role!: string;
 
-  @ApiPropertyOptional({ example: 'Tizi Ouzou', maxLength: 80 })
+  @ApiPropertyOptional({ example: 'Tizi Ouzou', maxLength: 80, description: 'The city, for proximity hints.' })
   @IsOptional()
   @IsString()
   @MaxLength(80)

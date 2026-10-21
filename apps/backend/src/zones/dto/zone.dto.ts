@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -23,18 +23,23 @@ function toBoolean({ value }: { value: unknown }): boolean | undefined {
   return undefined;
 }
 
+@ApiSchema({
+  description:
+    'Creates an emergency zone — the polygon layer of the rescue map. Admin only. The centroid ' +
+    'is recomputed from the polygon; the client never supplies it.',
+})
 export class CreateZoneDto {
-  @ApiProperty({ maxLength: 120 })
+  @ApiProperty({ maxLength: 120, description: 'The zone name, e.g. `Feux de forêt — Larbaâ`.' })
   @IsString()
   @MaxLength(120)
   name!: string;
 
-  @ApiProperty({ maxLength: 120, example: 'Tizi Ouzou' })
+  @ApiProperty({ maxLength: 120, example: 'Tizi Ouzou', description: 'The affected region.' })
   @IsString()
   @MaxLength(120)
   region!: string;
 
-  @ApiProperty({ enum: ZONE_TYPES })
+  @ApiProperty({ enum: ZONE_TYPES, description: 'The kind of emergency.' })
   @IsIn(ZONE_TYPES)
   type!: (typeof ZONE_TYPES)[number];
 
@@ -51,7 +56,7 @@ export class CreateZoneDto {
   @IsOptional()
   polygon?: unknown;
 
-  @ApiPropertyOptional({ default: true })
+  @ApiPropertyOptional({ default: true, description: 'Whether the zone is currently active.' })
   @IsOptional()
   @IsBoolean()
   active?: boolean;
@@ -62,20 +67,21 @@ export class CreateZoneDto {
   startedAt?: string;
 }
 
+@ApiSchema({ description: 'Edits an emergency zone — admin only.' })
 export class UpdateZoneDto {
-  @ApiPropertyOptional({ maxLength: 120 })
+  @ApiPropertyOptional({ maxLength: 120, description: 'The zone name.' })
   @IsOptional()
   @IsString()
   @MaxLength(120)
   name?: string;
 
-  @ApiPropertyOptional({ maxLength: 120 })
+  @ApiPropertyOptional({ maxLength: 120, description: 'The affected region.' })
   @IsOptional()
   @IsString()
   @MaxLength(120)
   region?: string;
 
-  @ApiPropertyOptional({ enum: ZONE_TYPES })
+  @ApiPropertyOptional({ enum: ZONE_TYPES, description: 'The kind of emergency.' })
   @IsOptional()
   @IsIn(ZONE_TYPES)
   type?: (typeof ZONE_TYPES)[number];
@@ -90,12 +96,13 @@ export class UpdateZoneDto {
   @IsOptional()
   polygon?: unknown;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Whether the zone is currently active.' })
   @IsOptional()
   @IsBoolean()
   active?: boolean;
 }
 
+@ApiSchema({ description: 'The `GET /emergency-zones` filters.' })
 export class QueryZonesDto {
   @ApiPropertyOptional({ description: 'Only active (or only inactive) zones. `?active=true|false`.' })
   @IsOptional()
@@ -103,14 +110,14 @@ export class QueryZonesDto {
   @IsBoolean()
   active?: boolean;
 
-  @ApiPropertyOptional({ default: 1 })
+  @ApiPropertyOptional({ default: 1, description: 'Page number, 1-based.' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number;
 
-  @ApiPropertyOptional({ default: 50, maximum: 200 })
+  @ApiPropertyOptional({ default: 50, maximum: 200, description: 'How many rows per page.' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

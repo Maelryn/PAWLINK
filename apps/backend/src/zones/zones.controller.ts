@@ -64,7 +64,7 @@ export class ZonesController {
     summary: 'Edit a zone (admin)',
     description: 'A polygon change recomputes `center` in the same statement that stores it.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The emergency zone id.' })
   @ApiOkResponse({ description: 'The updated zone.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND, or ZONE_INVALID_POLYGON.' })
   async update(@Param('id') id: string, @Body() dto: UpdateZoneDto): Promise<EmergencyZone> {
@@ -80,7 +80,7 @@ export class ZonesController {
       'Refused with `409 ZONE_IN_USE` while cases still belong to the zone — the FK is ' +
       '`ON DELETE SET NULL`, so deleting anyway would silently detach them.',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'The emergency zone id.' })
   @ApiNoContentResponse({ description: 'Deleted.' })
   @ApiNotFoundResponse({ description: 'NOT_FOUND, or ZONE_IN_USE.' })
   async remove(@Param('id') id: string): Promise<void> {

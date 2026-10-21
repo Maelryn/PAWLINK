@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -27,22 +27,23 @@ export const MAX_ADOPTION_PHOTOS = 3;
  */
 export const PHOTO_URL_PATTERN = /^https?:\/\/\S+$/;
 
+@ApiSchema({ description: 'Where the animal is — the wire shape of `GeoPoint`.' })
 export class AdoptionLocationDto {
-  @ApiProperty({ example: 36.632 })
+  @ApiProperty({ example: 36.632, description: 'Latitude, in decimal degrees.' })
   @Type(() => Number)
   @IsNumber()
   @Min(-90)
   @Max(90)
   lat!: number;
 
-  @ApiProperty({ example: 4.205 })
+  @ApiProperty({ example: 4.205, description: 'Longitude, in decimal degrees.' })
   @Type(() => Number)
   @IsNumber()
   @Min(-180)
   @Max(180)
   lng!: number;
 
-  @ApiPropertyOptional({ maxLength: 200 })
+  @ApiPropertyOptional({ maxLength: 200, description: 'A human-readable address.' })
   @IsOptional()
   @IsString()
   @MaxLength(200)
@@ -56,23 +57,28 @@ export class AdoptionLocationDto {
  * **absent on purpose** — status is always `pending` until an admin decides,
  * the owner comes from the JWT, and the phone is read from the owner's own row.
  */
+@ApiSchema({
+  description:
+    'Posts an adoption listing. It is created as `pending` and stays invisible on the public ' +
+    'marketplace until an admin approves it.',
+})
 export class CreateAdoptionDto {
-  @ApiProperty({ maxLength: 80, example: 'Rex' })
+  @ApiProperty({ maxLength: 80, example: 'Rex', description: 'The animal’s name.' })
   @IsString()
   @MaxLength(80)
   name!: string;
 
-  @ApiProperty({ enum: SPECIES })
+  @ApiProperty({ enum: SPECIES, description: 'The species.' })
   @IsIn(SPECIES)
   species!: (typeof SPECIES)[number];
 
-  @ApiPropertyOptional({ maxLength: 60 })
+  @ApiPropertyOptional({ maxLength: 60, description: 'The breed, when known.' })
   @IsOptional()
   @IsString()
   @MaxLength(60)
   breed?: string;
 
-  @ApiProperty({ enum: SEXES })
+  @ApiProperty({ enum: SEXES, description: 'The animal’s sex.' })
   @IsIn(SEXES)
   sex!: (typeof SEXES)[number];
 
@@ -105,7 +111,10 @@ export class CreateAdoptionDto {
   @ArrayMaxSize(10)
   probeIds!: string[];
 
-  @ApiProperty({ maxLength: 200 })
+  @ApiProperty({
+    maxLength: 200,
+    description: 'The health status in the owner’s words, e.g. `vaccinated, healthy`.',
+  })
   @IsString()
   @MaxLength(200)
   healthStatus!: string;
@@ -126,14 +135,22 @@ export class CreateAdoptionDto {
   @ArrayMaxSize(50)
   medicalHistory?: Array<{ date: string; note: string }>;
 
-  @ApiPropertyOptional({ type: [String], example: ['calm', 'children'] })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['calm', 'children'],
+    description: 'Behaviour tags, e.g. `good with kids`, `shy`.',
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   @ArrayMaxSize(20)
   behavior?: string[];
 
-  @ApiPropertyOptional({ type: [String], example: ['garden', 'daily walk'] })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['garden', 'daily walk'],
+    description: 'What the animal needs day to day.',
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -162,20 +179,29 @@ export class CreateAdoptionDto {
  * `ownerId` and `ownerPhone` are absent on purpose: the first is an admin
  * decision, the other two come from the token and the owner's row.
  */
+@ApiSchema({
+  description:
+    'Edits the content of a listing, owner only. Every field is optional; omit one to leave it ' +
+    'untouched. `status` is an admin decision and is not editable here.',
+})
 export class UpdateAdoptionDto {
-  @ApiPropertyOptional({ maxLength: 80 })
+  @ApiPropertyOptional({ maxLength: 80, description: 'The animal’s name.' })
   @IsOptional()
   @IsString()
   @MaxLength(80)
   name?: string;
 
-  @ApiPropertyOptional({ maxLength: 60 })
+  @ApiPropertyOptional({ maxLength: 60, description: 'The breed, when known.' })
   @IsOptional()
   @IsString()
   @MaxLength(60)
   breed?: string;
 
-  @ApiPropertyOptional({ type: [String], maxLength: 10 })
+  @ApiPropertyOptional({
+    type: [String],
+    maxLength: 10,
+    description: 'Cloudinary URLs, already uploaded. Max 3 — one `probeIds` entry per photo.',
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -183,46 +209,64 @@ export class UpdateAdoptionDto {
   @ArrayMaxSize(10)
   photos?: string[];
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'One `probeId` per photo, from `POST /uploads/probe` — same count as `photos`.',
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   @ArrayMaxSize(10)
   probeIds?: string[];
 
-  @ApiPropertyOptional({ maxLength: 200 })
+  @ApiPropertyOptional({
+    maxLength: 200,
+    description: 'The health status in the owner’s words, e.g. `vaccinated, healthy`.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(200)
   healthStatus?: string;
 
-  @ApiPropertyOptional({ type: [Object] })
+  @ApiPropertyOptional({
+    type: [Object],
+    description: '`{ name, date }` per vaccination — replaces the whole list.',
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
   vaccinations?: Array<{ name: string; date: string }>;
 
-  @ApiPropertyOptional({ type: [Object] })
+  @ApiPropertyOptional({
+    type: [Object],
+    description: '`{ date, note }` per history entry — replaces the whole list.',
+  })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(50)
   medicalHistory?: Array<{ date: string; note: string }>;
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Behaviour tags, e.g. `good with kids`, `shy`.',
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   @ArrayMaxSize(20)
   behavior?: string[];
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'What the animal needs day to day.',
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   @ArrayMaxSize(20)
   careNeeds?: string[];
 
-  @ApiPropertyOptional({ maxLength: 4000 })
+  @ApiPropertyOptional({ maxLength: 4000, description: 'The story, in the owner’s words.' })
   @IsOptional()
   @IsString()
   @MaxLength(4000)
@@ -236,13 +280,18 @@ export class UpdateAdoptionDto {
 }
 
 /** `POST /adoptions/:id/requests` — a real form, not a comment. */
+@ApiSchema({
+  description:
+    'An adoption request. One per user per listing — a second attempt answers `409 ' +
+    'ADOPTION_REQUEST_EXISTS`.',
+})
 export class CreateRequestDto {
-  @ApiProperty({ maxLength: 2000 })
+  @ApiProperty({ maxLength: 2000, description: 'A message to the owner, in the adopter’s words.' })
   @IsString()
   @MaxLength(2000)
   message!: string;
 
-  @ApiProperty({ enum: HOUSING })
+  @ApiProperty({ enum: HOUSING, description: 'The kind of home the adopter can offer.' })
   @IsIn(HOUSING)
   housing!: (typeof HOUSING)[number];
 
@@ -252,15 +301,24 @@ export class CreateRequestDto {
 }
 
 /** `PATCH /requests/:id` — the listing owner's one decision. Terminal. */
+@ApiSchema({
+  description:
+    'The owner’s answer. Terminal — a request already answered answers `409 ' +
+    'REQUEST_ALREADY_ANSWERED`. Accepting reveals both phone numbers.',
+})
 export class DecideRequestDto {
-  @ApiProperty({ enum: ['accepted', 'declined'] })
+  @ApiProperty({ enum: ['accepted', 'declined'], description: 'The decision.' })
   @IsIn(['accepted', 'declined'])
   status!: 'accepted' | 'declined';
 }
 
 /** `PATCH /admin/adoptions/:id` — the moderation decision. */
+@ApiSchema({ description: 'The moderator’s decision on a pending listing.' })
 export class ModerateAdoptionDto {
-  @ApiProperty({ enum: ['approved', 'rejected'] })
+  @ApiProperty({
+    enum: ['approved', 'rejected'],
+    description: '`approved` publishes the listing; `rejected` keeps it off the marketplace.',
+  })
   @IsIn(['approved', 'rejected'])
   status!: 'approved' | 'rejected';
 }
