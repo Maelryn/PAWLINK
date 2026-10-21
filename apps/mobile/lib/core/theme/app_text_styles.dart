@@ -53,6 +53,10 @@ abstract final class AppTextStyles {
     );
   }
 
+  /// Bottom nav tab label (Make: 9px, w700). Carries no color.
+  static TextStyle navLabel({bool arabic = false}) =>
+      _style(9, FontWeight.w700, arabic: arabic);
+
   /// Smallest label (badges, "CARTE EN DIRECT" eyebrow). Not part of
   /// Material's scale.
   static TextStyle micro({bool arabic = false}) => _style(
