@@ -41,8 +41,8 @@ npm run dev                # http://localhost:4000
 | POST | `/auth/verify-phone` | public | 200 `{ accessToken, user }` + refresh cookie | |
 | POST | `/auth/resend-code` | public | 202, supersedes the previous code | |
 | POST | `/auth/login` | public | 200 + refresh cookie | one error for a bad email *and* a bad password |
-| POST | `/auth/refresh` | refresh cookie | 200 `{ accessToken }` + a **new** refresh cookie | |
-| POST | `/auth/logout` | refresh cookie | 204, cookie cleared | no body |
+| POST | `/auth/refresh` | refresh cookie | 200 `{ accessToken }` + a **new** refresh cookie | rotates the token; a replayed one is refused |
+| POST | `/auth/logout` | refresh cookie | 204, cookie cleared | revokes the token server-side |
 | GET | `/me` | bearer | 200 `User` | read from the database, never from the token |
 | PATCH | `/me` | bearer | 200 `User` | profile fields only; a new `phone` clears `phoneVerified` |
 | DELETE | `/me` | bearer | 204 | row anonymised, `passwordHash` dropped |
@@ -106,6 +106,39 @@ npm run dev                # http://localhost:4000
 | PATCH | `/admin/cases/:id/moderation` | admin | 200 | approve/hidden |
 | GET | `/admin/adoptions` | admin | 200 | moderation queue |
 | GET | `/admin/services` | admin | 200 | moderation queue |
+
+### The refresh-token store (`src/auth/refresh-token.service.ts`)
+
+A refresh JWT proves "this token was signed by us". It says nothing about "this token is still
+allowed to be used". Without a store, a stolen cookie is good for the whole 30 days and a logout
+only clears the browser's copy. The `refresh_tokens` table is that missing half.
+
+| column | why |
+|---|---|
+| `jti` (unique) | the handle the token is found by — it is the `jti` inside the JWT |
+| `userId` | whose session it is |
+| `expiresAt` | the token's own `exp`, read back from the signed token so the two agree exactly |
+| `revokedAt` | when it died; null while it is live |
+| `revokedReason` | **why** it died — the difference between a stolen copy and a stale client |
+
+What the store buys:
+
+| Situation | Answer |
+|---|---|
+| a live token | rotated: the old row is marked `rotated`, a new one is written |
+| a token marked `rotated` coming back | **a copy** — every session of the account is revoked, `401 AUTH_TOKEN_REUSED` |
+| a token marked `logout` coming back | a stale client — refused, but the account's other devices keep working |
+| a token marked `reuse` coming back | already dead — refused |
+| a token the store never knew | refused, `401 AUTH_TOKEN_INVALID` |
+| `DELETE /me` | every session of the account is revoked |
+
+The reason column is what keeps the two "it is dead" cases apart. Without it, a client that had
+not noticed a logout would be treated as a thief, and the user would be logged out of the phone
+they were still using.
+
+**Client contract:** `POST /auth/refresh` **rotates**. Store the new cookie every time, and do not
+blindly retry a refresh that already succeeded — a retry presents a spent token, which the server
+reads as a copy and answers by killing the account's sessions.
 
 ### The trust pipeline (`src/cases/trust.service.ts`)
 
@@ -198,11 +231,11 @@ Security model:
 
 - **Protected by default.** `JwtAuthGuard` and `RolesGuard` are global guards, so a route needs a
   valid bearer token unless it opts out with `@Public()`. `/health` and `/auth/*` do; nothing else.
-- **"Rotation" is unique but not revocable.** Every `POST /auth/refresh` mints a refresh token with a
-  fresh `jti` (`randomUUID`), so the cookie genuinely changes and a leaked older one cannot be
-  replayed as "the current session". With no server-side store there is still no deny-list: the
-  access token lives its 15 minutes, a refresh cookie its 30 days. `refresh_tokens` is the Phase 4
-  fix (PHASE1_PLAN.md risk R1) — and `jti` is exactly what makes it possible then.
+- **Rotation is real, and it is revocable.** Every `POST /auth/refresh` mints a refresh token with a
+  fresh `jti` (`randomUUID`), so the cookie genuinely changes, and the old one is **recorded as spent**
+  in the `refresh_tokens` store. The access token lives its 15 minutes and stays stateless — a
+  deny-list for access tokens is a different table with a different cost. The refresh token is what
+  ends a session, because the access token cannot be renewed.
 - Access token in the response body, refresh token in an httpOnly cookie scoped to `path=/auth`,
   `secure` in production. Access and refresh use separate secrets and separate TTLs.
 - OTP: 6 digits, 5-minute TTL, 5 attempts, one live code per phone. With `SMS_PROVIDER=console`
@@ -214,9 +247,10 @@ Security model:
 ## Test
 
 ```bash
-npm run test       # unit: 278 tests — error envelope, users, SMS, OTP, tokens, auth, bbox,
+npm run test       # unit: 291 tests — error envelope, users, SMS, OTP, tokens, auth, bbox,
                    # EXIF, dHash, geo, serialize, trust, safety rules, AI, realtime, cases
-npm run test:e2e   # boots the app against a real database: 53 tests
+npm run test:e2e   # boots the app against a real database: 79 tests
+npm run docs:check # every schema, property and parameter is documented
 npm run lint
 npx tsc --noEmit  # the only gate that also sees scripts/
 ```
@@ -246,7 +280,8 @@ src/shared/enums.ts    runtime mirrors of the Prisma enums (class-validator need
 src/seed/data.ts       verbatim copy of apps/web/lib/mock/data.ts — the demo scenario
 src/users              UsersService + userRowToUser(), the only row → User mapper
 src/sms                SmsProvider interface · console (default) · twilio · SmsService
-src/auth               controller/service · OtpService · TokensService · strategies · guards · DTOs
+src/auth               controller/service · OtpService · TokensService · RefreshTokenService ·
+                       strategies · guards · DTOs
 src/me                 GET/PATCH/DELETE /me
 src/cases              the map query (bbox.ts) · the trust pipeline · caseRowToCase · DTOs
 src/uploads            POST /uploads/probe (EXIF + dHash) · /uploads/signature (Cloudinary)
@@ -403,6 +438,17 @@ Each one is a deliberate departure from `docs/BACKEND_PROMPT.md` or `PHASE2_PLAN
    defeat the point.
 8. **Nest's 201 default is declared explicitly** on the routes that answer 200 (`/cases/:id/help`,
    `/confirm`, `/flag`, `/uploads/probe`) — the same omission the Phase 1 suite caught.
+9. **`refresh_tokens` is a new table** (migrations `20261021160000_refresh_tokens` and
+   `20261021163000_refresh_token_reason`). §4's table list does not include it, and
+   `PHASE1_PLAN.md` risk R1 asked for it to be **flagged before adding** — this is that flag.
+   Without it, rotation is cosmetic: a stolen refresh cookie stays usable for its full 30 days and
+   a logout only clears the browser's copy. The table records the token's `jti`, its expiry, and
+   whether it has been revoked, so a session can genuinely be ended and a replayed token can be
+   recognised. The `revokedReason` column is what separates a **stolen** copy (a rotated token
+   coming back — every session of the account dies) from a **stale** client (a token revoked by a
+   logout coming back — refused, but the account's other devices keep working). Access tokens stay
+   stateless: a deny-list for them is a different table with a different cost, and they live 15
+   minutes.
 
 ## Phase 2 implementation notes
 

@@ -48,8 +48,8 @@ describe('TokensService', () => {
     });
 
     it('refuses a refresh token where an access token is expected', async () => {
-      const refresh = await service.signRefresh(PAYLOAD);
-      await expect(service.verifyAccess(refresh)).rejects.toBeInstanceOf(HttpException);
+      const { token } = await service.signRefresh(PAYLOAD);
+      await expect(service.verifyAccess(token)).rejects.toBeInstanceOf(HttpException);
     });
 
     it('honours two different configured secrets', async () => {
@@ -67,18 +67,36 @@ describe('TokensService', () => {
       // stolen one would never go stale.
       const first = await service.signRefresh(PAYLOAD);
       const second = await service.signRefresh(PAYLOAD);
-      expect(second).not.toBe(first);
+      expect(second.token).not.toBe(first.token);
 
-      const decodedFirst = jwt.decode<{ jti?: string; iat: number }>(first)!;
-      const decodedSecond = jwt.decode<{ jti?: string; iat: number }>(second)!;
+      const decodedFirst = jwt.decode<{ jti?: string; iat: number }>(first.token)!;
+      const decodedSecond = jwt.decode<{ jti?: string; iat: number }>(second.token)!;
       expect(decodedFirst.jti).toEqual(expect.any(String));
       expect(decodedSecond.jti).not.toBe(decodedFirst.jti);
       // signed in the same second — exactly when a naive token collides
       expect(decodedSecond.iat).toBe(decodedFirst.iat);
     });
 
+    it('hands back the jti it embedded, so the store can key on it', async () => {
+      // The store's whole purpose (PHASE1_PLAN.md risk R1) is to find a token by
+      // its id. If the returned jti were not the one inside the token, every
+      // lookup would miss and no session could ever be revoked.
+      const signed = await service.signRefresh(PAYLOAD);
+      const decoded = jwt.decode<{ jti?: string }>(signed.token)!;
+
+      expect(signed.jti).toEqual(expect.any(String));
+      expect(signed.jti).toBe(decoded.jti);
+    });
+
+    it('hands back an expiresAt that matches the token exp', async () => {
+      const signed = await service.signRefresh(PAYLOAD);
+      const decoded = jwt.decode<{ exp: number }>(signed.token)!;
+
+      expect(signed.expiresAt.getTime()).toBe(decoded.exp * 1000);
+    });
+
     it('verifies through verifyRefresh and drops the jti from the payload', async () => {
-      const token = await service.signRefresh(PAYLOAD);
+      const { token } = await service.signRefresh(PAYLOAD);
       expect(await service.verifyRefresh(token)).toEqual(PAYLOAD);
     });
 
@@ -93,7 +111,7 @@ describe('TokensService', () => {
       const access = jwt.decode<{ iat: number; exp: number }>(await service.signAccess(PAYLOAD))!;
       expect(access.exp - access.iat).toBe(15 * 60);
 
-      const refresh = jwt.decode<{ iat: number; exp: number }>(await service.signRefresh(PAYLOAD))!;
+      const refresh = jwt.decode<{ iat: number; exp: number }>((await service.signRefresh(PAYLOAD)).token)!;
       expect(refresh.exp - refresh.iat).toBe(30 * 24 * 60 * 60);
     });
 
@@ -101,7 +119,7 @@ describe('TokensService', () => {
       process.env.JWT_ACCESS_TTL = '5m';
       process.env.JWT_REFRESH_TTL = '7d';
       const access = jwt.decode<{ iat: number; exp: number }>(await service.signAccess(PAYLOAD))!;
-      const refresh = jwt.decode<{ iat: number; exp: number }>(await service.signRefresh(PAYLOAD))!;
+      const refresh = jwt.decode<{ iat: number; exp: number }>((await service.signRefresh(PAYLOAD)).token)!;
       expect(access.exp - access.iat).toBe(5 * 60);
       expect(refresh.exp - refresh.iat).toBe(7 * 24 * 60 * 60);
     });

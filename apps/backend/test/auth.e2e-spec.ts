@@ -4,8 +4,10 @@ import type { INestApplication } from '@nestjs/common';
 import type { ThrottlerStorage } from '@nestjs/throttler';
 import { getStorageToken } from '@nestjs/throttler';
 import request from 'supertest';
+import { PrismaClient } from '@prisma/client';
 import { configureApp } from '../src/setup';
 import { AppModule } from '../src/app.module';
+import { prismaClientOptions } from '../src/common/prisma/client-options';
 import { AdminGuard } from '../src/auth/guards/admin.guard';
 import { REFRESH_COOKIE } from '../src/auth/strategies/jwt-refresh.strategy';
 import { cookieFrom, describeWithDatabase, uniqueEmail, uniquePhone } from './support/e2e-gate';
@@ -63,6 +65,7 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
   let accessToken = '';
   let refreshCookie = '';
   let otpCode = '';
+  let userId = '';
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -84,6 +87,15 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
   });
 
   afterAll(async () => {
+    // The account is anonymised by `DELETE /me`, so its email is gone and the
+    // rows are matched by id. The refresh-token rows cascade with the user, but
+    // they are removed explicitly so a failed run cannot leave a session behind.
+    if (userId) {
+      const prisma = new PrismaClient(prismaClientOptions());
+      await prisma.refreshToken.deleteMany({ where: { userId } });
+      await prisma.user.deleteMany({ where: { id: userId } });
+      await prisma.$disconnect();
+    }
     await app.close();
   });
 
@@ -119,6 +131,7 @@ describeWithDatabase('Phase 1 — auth + profile', () => {
     expect(body.user.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
     accessToken = body.accessToken;
+    userId = body.user.id;
     refreshCookie = cookieFrom(verified.headers);
     expect(refreshCookie).toMatch(/^refreshToken=/);
     expect(verified.headers['set-cookie'][0]).toMatch(/HttpOnly/i);

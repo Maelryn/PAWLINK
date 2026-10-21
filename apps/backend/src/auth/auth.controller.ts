@@ -17,6 +17,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { CookieOptions, Request, Response } from 'express';
@@ -25,8 +26,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto, ResendCodeDto, VerifyPhoneDto } from './dto/auth.dto';
 import { AuthService, type OtpSentResult, type SessionResponse } from './auth.service';
 import { RefreshAuthGuard } from './guards/refresh-auth.guard';
-import { AuthTokenPayload } from './tokens.service';
-import { REFRESH_COOKIE } from './strategies/jwt-refresh.strategy';
+import { REFRESH_COOKIE, type RefreshUser } from './strategies/jwt-refresh.strategy';
+import { ApiError } from '../common/filters/http-exception.filter';
 import { isProduction } from '../common/env';
 import { parseDuration, REFRESH_TTL_FALLBACK_SECONDS } from './secrets';
 
@@ -124,13 +125,22 @@ export class AuthController {
   @ApiOperation({
     summary: 'Trade the refresh cookie for a new access token',
     description:
-      'Rotates the refresh cookie too, so a stolen one goes stale early. ' +
+      'Rotates the refresh cookie too, so a stolen one goes stale immediately. The server ' +
+      'records every refresh token, so the cookie presented here must be a **live** one: a ' +
+      'token that was already rotated or logged out is refused with `AUTH_TOKEN_REUSED` and ' +
+      'every session of the account is revoked — a replayed cookie means it was copied. ' +
       'The access token is in the body, the refresh token stays cookie-only.',
   })
   @ApiOkResponse({ description: '{ accessToken } + a new refresh cookie.' })
+  @ApiUnauthorizedResponse({ description: 'AUTH_NO_REFRESH_COOKIE · AUTH_TOKEN_INVALID · AUTH_TOKEN_REUSED' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const payload = req.user as AuthTokenPayload;
-    const rotated = await this.auth.refresh(payload);
+    // The guard only reports; refusing a missing or dead session is this
+    // route's decision.
+    const session = req.user as RefreshUser | undefined;
+    if (!session) {
+      throw new ApiError(401, 'AUTH_NO_REFRESH_COOKIE', 'Session expirée, reconnectez-vous.');
+    }
+    const rotated = await this.auth.refresh(session);
     this.setRefreshCookie(res, rotated.refreshToken);
     return { accessToken: rotated.accessToken };
   }
@@ -144,12 +154,17 @@ export class AuthController {
   @ApiOperation({
     summary: 'Clear the refresh cookie',
     description:
-      'Without a server-side session store this is all a logout can do — the ' +
-      'access token stays valid until it expires (15m by default).',
+      'Revokes the refresh token server-side, so the cookie cannot be exchanged for a new ' +
+      'session even if it was copied. The access token it was paired with stays valid until ' +
+      'it expires (15m by default) — it is stateless. Always answers 204 and always clears the ' +
+      'cookie, even when the token was already dead.',
   })
-  @ApiNoContentResponse({ description: '204 — the refresh cookie is cleared.' })
+  @ApiNoContentResponse({ description: '204 — the refresh cookie is cleared and the session revoked.' })
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
-    await this.auth.logout((req.user as AuthTokenPayload | undefined)?.sub);
+    // Best effort by design: a client holding an expired cookie must still be
+    // able to log out, and the server must still be able to clear it for them.
+    const session = req.user as RefreshUser | undefined;
+    await this.auth.logout(session?.sub, session?.jti);
     res.clearCookie(REFRESH_COOKIE, this.refreshCookieOptions());
   }
 

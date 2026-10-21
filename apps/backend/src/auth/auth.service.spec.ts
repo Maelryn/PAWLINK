@@ -5,6 +5,7 @@ import type { User as UserRow } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { TokensService } from './tokens.service';
+import { RefreshTokenService } from './refresh-token.service';
 import { UsersService } from '../users/users.service';
 
 jest.mock('@node-rs/argon2', () => ({
@@ -13,6 +14,27 @@ jest.mock('@node-rs/argon2', () => ({
 }));
 
 const argon2Verify = verify as unknown as jest.Mock;
+
+/** The subset of the `refresh_tokens` row the service actually reads. */
+interface StoredRefreshToken {
+  jti: string;
+  userId: string;
+  expiresAt: Date;
+  revokedAt: Date | null;
+  revokedReason: 'rotated' | 'logout' | 'reuse' | null;
+}
+
+/** A live row — the normal case: signed here, not yet spent, not expired. */
+function liveToken(overrides: Partial<StoredRefreshToken> = {}): StoredRefreshToken {
+  return {
+    jti: 'jti-1',
+    userId: 'u1',
+    expiresAt: new Date(Date.now() + 60_000),
+    revokedAt: null,
+    revokedReason: null,
+    ...overrides,
+  };
+}
 
 function makeRow(overrides: Partial<UserRow> = {}): UserRow {
   const now = new Date('2026-10-03T10:00:00.000Z');
@@ -60,14 +82,28 @@ function harness() {
   };
   const tokens = {
     signAccess: jest.fn(async (): Promise<string> => 'access.jwt.token'),
-    signRefresh: jest.fn(async (): Promise<string> => 'refresh.jwt.token'),
+    signRefresh: jest.fn(
+      async (): Promise<{ token: string; jti: string; expiresAt: Date }> => ({
+        token: 'refresh.jwt.token',
+        jti: 'jti-1',
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      }),
+    ),
+  };
+  const refreshTokens = {
+    issue: jest.fn(async () => undefined),
+    find: jest.fn(async (): Promise<StoredRefreshToken | null> => liveToken()),
+    revoke: jest.fn(async () => undefined),
+    revokeAllForUser: jest.fn(async (): Promise<number> => 1),
+    prune: jest.fn(async () => undefined),
   };
   const service = new AuthService(
     users as unknown as UsersService,
     otp as unknown as OtpService,
     tokens as unknown as TokensService,
+    refreshTokens as unknown as RefreshTokenService,
   );
-  return { service, users, otp, tokens };
+  return { service, users, otp, tokens, refreshTokens };
 }
 
 const REGISTER = {
@@ -194,6 +230,16 @@ describe('AuthService.verifyPhone', () => {
     expect(status).toBe(401);
     expect(body).toMatchObject({ code: 'AUTH_ACCOUNT_DELETED' });
   });
+
+  it('records the refresh token, so the session can be revoked later', async () => {
+    // Without this row the cookie would be a bearer token with a 30-day life
+    // and no way to take it back.
+    const h = harness();
+    await h.service.verifyPhone({ code: '123456' });
+
+    expect(h.refreshTokens.issue).toHaveBeenCalledWith('u1', 'jti-1', expect.any(Date));
+    expect(h.refreshTokens.prune).toHaveBeenCalled();
+  });
 });
 
 describe('AuthService.resendCode', () => {
@@ -267,7 +313,7 @@ describe('AuthService.login', () => {
 describe('AuthService.refresh', () => {
   it('rotates: a new access token AND a new refresh token', async () => {
     const h = harness();
-    const result = await h.service.refresh({ sub: 'u1', role: 'reporter', name: 'Yasmine Belkacem' });
+    const result = await h.service.refresh({ sub: 'u1', jti: 'jti-1' });
 
     expect(result.accessToken).toBe('access.jwt.token');
     expect(result.refreshToken).toBe('refresh.jwt.token');
@@ -277,7 +323,7 @@ describe('AuthService.refresh', () => {
   it('re-reads the row so a role change takes effect immediately', async () => {
     const h = harness();
     h.users.findById.mockResolvedValue(makeRow({ role: 'admin' }));
-    await h.service.refresh({ sub: 'u1', role: 'reporter', name: 'Yasmine Belkacem' });
+    await h.service.refresh({ sub: 'u1', jti: 'jti-1' });
 
     expect(h.tokens.signAccess).toHaveBeenCalledWith(expect.objectContaining({ role: 'admin' }));
   });
@@ -285,16 +331,91 @@ describe('AuthService.refresh', () => {
   it('refuses a deleted account', async () => {
     const h = harness();
     h.users.findById.mockResolvedValue(null);
-    const { status, body } = await errorOf(h.service.refresh({ sub: 'u1', role: 'reporter', name: 'x' }));
+    const { status, body } = await errorOf(h.service.refresh({ sub: 'u1', jti: 'jti-1' }));
 
     expect(status).toBe(401);
     expect(body).toMatchObject({ code: 'AUTH_ACCOUNT_DELETED' });
   });
+
+  it('revokes the token it is replacing, and stores the new one', async () => {
+    // Rotation without a deny-list is theatre: the old cookie would still work.
+    const h = harness();
+    await h.service.refresh({ sub: 'u1', jti: 'jti-1' });
+
+    expect(h.refreshTokens.revoke).toHaveBeenCalledWith('jti-1', 'rotated');
+    expect(h.refreshTokens.issue).toHaveBeenCalledWith(
+      'u1',
+      'jti-1',
+      expect.any(Date),
+    );
+  });
+
+  it('refuses a token the store does not know', async () => {
+    // A valid signature but no row: the session predates the store, or the row
+    // was pruned. Neither is a live session.
+    const h = harness();
+    h.refreshTokens.find.mockResolvedValue(null);
+    const { status, body } = await errorOf(h.service.refresh({ sub: 'u1', jti: 'ghost' }));
+
+    expect(status).toBe(401);
+    expect(body).toMatchObject({ code: 'AUTH_TOKEN_INVALID' });
+    expect(h.refreshTokens.issue).not.toHaveBeenCalled();
+  });
+
+  it('refuses an expired row', async () => {
+    const h = harness();
+    h.refreshTokens.find.mockResolvedValue(
+      liveToken({ expiresAt: new Date(Date.now() - 1000) }),
+    );
+    const { status, body } = await errorOf(h.service.refresh({ sub: 'u1', jti: 'jti-1' }));
+
+    expect(status).toBe(401);
+    expect(body).toMatchObject({ code: 'AUTH_TOKEN_INVALID' });
+  });
+
+  it('treats a replayed token as theft: every session of the account dies', async () => {
+    // The token was already rotated, so whoever presents it holds a copy.
+    const h = harness();
+    h.refreshTokens.find.mockResolvedValue(
+      liveToken({ revokedAt: new Date(), revokedReason: 'rotated' }),
+    );
+    const { status, body } = await errorOf(h.service.refresh({ sub: 'u1', jti: 'jti-1' }));
+
+    expect(status).toBe(401);
+    expect(body).toMatchObject({ code: 'AUTH_TOKEN_REUSED' });
+    expect(h.refreshTokens.revokeAllForUser).toHaveBeenCalledWith('u1', 'reuse');
+    // and it does NOT mint a new session
+    expect(h.tokens.signRefresh).not.toHaveBeenCalled();
+  });
+
+  it('does not punish the account for a stale client after a logout', async () => {
+    // The session was ended on purpose. A client still holding the cookie is
+    // stale, not an attacker — killing every session here would log the user
+    // out of the other devices they are still using.
+    const h = harness();
+    h.refreshTokens.find.mockResolvedValue(
+      liveToken({ revokedAt: new Date(), revokedReason: 'logout' }),
+    );
+    const { status, body } = await errorOf(h.service.refresh({ sub: 'u1', jti: 'jti-1' }));
+
+    expect(status).toBe(401);
+    expect(body).toMatchObject({ code: 'AUTH_TOKEN_INVALID' });
+    expect(h.refreshTokens.revokeAllForUser).not.toHaveBeenCalled();
+  });
 });
 
 describe('AuthService.logout', () => {
-  it('resolves — the cookie is cleared by the controller', async () => {
+  it('revokes the presented token, so the session really ends', async () => {
     const h = harness();
-    await expect(h.service.logout('u1')).resolves.toBeUndefined();
+    await h.service.logout('u1', 'jti-1');
+
+    expect(h.refreshTokens.revoke).toHaveBeenCalledWith('jti-1', 'logout');
+  });
+
+  it('is a no-op when there is no token to revoke', async () => {
+    const h = harness();
+    await expect(h.service.logout(undefined, undefined)).resolves.toBeUndefined();
+
+    expect(h.refreshTokens.revoke).not.toHaveBeenCalled();
   });
 });

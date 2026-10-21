@@ -325,7 +325,7 @@ Run after every step: `npm run lint`, `npm test`, `npx tsc --noEmit`.
 
 | # | risk | recommendation |
 |---|---|---|
-| R1 | Refresh-token rotation without a server-side store cannot revoke | rotate the cookie anyway, log rotations, and add a `refresh_tokens` table in Phase 4 — flag before adding, since §4's table list does not include it |
+| R1 | Refresh-token rotation without a server-side store cannot revoke | **✅ Resolved in Phase 4 (2026-10-21).** The `refresh_tokens` table ships (deviation D9 in `docs/BACKEND_PROMPT.md`): the `jti` is recorded on every session, `POST /auth/refresh` marks the spent token and writes a new one, `POST /auth/logout` and `DELETE /me` revoke the account's sessions, and a **replayed rotated** token kills every session of the account. Access tokens stay stateless (15 min). |
 | R2 | `vet`/`pro` sign-up implies a pending **Service** row (web `signUp()` creates one) | Phase 1 stores only `role: reporter` + `licenseVerified: false` + `serviceId: undefined`; Phase 3 adds the row. Until then a `vet` sign-up has no listing — document it in the README |
 | R3 | `DELETE /me` has no specified semantics | anonymise (blank `name`/`email`/`phone`, keep the id) so `cases.reporterId` and `reviews.authorId` FKs survive; confirm with the frontend dev |
 | R4 | `email` is nullable + unique in the schema, and phone-only sign-up is not in the contract | keep email required at the DTO for Phase 1 (matches web `signIn`), revisit if phone-only auth is wanted |

@@ -131,6 +131,21 @@ enum Housing {
   farm
 }
 
+/// Why a refresh token stopped being usable.
+///
+/// The reason is what separates "somebody is replaying a copy" from "this is a
+/// stale client". A token that was *rotated* coming back means it was copied;
+/// a token that was *logged out* coming back is usually a client that had not
+/// noticed the session ended. Only the first is treated as theft.
+enum RefreshRevokeReason {
+  /// The token was spent by a rotation — the normal, expected end of a token.
+  rotated
+  /// The account holder logged out.
+  logout
+  /// The account was killed because a replayed token was detected.
+  reuse
+}
+
 enum RequestStatus {
   sent
   accepted
@@ -199,6 +214,7 @@ model User {
   notifications     Notification[]
   phoneOtps         PhoneOtp[]
   photoProbes       PhotoProbe[]
+  refreshTokens     RefreshToken[]
 
   @@index([role], map: "users_role_idx")
   @@index([email], map: "users_email_idx")
@@ -216,6 +232,43 @@ model PhoneOtp {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "phone_otps_user_idx")
+}
+
+/// Server-side refresh-token store — PHASE1_PLAN.md risk R1.
+///
+/// A refresh JWT is stateless on its own: rotation mints a new cookie, but with
+/// no row to check, a stolen cookie stays usable until it expires (30 days) and
+/// a logout cannot end the session server-side. This table is that row.
+///
+/// Two properties make it more than a list:
+///
+///   - **Revocation is real.** `revokedAt` is set on rotation and on logout, and
+///     a token whose row is revoked is refused — so "log out everywhere" is a
+///     single UPDATE.
+///   - **Reuse is detectable.** A rotated token is *marked*, not deleted, so a
+///     replayed one is recognised as a copy in someone else's hands and every
+///     session of that account is killed. A revoked row is therefore kept until
+///     the token would have expired anyway.
+///
+/// Deviation from docs/BACKEND_PROMPT.md §4's table list — see README §Deviations.
+model RefreshToken {
+  @@map("refresh_tokens")
+  id String @id @default(cuid())
+  /// The JWT `jti` — unique, so a token is found by the id it carries.
+  jti String @unique
+  userId String
+  /// The JWT `exp`: the moment the token stops being usable anyway.
+  expiresAt DateTime
+  /// Set when the token is rotated or logged out; null while it is live.
+  revokedAt DateTime?
+  /// Why it was revoked — the difference between a stolen copy and a stale client.
+  revokedReason RefreshRevokeReason?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "refresh_tokens_user_idx")
+  @@index([expiresAt], map: "refresh_tokens_expiry_idx")
 }
 
 model EmergencyZone {

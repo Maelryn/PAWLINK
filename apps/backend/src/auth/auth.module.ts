@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { TokensService } from './tokens.service';
+import { RefreshTokenService } from './refresh-token.service';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { SmsModule } from '../sms/sms.module';
@@ -30,6 +31,7 @@ import { RolesGuard } from './guards/roles.guard';
     AuthService,
     OtpService,
     TokensService,
+    RefreshTokenService,
     JwtStrategy,
     JwtRefreshStrategy,
     // Guards are provided so `@UseGuards(AdminGuard)` can inject the Reflector.
@@ -38,6 +40,6 @@ import { RolesGuard } from './guards/roles.guard';
     RolesGuard,
     AdminGuard,
   ],
-  exports: [AuthService, TokensService],
+  exports: [AuthService, TokensService, RefreshTokenService],
 })
 export class AuthModule {}

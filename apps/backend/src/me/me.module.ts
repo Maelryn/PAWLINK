@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AdoptionsModule } from '../adoptions/adoptions.module';
 import { ServicesModule } from '../services/services.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AuthModule } from '../auth/auth.module';
 import { MeController } from './me.controller';
 import { MeService } from './me.service';
 
@@ -13,7 +14,7 @@ import { MeService } from './me.service';
  * that owns the table, so `/me` never grows a second copy of a `WHERE`.
  */
 @Module({
-  imports: [AdoptionsModule, ServicesModule, NotificationsModule],
+  imports: [AdoptionsModule, ServicesModule, NotificationsModule, AuthModule],
   controllers: [MeController],
   providers: [MeService],
 })

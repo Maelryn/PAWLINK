@@ -13,6 +13,18 @@ interface RawPayload {
   sub?: unknown;
   role?: unknown;
   name?: unknown;
+  jti?: unknown;
+}
+
+/**
+ * What the refresh strategy attaches to the request.
+ *
+ * It carries the `jti` on top of the usual `{ sub, role, name }`: the `jti` is
+ * what the server-side store keys on, so the controller has to be able to name
+ * the exact token it is rotating or revoking.
+ */
+export interface RefreshUser extends AuthenticatedUser {
+  jti: string;
 }
 
 /**
@@ -34,14 +46,22 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
   }
 
   validate(payload: RawPayload, done: VerifiedCallback): void {
-    if (typeof payload.sub !== 'string' || typeof payload.role !== 'string') {
+    // A refresh token without a `jti` was not minted by `signRefresh`, so it
+    // cannot be keyed in the store either. Refusing it here keeps the store's
+    // "every live session has a row" invariant true.
+    if (
+      typeof payload.sub !== 'string' ||
+      typeof payload.role !== 'string' ||
+      typeof payload.jti !== 'string'
+    ) {
       done(new ApiError(401, 'AUTH_NO_REFRESH_COOKIE', 'Session expirée, reconnectez-vous.'), undefined);
       return;
     }
-    const user: AuthenticatedUser = {
+    const user: RefreshUser = {
       sub: payload.sub,
       role: payload.role as Role,
       name: typeof payload.name === 'string' ? payload.name : '',
+      jti: payload.jti,
     };
     done(null, user);
   }

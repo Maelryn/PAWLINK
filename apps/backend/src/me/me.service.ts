@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ApiError } from '../common/filters/http-exception.filter';
 import { userRowToUser } from '../users/serialize';
 import { UsersService, type UpdateProfileData } from '../users/users.service';
+import { RefreshTokenService } from '../auth/refresh-token.service';
 import type { User } from '../shared/types';
 import type { UpdateMeDto } from './dto/update-me.dto';
 
@@ -13,7 +14,12 @@ import type { UpdateMeDto } from './dto/update-me.dto';
  */
 @Injectable()
 export class MeService {
-  constructor(private readonly users: UsersService) {}
+  private readonly logger = new Logger(MeService.name);
+
+  constructor(
+    private readonly users: UsersService,
+    private readonly refreshTokens: RefreshTokenService,
+  ) {}
 
   async get(userId: string): Promise<User> {
     return userRowToUser(await this.liveRow(userId));
@@ -56,6 +62,14 @@ export class MeService {
     await this.users.anonymize(userId);
     // Any live SMS code dies with the account.
     await this.users.clearOtps(userId);
+    // And so does every session: deleting the account is the strongest "log
+    // out" there is, so no device keeps a cookie that could be exchanged for a
+    // new session. The rows are marked, not deleted — the account is anonymised
+    // rather than removed, so the foreign keys still resolve.
+    const killed = await this.refreshTokens.revokeAllForUser(userId, 'logout');
+    if (killed > 0) {
+      this.logger.log(`Account deleted — ${killed} session(s) revoked.`);
+    }
   }
 
   /** Re-reads the row and refuses an account that no longer exists. */
