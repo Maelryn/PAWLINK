@@ -46,6 +46,7 @@ function row(
     lng: 4.205,
     address: 'Tizi Ouzou',
     status: 'approved' as const,
+    pendingEdit: null,
     createdAt: new Date('2026-10-10T10:00:00Z'),
     updatedAt: new Date('2026-10-10T10:00:00Z'),
     owner: { id: 'u-owner', name: 'Amina', phone: '+213 555 01 02 03' },

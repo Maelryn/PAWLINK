@@ -1,6 +1,7 @@
 import type { HelpType, Role, User as UserRow } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import type { GeoPoint, User, UserLite } from '../shared/types';
+import { readProSubscription } from '../shared/pro';
 
 /**
  * The ONLY place a database row becomes the frontend `User` shape
@@ -36,18 +37,14 @@ function isRole(value: unknown): value is Role {
 }
 
 interface ProShape {
-  plan: 'pro';
+  plan: 'pro' | 'plus';
   since: string;
   until: string;
 }
 
 /** `pro` is a Json column: validate the shape before handing it to the client. */
 function readPro(value: Prisma.JsonValue | null): ProShape | undefined {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const row = value as Record<string, unknown>;
-  if (row.plan !== 'pro') return undefined;
-  if (typeof row.since !== 'string' || typeof row.until !== 'string') return undefined;
-  return { plan: 'pro', since: row.since, until: row.until };
+  return readProSubscription(value);
 }
 
 /** Row → `User`. `passwordHash` is deliberately not part of the input surface. */

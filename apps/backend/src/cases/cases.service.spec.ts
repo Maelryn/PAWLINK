@@ -138,11 +138,17 @@ function prismaStub(options: {
     count: async () => options.count ?? 0,
     findUnique: async () => options.rows?.[0] ?? null,
     findUniqueOrThrow: async () => options.rows?.[0] ?? null,
-    findMany: async ({ where }: { where: { id: { in: string[] } } }) =>
-      (options.rows ?? []).filter((r) => where.id.in.includes(r.id)),
+    findMany: async ({ where }: { where?: { id?: { in: string[] } } } = {}) => {
+      const rows = options.rows ?? [];
+      return where?.id?.in ? rows.filter((r) => where.id!.in.includes(r.id)) : rows;
+    },
     create: async ({ data }: { data: Record<string, unknown> }) => {
       written.push({ where: 'case.create', data });
       return row();
+    },
+    delete: async ({ where }: { where: { id: string } }) => {
+      written.push({ where: 'case.delete', data: where });
+      return { id: where.id };
     },
     update: async ({ data }: { data: Record<string, unknown> }) => {
       written.push({ where: 'case.update', data });
@@ -162,6 +168,10 @@ function prismaStub(options: {
     caseConfirm: { create: async () => ({ id: 'confirm-1' }) },
     caseFlag: { create: async () => ({ id: 'flag-1' }) },
     notification: {
+      deleteMany: async ({ where }: { where: Record<string, unknown> }) => {
+        written.push({ where: 'notification.deleteMany', data: where });
+        return { count: 0 };
+      },
       create: async ({ data }: { data: Record<string, unknown> }) => ({
         id: 'notification-1',
         userId: data.userId,
@@ -182,7 +192,8 @@ function prismaStub(options: {
       statements.push(readSql(query));
       return [{ id: 'case-1', total: 1 }];
     },
-    $transaction: async (fn: (tx: unknown) => unknown) => fn(delegates),
+    $transaction: async (arg: unknown) =>
+      Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(delegates),
   };
 
   return { prisma: prisma as unknown as PrismaService, statements, written, delegates };
@@ -355,13 +366,84 @@ describe('create — the trust pipeline wiring', () => {
 });
 
 describe('confirm / flag / status', () => {
-  it('adds a confirmation, caps the score at 1 and verifies on the second one', async () => {
+  /** Somebody else than the reporter (`u1`), standing on the pin. */
+  const OTHER = { sub: 'u2', role: 'reporter', name: 'Karim' } as const;
+  const NEAR = { seen: true, lat: KABYLIE.lat, lng: KABYLIE.lng };
+
+  it('counts a "yes" from somebody standing next to the animal', async () => {
     const stub = prismaStub({ rows: [row({ trustLevel: 'unverified', trustScore: 0.6 })] });
-    const { prisma } = stub;
-    const result = await service(prisma).service.confirm('case-1', {}, USER);
-    expect(result.trust?.confirmations).toBe(1);
-    expect(result.trust?.score).toBe(0.68);
-    expect(result.trust?.level).toBe('unverified');
+    await service(stub.prisma).service.confirm('case-1', NEAR, OTHER);
+
+    expect(stub.written.at(-1)?.data).toMatchObject({
+      trustConfirmations: 1,
+      trustScore: 0.72,
+      trustLevel: 'unverified',
+    });
+  });
+
+  it('verifies the report on the second "yes"', async () => {
+    const stub = prismaStub({
+      rows: [
+        row({
+          trustLevel: 'unverified',
+          trustScore: 0.6,
+          trustConfirmations: 1,
+          confirms: [{ userId: 'u3', seen: true }],
+        }),
+      ],
+    });
+    await service(stub.prisma).service.confirm('case-1', NEAR, OTHER);
+    expect(stub.written.at(-1)?.data).toMatchObject({
+      trustConfirmations: 2,
+      trustLevel: 'verified',
+    });
+  });
+
+  it('refuses an answer from more than 1 km away', async () => {
+    const stub = prismaStub({ rows: [row()] });
+    await expect(
+      service(stub.prisma).service.confirm('case-1', { seen: true, lat: 36.9, lng: 4.5 }, OTHER),
+    ).rejects.toMatchObject({ status: 403 });
+    // Nothing was written: the distance is checked before the answer is stored.
+    expect(stub.written).toHaveLength(0);
+  });
+
+  it('refuses the reporter answering their own report', async () => {
+    const stub = prismaStub({ rows: [row()] });
+    await expect(service(stub.prisma).service.confirm('case-1', NEAR, USER)).rejects.toMatchObject({
+      status: 403,
+    });
+  });
+
+  it('refuses a second answer from the same account', async () => {
+    const stub = prismaStub({ rows: [row({ confirms: [{ userId: 'u2', seen: true }] })] });
+    await expect(service(stub.prisma).service.confirm('case-1', NEAR, OTHER)).rejects.toMatchObject({
+      status: 409,
+    });
+  });
+
+  it('sends the report back to moderation on two "no"', async () => {
+    const stub = prismaStub({
+      rows: [
+        row({
+          trustLevel: 'unverified',
+          trustScore: 0.5,
+          // This is the second "no": the first one is already stored.
+          confirms: [{ userId: 'u3', seen: false }],
+        }),
+      ],
+    });
+    await service(stub.prisma).service.confirm(
+      'case-1',
+      { seen: false, lat: KABYLIE.lat, lng: KABYLIE.lng },
+      OTHER,
+    );
+
+    expect(stub.written.at(-1)?.data).toMatchObject({
+      trustLevel: 'suspicious',
+      moderation: 'pending',
+      trustScore: 0.38,
+    });
   });
 
   it('puts the case back into pending on the third flag', async () => {
@@ -400,5 +482,56 @@ describe('findOne', () => {
     await expect(
       service(prisma).service.findOne('case-1', { sub: 'u1', role: 'reporter' }),
     ).resolves.toBeDefined();
+  });
+});
+
+describe('my reports and the reporter’s own edits', () => {
+  it('lists the reports the caller made, and only those', async () => {
+    const stub = prismaStub({ rows: [row()], count: 1 });
+    const page = await service(stub.prisma).service.mine('u1', 1, 20);
+
+    expect(page).toMatchObject({ total: 1, page: 1, pageSize: 20 });
+    expect(page.items).toHaveLength(1);
+  });
+
+  it('holds the change for a moderator when the report is public', async () => {
+    const stub = prismaStub({ rows: [row()] });
+    await service(stub.prisma).service.update('case-1', { description: 'corrigé' }, USER);
+
+    const write = stub.written.find((w) => w.where === 'case.update');
+    expect(write?.data.description).toBeUndefined();
+    expect(write?.data.pendingEdit).toMatchObject({ description: 'corrigé' });
+  });
+
+  it('applies the change straight away while the report is still held for moderation', async () => {
+    const stub = prismaStub({ rows: [row({ moderation: 'pending' })] });
+    await service(stub.prisma).service.update('case-1', { description: 'corrigé' }, USER);
+
+    const write = stub.written.find((w) => w.where === 'case.update');
+    expect(write?.data.description).toBe('corrigé');
+  });
+
+  it('refuses a change from anybody but the reporter', async () => {
+    const stub = prismaStub({ rows: [row()] });
+    await expect(
+      service(stub.prisma).service.update('case-1', { description: 'x' }, { sub: 'u2', role: 'reporter', name: 'K' } as never),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('refuses a deletion from anybody but the reporter', async () => {
+    const stub = prismaStub({ rows: [row()] });
+    await expect(
+      service(stub.prisma).service.remove('case-1', { sub: 'u2', role: 'reporter', name: 'K' } as never),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('deletes the report and the notifications that pointed at it', async () => {
+    const stub = prismaStub({ rows: [row()] });
+    await service(stub.prisma).service.remove('case-1', USER);
+
+    expect(stub.written).toEqual([
+      { where: 'case.delete', data: { id: 'case-1' } },
+      { where: 'notification.deleteMany', data: { href: { startsWith: '/cases/case-1' } } },
+    ]);
   });
 });

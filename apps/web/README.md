@@ -27,6 +27,19 @@ Open http://localhost:3000. `npm install` also copies the map worker and the Ara
 | `/pro` | PawLink Pro for businesses (demo payment, code `DEMODAY`) |
 | `/admin` | Admin only: overview, moderation queues, emergency zones, users |
 
+## The live map asks for its own box
+
+With the API on, the map does **not** list the whole country: it tells the sync which area it is
+showing (`lib/bbox.ts`) and the sync asks `GET /cases?bbox=minLng,minLat,maxLng,maxLat` for that
+box only (`lib/cases.ts`). The box is a little wider than the screen (a pan must not empty the
+map) and snapped to a ~1 km grid (a short pan asks for the same box, so it does not ask again).
+The list is refreshed every 20 s **for the box that is on screen**, and one request is made per
+finished move — zooming in makes the answer smaller and faster.
+
+Outside the map (the landing counters, the dashboards) the list is the country, refreshed far less
+often. "My reports" is the one layer that is not a box: it comes from `GET /me/cases`, because
+your reports are yours wherever they are.
+
 ## Demo data
 
 Until the API is connected, `lib/store.ts` is a small database saved in the browser (localStorage). Every action notes the API endpoint that replaces it, so the screens don't change when the backend is plugged in. Demo accounts use the password `pawlink2026`.
@@ -44,13 +57,16 @@ lib/types.ts          shared types (= contract with the NestJS backend, see docs
 lib/mock/data.ts      demo scenario (Kabylie wildfire + cases across Algeria), all fictional
 lib/ai/analyze.ts     mock AI triage + safety-rule layer (mirrors POST /ai/analyze)
 lib/store.ts          client store; swap its actions for API calls when the backend is live
+lib/bbox.ts           the visible area → the `?bbox=` the API expects
+lib/cases.ts          the case actions + the map sync (the box, the 20 s refresh)
 lib/i18n/             fr.ts, ar.ts, en.ts
 ```
 
 ## Plugging in the backend
 
 Everything reads from `lib/store.ts` and `lib/ai/analyze.ts`. When the NestJS API is ready:
-1. Replace `CASES` / `SERVICES` / `ADOPTIONS` with fetches to `/cases?bbox=`, `/services`, `/adoptions`.
+1. Replace `CASES` / `SERVICES` / `ADOPTIONS` with fetches to `/cases?bbox=` (done for the
+   cases), `/services`, `/adoptions`.
 2. Replace `analyzeAsync` with `POST /ai/analyze`. The response shape is already `AIAnalysis`.
 3. Replace `store.addCase` / `store.offerHelp` with `POST /cases` / `POST /cases/:id/help` and subscribe to realtime `case.created`.
 

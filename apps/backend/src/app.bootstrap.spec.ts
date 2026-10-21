@@ -5,8 +5,12 @@ import { CasesController } from './cases/cases.controller';
 import { MeController } from './me/me.controller';
 import { UploadsController } from './uploads/uploads.controller';
 import { CreateCaseDto, CreateCaseLocationDto } from './cases/dto/create-case.dto';
-import { ConfirmCaseDto, FlagCaseDto, OfferHelpDto, PatchCaseStatusDto } from './cases/dto/case.dto';
+import { FlagCaseDto, OfferHelpDto, PatchCaseStatusDto } from './cases/dto/case.dto';
+import { ConfirmCaseDto } from './cases/dto/confirm-case.dto';
+import { UpdateCaseDto } from './cases/dto/update-case.dto';
 import { ModerateCaseDto } from './cases/dto/moderate-case.dto';
+import { EditDecisionDto } from './common/dto/edit-decision.dto';
+import { ActivateProDto } from './me/dto/pro.dto';
 import { NearbyCasesDto, QueryCasesDto } from './cases/dto/query-cases.dto';
 import { RealtimeGateway } from './realtime/realtime.gateway';
 /**
@@ -49,10 +53,13 @@ describe('every controller and DTO module loads', () => {
       CreateCaseDto,
       CreateCaseLocationDto,
       ConfirmCaseDto,
+      UpdateCaseDto,
       FlagCaseDto,
       OfferHelpDto,
       PatchCaseStatusDto,
       ModerateCaseDto,
+      EditDecisionDto,
+      ActivateProDto,
       NearbyCasesDto,
       QueryCasesDto,
       RegisterDto,

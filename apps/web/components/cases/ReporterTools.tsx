@@ -44,8 +44,9 @@ export function ReporterTools({ c }: { c: Case }) {
           <Button
             variant="danger"
             size="lg"
-            onClick={() => {
-              deleteCase(c);
+            onClick={async () => {
+              const r = await deleteCase(c);
+              if (!r.ok) return toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
               toast.success(t.verify.deleted);
               router.replace("/account?tab=reports");
             }}
@@ -68,9 +69,10 @@ function EditForm({ c, onDone }: { c: Case; onDone: () => void }) {
   const toggle = (x: string) => setTags(tags.includes(x) ? tags.filter((y) => y !== x) : [...tags, x]);
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        proposeCaseEdit(c, { description: desc.trim(), conditionTags: tags });
+        const r = await proposeCaseEdit(c, { description: desc.trim(), conditionTags: tags });
+        if (!r.ok) return toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
         toast.success(c.moderation === "pending" ? t.acct.saved : t.post.sent);
         onDone();
       }}

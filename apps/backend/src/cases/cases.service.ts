@@ -4,19 +4,22 @@ import { Prisma } from '@prisma/client';
 import { ApiError } from '../common/filters/http-exception.filter';
 import { PrismaService } from '../common/prisma/prisma.service';
 import type { AuthenticatedUser } from '../common/decorators/auth.decorators';
-import { GeoService } from '../geo/geo.service';
+import { GeoService, distanceKm } from '../geo/geo.service';
 import { UsersService } from '../users/users.service';
 import { TrustService } from './trust.service';
 import { DHashService, DUPLICATE_THRESHOLD } from '../uploads/dhash.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { caseRowToCase, type CaseRowWithRelations } from './serialize';
 import { NotificationsService } from '../notifications/notifications.service';
+import { pendingEditAt } from '../shared/pending-edit';
 import type { CreateCaseDto } from './dto/create-case.dto';
 import type { Paginated, Viewer } from '../shared/pagination';
 import type { CaseListQuery } from './dto/query-cases.dto';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from './dto/query-cases.dto';
-import type { ConfirmCaseDto, FlagCaseDto, OfferHelpDto, PatchCaseStatusDto } from './dto/case.dto';
-import type { Case } from '../shared/types';
+import type { FlagCaseDto, OfferHelpDto, PatchCaseStatusDto } from './dto/case.dto';
+import type { ConfirmCaseDto } from './dto/confirm-case.dto';
+import type { UpdateCaseDto } from './dto/update-case.dto';
+import type { Case, CaseEdit, PendingEdit } from '../shared/types';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 /**
@@ -41,6 +44,22 @@ const STATUS_ROLES = ['volunteer', 'vet', 'admin'];
 
 /** How far back a stored hash is still worth comparing against. */
 const HASH_LOOKBACK_DAYS = 90;
+
+/**
+ * How close somebody has to stand to answer "do you see this animal?".
+ *
+ * The web checks the same radius on the device, and the API checks it again:
+ * a vote from somebody in the other side of Algiers is worth nothing, and the
+ * client is never the one that decides.
+ */
+export const CONFIRM_RADIUS_KM = 1;
+
+/** How far the people around a new report are asked whether they see the animal. */
+export const CONFIRM_ASK_RADIUS_KM = 3;
+
+/** The trust arithmetic of one answer — the web's own numbers, so both agree. */
+const CONFIRM_SCORE_YES = 0.12;
+const CONFIRM_SCORE_NO = -0.12;
 
 /** The rows a serializer needs, in one shape, reused by every read. */
 const CASE_INCLUDE = {
@@ -290,6 +309,9 @@ export class CasesService {
 
     if (serialized.moderation === undefined) {
       this.realtime.caseCreated({ case: serialized });
+      // The people around the animal are asked whether they see it — their
+      // answers are what makes a report `verified` (POST /cases/:id/confirm).
+      await this.askAround(serialized);
     } else {
       this.logger.warn(
         `Case ${created.id} held for moderation (level=${trust.level}, score=${trust.score}).`,
@@ -366,32 +388,274 @@ export class CasesService {
   }
 
   /**
-   * `POST /cases/:id/confirm` — "I see it too".
+   * `POST /cases/:id/confirm` — "do you see this animal?".
    *
-   * The web's own arithmetic: +1 confirmation, +0.08 score capped at 1, and
-   * `unverified` becomes `verified` on the second one. Two confirmations are
-   * enough because they are two different authenticated accounts.
+   * The answer is a **vote**, and it is only worth something from somebody
+   * standing next to the animal: the distance is measured here, on the
+   * server, and the answer is refused when it is too far. The web checks the
+   * same radius on the device first — but the device is the client's, so this
+   * is the check that counts.
+   *
+   * What one answer does (the web's own arithmetic, so the two never disagree):
+   *
+   *   - "yes"  → `trust.confirmations` +1, score +0.12; two "yes" raise the
+   *              case to `verified` and the reporter is notified.
+   *   - "no"   → score −0.12; two "no" (and more "no" than "yes") make the
+   *              case `suspicious` and send it back to the moderators.
+   *
+   * One answer per account, and never the reporter's own report.
    */
-  async confirm(id: string, _dto: ConfirmCaseDto, user: AuthenticatedUser): Promise<Case> {
-    const existing = await this.prisma.case.findUnique({ where: { id } });
+  async confirm(id: string, dto: ConfirmCaseDto, user: AuthenticatedUser): Promise<Case> {
+    const existing = await this.prisma.case.findUnique({ where: { id }, include: CASE_INCLUDE });
     if (!existing) throw new NotFoundException('Signalement introuvable.');
 
-    await this.prisma.caseConfirm.create({ data: { caseId: id, userId: user.sub } });
+    if (existing.reporterId === user.sub) {
+      throw new ApiError(
+        403,
+        'CONFIRM_OWN_REPORT',
+        'Vous ne pouvez pas confirmer votre propre signalement.',
+      );
+    }
 
-    const confirmations = existing.trustConfirmations + 1;
-    const score = Math.min(1, Math.round((existing.trustScore + 0.08) * 100) / 100);
-    const level =
-      existing.trustLevel === 'unverified' && confirmations >= 2 ? 'verified' : existing.trustLevel;
+    // One answer per account — the unique index would say the same thing.
+    if (existing.confirms.some((c) => c.userId === user.sub)) {
+      throw new ApiError(
+        409,
+        'CONFIRM_ALREADY_ANSWERED',
+        'Vous avez déjà répondu pour ce signalement.',
+      );
+    }
+
+    // The distance, measured here. The client sent a position; the server
+    // decides whether it is close enough.
+    const km = distanceKm({ lat: dto.lat, lng: dto.lng }, { lat: existing.lat, lng: existing.lng });
+    if (km > CONFIRM_RADIUS_KM) {
+      throw new ApiError(
+        403,
+        'CONFIRM_TOO_FAR',
+        `Trop loin de l’animal (${km.toFixed(1)} km) : la réponse ne compte que sur place.`,
+      );
+    }
+
+    try {
+      await this.prisma.caseConfirm.create({
+        data: { caseId: id, userId: user.sub, seen: dto.seen },
+      });
+    } catch (error) {
+      // Two answers at the same time from the same account: the index decides.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ApiError(
+          409,
+          'CONFIRM_ALREADY_ANSWERED',
+          'Vous avez déjà répondu pour ce signalement.',
+        );
+      }
+      throw error;
+    }
+
+    const confirmedBy = existing.confirms
+      .filter((c) => c.seen)
+      .map((c) => c.userId)
+      .concat(dto.seen ? [user.sub] : []);
+    const deniedBy = existing.confirms
+      .filter((c) => !c.seen)
+      .map((c) => c.userId)
+      .concat(dto.seen ? [] : [user.sub]);
+
+    const confirmations = existing.trustConfirmations + (dto.seen ? 1 : 0);
+    const score = clampScore(existing.trustScore + (dto.seen ? CONFIRM_SCORE_YES : CONFIRM_SCORE_NO));
+    // Two "no" and more "no" than "yes": the report goes back to the moderators.
+    const doubtful = deniedBy.length >= 2 && deniedBy.length > confirmedBy.length;
+    const level = doubtful
+      ? 'suspicious'
+      : confirmedBy.length >= 2
+        ? 'verified'
+        : existing.trustLevel;
 
     const row = await this.prisma.case.update({
       where: { id },
-      data: { trustConfirmations: confirmations, trustScore: score, trustLevel: level },
+      data: {
+        trustConfirmations: confirmations,
+        trustScore: score,
+        trustLevel: level,
+        moderation: doubtful ? 'pending' : existing.moderation,
+        // A "no" changes nothing about the report itself; only a "yes" means
+        // somebody is looking at the animal right now.
+        ...(dto.seen ? { updatedAt: new Date() } : {}),
+      },
+      include: CASE_INCLUDE,
+    });
+
+    if (dto.seen) {
+      await this.notifications.notify(existing.reporterId, 'caseConfirmed', existing.title, `/cases/${id}`);
+    }
+
+    const serialized = caseRowToCase(row as unknown as CaseRowWithRelations);
+    this.realtime.caseUpdated({ case: serialized });
+    return serialized;
+  }
+
+  /**
+   * `GET /me/cases` — the reports the caller made.
+   *
+   * Every status, moderation included: a report still held for moderation is
+   * invisible to everybody else, so this is the only place its reporter can
+   * follow it.
+   */
+  async mine(userId: string, page = 1, pageSize = 20): Promise<Paginated<Case>> {
+    const p = Math.max(1, page);
+    const size = Math.min(MAX_PAGE_SIZE, Math.max(1, pageSize));
+    const where: Prisma.CaseWhereInput = { reporterId: userId };
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.case.findMany({
+        where,
+        include: CASE_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+        skip: (p - 1) * size,
+        take: size,
+      }),
+      this.prisma.case.count({ where }),
+    ]);
+    return {
+      items: rows.map((row) => caseRowToCase(row as unknown as CaseRowWithRelations)),
+      total,
+      page: p,
+      pageSize: size,
+    };
+  }
+
+  /**
+   * `PATCH /cases/:id` — the reporter corrects their own report.
+   *
+   * A report still held for moderation changes straight away (nobody has seen
+   * it yet); a public one waits for a moderator, because the people already
+   * helping on it are acting on the text as it is. The proposed change is
+   * stored as `pendingEdit` and merged by `PATCH /admin/cases/:id/edit`.
+   */
+  async update(id: string, dto: UpdateCaseDto, user: AuthenticatedUser): Promise<Case> {
+    const existing = await this.prisma.case.findUnique({ where: { id }, include: CASE_INCLUDE });
+    if (!existing) throw new NotFoundException('Signalement introuvable.');
+    if (existing.reporterId !== user.sub) {
+      throw new ApiError(
+        403,
+        'CASE_NOT_OWNER',
+        'Seul l’auteur du signalement peut le modifier.',
+      );
+    }
+
+    const patch: { description?: string; conditionTags?: string[] } = {};
+    if (dto.description !== undefined) patch.description = dto.description;
+    if (dto.conditionTags !== undefined) patch.conditionTags = dto.conditionTags;
+
+    const held = existing.moderation === 'pending';
+    const data: Prisma.CaseUpdateInput = held
+      ? { ...patch, pendingEdit: Prisma.DbNull }
+      : { pendingEdit: { ...patch, at: new Date().toISOString() } as Prisma.InputJsonValue };
+
+    const row = await this.prisma.case.update({
+      where: { id },
+      data,
       include: CASE_INCLUDE,
     });
 
     const serialized = caseRowToCase(row as unknown as CaseRowWithRelations);
     this.realtime.caseUpdated({ case: serialized });
     return serialized;
+  }
+
+  /**
+   * `DELETE /cases/:id` — the reporter removes their own report.
+   *
+   * The row goes with its helpers, confirmations and flags (the foreign keys
+   * cascade), and the notifications that pointed at it go too: a notification
+   * about a report that no longer exists is a dead link.
+   */
+  async remove(id: string, user: AuthenticatedUser): Promise<void> {
+    const existing = await this.prisma.case.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Signalement introuvable.');
+    if (existing.reporterId !== user.sub) {
+      throw new ApiError(
+        403,
+        'CASE_NOT_OWNER',
+        'Seul l’auteur du signalement peut le supprimer.',
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.case.delete({ where: { id } }),
+      this.prisma.notification.deleteMany({
+        where: { href: { startsWith: `/cases/${id}` } },
+      }),
+    ]);
+  }
+
+  /**
+   * `PATCH /admin/cases/:id/edit` — the moderator decides on a proposed change.
+   *
+   * `approve` merges the change into the public version; `reject` drops it and
+   * leaves the report as it was. Either way the reporter is told which it was.
+   */
+  async decideEdit(
+    id: string,
+    decision: 'approve' | 'reject',
+    admin: AuthenticatedUser,
+  ): Promise<Case> {
+    const existing = await this.prisma.case.findUnique({ where: { id }, include: CASE_INCLUDE });
+    if (!existing) throw new NotFoundException('Signalement introuvable.');
+
+    const edit = (existing.pendingEdit ?? undefined) as CaseEdit | undefined;
+    if (!edit) {
+      throw new ApiError(404, 'NO_PENDING_EDIT', 'Ce signalement n’a pas de modification en attente.');
+    }
+
+    const data: Prisma.CaseUpdateInput =
+      decision === 'approve'
+        ? {
+            ...(edit.description !== undefined ? { description: edit.description } : {}),
+            ...(edit.conditionTags !== undefined ? { conditionTags: edit.conditionTags } : {}),
+            pendingEdit: Prisma.DbNull,
+          }
+        : { pendingEdit: Prisma.DbNull };
+
+    const row = await this.prisma.case.update({
+      where: { id },
+      data,
+      include: CASE_INCLUDE,
+    });
+
+    await this.notifications.notify(
+      existing.reporterId,
+      decision === 'approve' ? 'editApproved' : 'editRejected',
+      existing.title,
+      `/cases/${id}`,
+    );
+
+    this.logger.log(`Case ${id} edit ${decision === 'approve' ? 'approved' : 'rejected'} by ${admin.sub}.`);
+    const serialized = caseRowToCase(row as unknown as CaseRowWithRelations);
+    this.realtime.caseUpdated({ case: serialized });
+    return serialized;
+  }
+
+  /**
+   * The reports waiting for a moderator — the second review queue
+   * (`GET /admin/pending-edits`).
+   */
+  async pendingEdits(): Promise<PendingEdit[]> {
+    const rows = await this.prisma.case.findMany({
+      where: { pendingEdit: { not: Prisma.DbNull } },
+      include: CASE_INCLUDE,
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return rows.map((row) => ({
+      kind: 'case' as const,
+      id: row.id,
+      title: row.title,
+      ownerId: row.reporterId,
+      ownerName: row.reporter.name,
+      at: pendingEditAt(row.pendingEdit, row.updatedAt),
+      edit: row.pendingEdit as unknown as CaseEdit,
+    }));
   }
 
   /** `POST /cases/:id/flag` — three flags and the case waits for a moderator. */
@@ -516,6 +780,33 @@ export class CasesService {
     return row;
   }
 
+  /**
+   * Asks the people around the animal whether they see it.
+   *
+   * Only a public report asks: a report held for moderation is not on the map
+   * yet, and asking people to confirm it would leak it. The distance is the
+   * same 3 km the web uses, and the reporter is never asked.
+   */
+  private async askAround(row: Case): Promise<void> {
+    const people = await this.prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT id FROM users
+        WHERE lat IS NOT NULL AND lng IS NOT NULL
+          AND "passwordHash" IS NOT NULL
+          AND id <> ${row.reporter.id}
+          AND ST_DWithin(
+                ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography,
+                ${point(row.location.lat, row.location.lng)},
+                ${Math.round(CONFIRM_ASK_RADIUS_KM * 1000)}
+              )
+      `,
+    );
+
+    for (const person of people) {
+      await this.notifications.notify(person.id, 'confirmAsk', row.title, `/cases/${row.id}#verify`);
+    }
+  }
+
   /** An `emergencyZoneId` that does not exist is a 400, not a foreign-key 409. */
   private async assertEmergencyZone(zoneId?: string): Promise<void> {
     if (!zoneId) return;
@@ -585,6 +876,11 @@ function columnFilters(query: Partial<CaseListQuery>): Prisma.Sql[] {
 /** `location && ST_MakeEnvelope(minLng, minLat, maxLng, maxLat, 4326)`. */
 function envelope(box: { minLng: number; minLat: number; maxLng: number; maxLat: number }): Prisma.Sql {
   return Prisma.sql`ST_MakeEnvelope(${box.minLng}, ${box.minLat}, ${box.maxLng}, ${box.maxLat}, 4326)::geography`;
+}
+
+/** The trust score never leaves [0, 1] — an answer moves it, it never breaks it. */
+function clampScore(score: number): number {
+  return Math.min(1, Math.max(0, Math.round(score * 100) / 100));
 }
 
 function point(lat: number, lng: number): Prisma.Sql {

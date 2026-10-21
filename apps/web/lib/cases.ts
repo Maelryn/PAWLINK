@@ -2,8 +2,9 @@
 
 import { ApiError, apiOn } from "./api/client";
 import { cases as casesApi, uploads, type NewCase } from "./api/endpoints";
+import { bboxKey, type Bbox } from "./bbox";
 import { store } from "./store";
-import type { Case, HelpType, User } from "./types";
+import type { Case, GeoPoint, HelpType, User } from "./types";
 
 /* Case actions used by the screens. With the cases API on (backend Phase 2) they call it and
    store what the server answers; otherwise they run on the demo database. Screens never call
@@ -41,17 +42,48 @@ export const canResolve = (c: Case, me: User) =>
 export const resolveCase = (c: Case, me: User) =>
   run(() => casesApi.setStatus(c.id, "resolved"), () => store.resolveCase(c.id, me));
 
-export const confirmCase = (c: Case) => run(() => casesApi.confirm(c.id), () => store.confirm(c.id));
-
-/** "Do you see it?" from someone within 1 km (demo data only for now). */
-export const voteOnCase = async (c: Case, userId: string, seen: boolean): Promise<ActionResult> => {
-  store.vote(c.id, userId, seen);
-  return done;
+/**
+ * "Do you see this animal?" — from someone standing within 1 km.
+ *
+ * The API is the one that decides: it measures the distance from `here` and
+ * refuses the answer beyond 1 km, and it takes one answer per account. The
+ * screen checks the same radius first so the answer is never sent in vain, but
+ * the check that counts is the server's.
+ */
+export const voteOnCase = async (
+  c: Case,
+  userId: string,
+  seen: boolean,
+  here: GeoPoint,
+): Promise<ActionResult> => {
+  if (!real()) {
+    store.vote(c.id, userId, seen);
+    return done;
+  }
+  return run(
+    () => casesApi.confirm(c.id, { seen, lat: here.lat, lng: here.lng }),
+    () => store.vote(c.id, userId, seen),
+  );
 };
 
-/** The reporter edits / deletes their report (demo data only for now). */
-export const proposeCaseEdit = (c: Case, patch: { description: string; conditionTags: string[] }) => store.proposeCaseEdit(c.id, patch);
-export const deleteCase = (c: Case) => store.removeCase(c.id);
+/** The reporter edits their report: a public one waits for a moderator, the API answers with `pendingEdit`. */
+export const proposeCaseEdit = async (c: Case, patch: { description: string; conditionTags: string[] }): Promise<ActionResult> =>
+  run(() => casesApi.update(c.id, patch), () => store.proposeCaseEdit(c.id, patch));
+
+/** The reporter deletes their report. */
+export const deleteCase = async (c: Case): Promise<ActionResult> => {
+  if (!real()) {
+    store.removeCase(c.id);
+    return done;
+  }
+  try {
+    await casesApi.remove(c.id);
+    store.removeCase(c.id);
+    return done;
+  } catch (e) {
+    return failed(e);
+  }
+};
 
 export const flagCase = (c: Case, me: User) => run(() => casesApi.flag(c.id), () => void store.flag(c.id, me.id));
 export const alreadyFlagged = (c: Case, me: User) => !!c.trust?.flaggedBy?.includes(me.id);
@@ -111,20 +143,79 @@ export const casesFromApi = real;
 
 /* ─────────────── keeping the map fresh ─────────────── */
 
-let timer: ReturnType<typeof setInterval> | null = null;
+/** The box the map is showing right now. While a map is on screen the sync asks the API for
+    that box only, so the map never lists the whole country. `null` = no map on screen: the
+    landing counters and the dashboards need the country. */
+let viewport: Bbox | null = null;
 
-/** Loads the public cases (GET /cases) and refreshes them every 20 s while the tab is visible.
+/** A box is cheap (one GIST index lookup); the whole country is not — it is refreshed far
+    less often. */
+const BOX_EVERY = 20_000;
+const COUNTRY_EVERY = 120_000;
+
+let timer: ReturnType<typeof setTimeout> | null = null;
+let started = false;
+/** The last request wins: an answer that arrives after a newer one is dropped. */
+let seq = 0;
+let inFlight: AbortController | null = null;
+/** Pending "the map is gone, give the country back". */
+let backToCountry: ReturnType<typeof setTimeout> | null = null;
+
+const load = () => {
+  if (!real() || document.visibilityState !== "visible") return;
+  inFlight?.abort();
+  const ctrl = new AbortController();
+  inFlight = ctrl;
+  const mine = ++seq;
+  casesApi
+    .list({ bbox: viewport ?? undefined, pageSize: 500 }, { signal: ctrl.signal })
+    .then((p) => {
+      if (mine === seq) store.setCases(p.items);
+    })
+    .catch(() => {
+      // an aborted request is not a failure: the next one is already on its way
+    });
+};
+
+const schedule = () => {
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => {
+    load();
+    schedule();
+  }, viewport ? BOX_EVERY : COUNTRY_EVERY);
+};
+
+/** Loads the public cases (GET /cases) and refreshes them while the tab is visible.
     (Socket.IO realtime can replace the polling later without touching the screens.) */
 export function startCaseSync() {
-  if (!real() || timer) return;
-  const load = () => {
-    if (document.visibilityState !== "visible") return;
-    casesApi
-      .list({ pageSize: 500 })
-      .then((p) => store.setCases(p.items))
-      .catch(() => {});
-  };
+  if (!real() || started) return;
+  started = true;
   load();
-  timer = setInterval(load, 20_000);
+  schedule();
   document.addEventListener("visibilitychange", load);
+}
+
+/** The map tells the sync which box it is showing: the list follows the viewport instead of
+    listing the whole country. `null` (no map on screen) puts it back to the country. */
+export function setCaseSyncViewport(bbox: Bbox | null) {
+  if (!real() || bboxKey(viewport) === bboxKey(bbox)) return;
+  viewport = bbox;
+  if (bbox) {
+    if (backToCountry) {
+      clearTimeout(backToCountry);
+      backToCountry = null;
+    }
+    load();
+    schedule();
+    return;
+  }
+  // Leaving the map: the other screens need the country. A moment later, so a remount
+  // (React runs the effects twice in development) does not ask for the whole country in between.
+  if (backToCountry) clearTimeout(backToCountry);
+  backToCountry = setTimeout(() => {
+    backToCountry = null;
+    if (viewport) return; // a map came back
+    load();
+    schedule();
+  }, 1500);
 }

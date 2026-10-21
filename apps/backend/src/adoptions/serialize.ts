@@ -4,7 +4,7 @@ import type {
   Service as ServiceRow,
   User as UserRow,
 } from '@prisma/client';
-import type { AdoptionProfile, AdoptionRequest, UserLite } from '../shared/types';
+import type { AdoptionProfile, AdoptionRequest, AdoptionEdit, UserLite } from '../shared/types';
 import type { Viewer } from '../shared/pagination';
 
 /**
@@ -81,6 +81,8 @@ export function adoptionRowToProfile(
     location: { lat: row.lat, lng: row.lng, ...(row.address ? { address: row.address } : {}) },
     status: row.status,
     createdAt: row.createdAt.toISOString(),
+    // The owner's proposed change: public only once a moderator approves it.
+    ...(row.pendingEdit ? { pendingEdit: row.pendingEdit as unknown as AdoptionEdit } : {}),
   };
 }
 

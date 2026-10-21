@@ -4,7 +4,8 @@ import type {
   Service as ServiceRow,
   User as UserRow,
 } from '@prisma/client';
-import type { Booking, Review, Service, UserLite } from '../shared/types';
+import type { Booking, Review, Service, ServiceEdit, UserLite } from '../shared/types';
+import { isProActive, readProSubscription } from '../shared/pro';
 
 /**
  * The ONLY place a `services`/`reviews`/`bookings` row becomes the frontend
@@ -12,7 +13,7 @@ import type { Booking, Review, Service, UserLite } from '../shared/types';
  */
 
 export type ServiceRowWithOwner = ServiceRow & {
-  owner: Pick<UserRow, 'id' | 'name' | 'avatar'> | null;
+  owner: (Pick<UserRow, 'id' | 'name' | 'avatar'> & { pro: UserRow['pro'] }) | null;
 };
 
 function toLite(user: Pick<UserRow, 'id' | 'name' | 'avatar'>): UserLite {
@@ -23,6 +24,10 @@ function toLite(user: Pick<UserRow, 'id' | 'name' | 'avatar'>): UserLite {
 export type ServiceWithDistance = Service & { distanceKm?: number };
 
 export function serviceRowToService(row: ServiceRowWithOwner, distanceKm?: number): ServiceWithDistance {
+  // The listing is featured while its owner's Pro subscription runs — derived
+  // here, so an expired subscription turns the flag off by itself.
+  const pro = isProActive(readProSubscription(row.owner?.pro));
+
   return {
     id: row.id,
     type: row.type,
@@ -38,8 +43,10 @@ export function serviceRowToService(row: ServiceRowWithOwner, distanceKm?: numbe
     ...(row.hours ? { hours: row.hours } : {}),
     ...(row.ownerId ? { ownerId: row.ownerId } : {}),
     verified: row.verified,
-    pro: row.pro,
+    pro,
     status: row.status,
+    // The owner's proposed change: public only once a moderator approves it.
+    ...(row.pendingEdit ? { pendingEdit: row.pendingEdit as unknown as ServiceEdit } : {}),
     ...(distanceKm !== undefined ? { distanceKm } : {}),
   };
 }

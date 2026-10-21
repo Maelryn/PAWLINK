@@ -3,6 +3,7 @@ import { AdoptionsModule } from '../adoptions/adoptions.module';
 import { ServicesModule } from '../services/services.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthModule } from '../auth/auth.module';
+import { CasesModule } from '../cases/cases.module';
 import { MeController } from './me.controller';
 import { MeService } from './me.service';
 
@@ -14,7 +15,7 @@ import { MeService } from './me.service';
  * that owns the table, so `/me` never grows a second copy of a `WHERE`.
  */
 @Module({
-  imports: [AdoptionsModule, ServicesModule, NotificationsModule, AuthModule],
+  imports: [AdoptionsModule, ServicesModule, NotificationsModule, AuthModule, CasesModule],
   controllers: [MeController],
   providers: [MeService],
 })

@@ -22,7 +22,8 @@ import type {
   UpdateAdoptionDto,
 } from './dto/adoption.dto';
 import type { QueryAdoptionsDto } from './dto/query-adoptions.dto';
-import type { AdoptionProfile, AdoptionRequest } from '../shared/types';
+import type { AdoptionProfile, AdoptionRequest, AdoptionEdit, PendingEdit } from '../shared/types';
+import { pendingEditAt, pendingEditFields } from '../shared/pending-edit';
 
 /** How far back a stored hash is still worth comparing against (same as cases). */
 const HASH_LOOKBACK_DAYS = 90;
@@ -249,7 +250,15 @@ export class AdoptionsService {
     );
   }
 
-  /** `PATCH /adoptions/:id` — owner only, content fields only. */
+  /**
+   * `PATCH /adoptions/:id` — owner only, content fields only.
+   *
+   * The **second review**: on a live listing the change is stored as
+   * `pendingEdit` and the public version stays as it is until a moderator
+   * approves it (`PATCH /admin/adoptions/:id/edit`). A listing that is still
+   * waiting for its first moderation changes straight away, and a refused one
+   * goes back to `pending` — the owner may try again.
+   */
   async update(id: string, dto: UpdateAdoptionDto, user: AuthenticatedUser): Promise<AdoptionProfile> {
     const row = await this.prisma.adoption.findUnique({ where: { id }, include: ADOPTION_INCLUDE });
     if (!row) throw new ApiError(404, 'NOT_FOUND', 'Cette annonce n’existe pas.');
@@ -275,27 +284,181 @@ export class AdoptionsService {
       hashes = await this.checkPhotos(user.sub, probes);
     }
 
+    // The change itself — the fields the owner actually touched.
+    const patch: Record<string, unknown> = {};
+    if (dto.name !== undefined) patch.name = dto.name;
+    if (dto.breed !== undefined) patch.breed = dto.breed;
+    if (dto.photos !== undefined) patch.photos = dto.photos;
+    if (dto.healthStatus !== undefined) patch.healthStatus = dto.healthStatus;
+    if (dto.vaccinations !== undefined) patch.vaccinations = dto.vaccinations;
+    if (dto.medicalHistory !== undefined) patch.medicalHistory = dto.medicalHistory;
+    if (dto.behavior !== undefined) patch.behavior = dto.behavior;
+    if (dto.careNeeds !== undefined) patch.careNeeds = dto.careNeeds;
+    if (dto.story !== undefined) patch.story = dto.story;
+    if (dto.location !== undefined) {
+      patch.location = {
+        lat: dto.location.lat,
+        lng: dto.location.lng,
+        ...(dto.location.address ? { address: dto.location.address } : {}),
+      };
+    }
+
+    // A live listing waits for a moderator; the others change straight away.
+    const live = row.status === 'approved';
+    const data: Prisma.AdoptionUpdateInput = live
+      ? { pendingEdit: { ...patch, at: new Date().toISOString() } as Prisma.InputJsonValue }
+      : {
+          ...adoptionPatchToRow(patch),
+          ...(row.status === 'rejected' ? { status: 'pending' } : {}),
+        };
+
     const updated = await this.prisma.adoption.update({
       where: { id },
-      data: {
-        ...(dto.name !== undefined ? { name: dto.name } : {}),
-        ...(dto.breed !== undefined ? { breed: dto.breed } : {}),
-        ...(dto.photos !== undefined ? { photos: dto.photos } : {}),
-        ...(dto.healthStatus !== undefined ? { healthStatus: dto.healthStatus } : {}),
-        ...(dto.vaccinations !== undefined ? { vaccinations: dto.vaccinations as Prisma.InputJsonValue[] } : {}),
-        ...(dto.medicalHistory !== undefined ? { medicalHistory: dto.medicalHistory as Prisma.InputJsonValue[] } : {}),
-        ...(dto.behavior !== undefined ? { behavior: dto.behavior } : {}),
-        ...(dto.careNeeds !== undefined ? { careNeeds: dto.careNeeds } : {}),
-        ...(dto.story !== undefined ? { story: dto.story } : {}),
-        ...(dto.location !== undefined
-          ? { lat: dto.location.lat, lng: dto.location.lng, address: dto.location.address ?? null }
-          : {}),
-      },
+      data,
       include: ADOPTION_INCLUDE,
     });
 
     if (hashes.length > 0) await this.storeHashes(updated.id, hashes);
     return adoptionRowToProfile(updated, { sub: user.sub, role: user.role }, new Set([row.id]));
+  }
+
+  /**
+   * `PATCH /admin/adoptions/:id/edit` — the moderator decides on a proposed change.
+   *
+   * `approve` merges the change into the public listing; `reject` drops it. The
+   * owner is told either way.
+   */
+  async decideEdit(id: string, decision: 'approve' | 'reject'): Promise<AdoptionProfile> {
+    const row = await this.prisma.adoption.findUnique({ where: { id }, include: ADOPTION_INCLUDE });
+    if (!row) throw new ApiError(404, 'NOT_FOUND', 'Cette annonce n’existe pas.');
+
+    const edit = (row.pendingEdit ?? undefined) as AdoptionEdit | undefined;
+    if (!edit) {
+      throw new ApiError(404, 'NO_PENDING_EDIT', 'Cette annonce n’a pas de modification en attente.');
+    }
+
+    const patch = pendingEditFields(row.pendingEdit);
+
+    const updated = await this.prisma.adoption.update({
+      where: { id },
+      data:
+        decision === 'approve'
+          ? { ...adoptionPatchToRow(patch), pendingEdit: Prisma.DbNull }
+          : { pendingEdit: Prisma.DbNull },
+      include: ADOPTION_INCLUDE,
+    });
+
+    await this.notifications.notify(
+      row.ownerId,
+      decision === 'approve' ? 'editApproved' : 'editRejected',
+      row.name,
+      `/adopt/${id}`,
+    );
+
+    return adoptionRowToProfile(updated, { sub: '', role: 'admin' }, new Set());
+  }
+
+  /**
+   * The listings waiting for a moderator — the second review queue
+   * (`GET /admin/pending-edits`).
+   */
+  async pendingEdits(): Promise<PendingEdit[]> {
+    const rows = await this.prisma.adoption.findMany({
+      where: { pendingEdit: { not: Prisma.DbNull } },
+      include: ADOPTION_INCLUDE,
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return rows.map((row) => ({
+      kind: 'adoption' as const,
+      id: row.id,
+      title: row.name,
+      ownerId: row.ownerId,
+      ownerName: row.owner.name,
+      at: pendingEditAt(row.pendingEdit, row.updatedAt),
+      edit: row.pendingEdit as unknown as AdoptionEdit,
+    }));
+  }
+
+  // ─────────────────────────── favourites ───────────────────────────
+
+  /**
+   * `GET /me/favorites` — the adoption profiles the caller saved.
+   *
+   * The phone-reveal rule still applies: saving a listing does not buy the
+   * owner's phone number.
+   */
+  async favoritesOf(
+    userId: string,
+    page = 1,
+    pageSize = DEFAULT_PAGE_SIZE,
+  ): Promise<Paginated<AdoptionProfile>> {
+    const p = Math.max(1, page);
+    const size = Math.min(MAX_PAGE_SIZE, Math.max(1, pageSize));
+    const where: Prisma.FavoriteWhereInput = { userId };
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.favorite.findMany({
+        where,
+        include: { adoption: { include: ADOPTION_INCLUDE } },
+        orderBy: { createdAt: 'desc' },
+        skip: (p - 1) * size,
+        take: size,
+      }),
+      this.prisma.favorite.count({ where }),
+    ]);
+
+    const accepted = await this.acceptedAdoptionIds(
+      { sub: userId, role: 'reporter' },
+      rows.map((r) => r.adoption.id),
+    );
+    return {
+      items: rows.map((row) =>
+        adoptionRowToProfile(
+          row.adoption as unknown as AdoptionRowWithRelations,
+          { sub: userId, role: 'reporter' },
+          accepted,
+        ),
+      ),
+      total,
+      page: p,
+      pageSize: size,
+    };
+  }
+
+  /**
+   * `PUT /me/favorites/:adoptionId` — save a listing.
+   *
+   * Idempotent: saving the same listing twice is the same row, so the client
+   * can retry a failed request without creating a duplicate.
+   */
+  async saveFavorite(userId: string, adoptionId: string): Promise<AdoptionProfile> {
+    const adoption = await this.prisma.adoption.findUnique({
+      where: { id: adoptionId },
+      include: ADOPTION_INCLUDE,
+    });
+    if (!adoption) throw new ApiError(404, 'NOT_FOUND', 'Cette annonce n’existe pas.');
+
+    try {
+      await this.prisma.favorite.create({ data: { userId, adoptionId } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        // Already saved — nothing to do.
+      } else {
+        throw error;
+      }
+    }
+
+    const accepted = await this.acceptedAdoptionIds({ sub: userId, role: 'reporter' }, [adoptionId]);
+    return adoptionRowToProfile(
+      adoption as unknown as AdoptionRowWithRelations,
+      { sub: userId, role: 'reporter' },
+      accepted,
+    );
+  }
+
+  /** `DELETE /me/favorites/:adoptionId` — unsave a listing. Not an error if it was not saved. */
+  async removeFavorite(userId: string, adoptionId: string): Promise<void> {
+    await this.prisma.favorite.deleteMany({ where: { userId, adoptionId } });
   }
 
   /**
@@ -516,3 +679,36 @@ export class AdoptionsService {
 }
 
 export type { AdoptionRowWithRelations };
+
+/**
+ * The proposed change → the columns of the `adoptions` row.
+ *
+ * The proposal travels as the **profile** shape (`apps/web/lib/types.ts`),
+ * because that is what the web edits; the row stores columns. `location` is
+ * the one field that splits into three.
+ */
+function adoptionPatchToRow(patch: Record<string, unknown>): Prisma.AdoptionUpdateInput {
+  const data: Prisma.AdoptionUpdateInput = {};
+  if (patch.name !== undefined) data.name = String(patch.name);
+  if (patch.breed !== undefined) data.breed = patch.breed === null ? null : String(patch.breed);
+  if (patch.photos !== undefined) data.photos = patch.photos as string[];
+  if (patch.healthStatus !== undefined) data.healthStatus = String(patch.healthStatus);
+  if (patch.vaccinations !== undefined) {
+    data.vaccinations = patch.vaccinations as Prisma.InputJsonValue[];
+  }
+  if (patch.medicalHistory !== undefined) {
+    data.medicalHistory = patch.medicalHistory as Prisma.InputJsonValue[];
+  }
+  if (patch.behavior !== undefined) data.behavior = patch.behavior as string[];
+  if (patch.careNeeds !== undefined) data.careNeeds = patch.careNeeds as string[];
+  if (patch.story !== undefined) data.story = String(patch.story);
+
+  const location = patch.location as { lat?: number; lng?: number; address?: string } | undefined;
+  if (location && typeof location.lat === 'number' && typeof location.lng === 'number') {
+    data.lat = location.lat;
+    data.lng = location.lng;
+    data.address = location.address ?? null;
+  }
+
+  return data;
+}

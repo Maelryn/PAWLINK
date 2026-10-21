@@ -66,7 +66,9 @@ npm run dev                # http://localhost:4000
 | POST | `/cases` | bearer + verified phone | 201 | response **includes `trust`**; `@Throttle` 15/h per IP, 5/h per account |
 | PATCH | `/cases/:id/status` | volunteer / vet / admin | 200 | a reporter gets `403 FORBIDDEN` |
 | POST | `/cases/:id/help` | bearer | 200 | `open → in_progress`; emits `help.offered` + `case.updated`; writes a `help` notification |
-| POST | `/cases/:id/confirm` | bearer | 200 | confirming twice raises `unverified` to `verified` |
+| POST | `/cases/:id/confirm` | bearer | 200 | body `{ seen, lat, lng }`; **server-side ≤ 1 km**, one answer per account; 2 "yes" → `verified`, 2 "no" → `suspicious` + back to moderation |
+| PATCH | `/cases/:id` | reporter | 200 | description/tags only; a public report stores the change as `pendingEdit` |
+| DELETE | `/cases/:id` | reporter | 204 | the row and its notifications go with it |
 | POST | `/cases/:id/flag` | bearer | 200 | three distinct flags → `pending`, off the public map |
 | PATCH | `/admin/cases/:id/moderation` | admin | 200 | `{ decision: "approved" \| "hidden" }` |
 | GET | `/admin/cases` | admin | 200 | no moderation gating — this is the queue |
@@ -84,14 +86,14 @@ npm run dev                # http://localhost:4000
 | GET | `/adoptions` | public (optional bearer) | 200 `{items,total,page,pageSize}` | approved only, plus caller's own |
 | GET | `/adoptions/:id` | public (optional bearer) | 200 | 404 unless approved/owner/admin |
 | POST | `/adoptions` | bearer + verified phone | 201 | EXIF/pHash photo validation |
-| PATCH | `/adoptions/:id` | owner | 200 | |
+| PATCH | `/adoptions/:id` | owner | 200 | on a live listing the change waits as `pendingEdit` |
 | DELETE | `/adoptions/:id` | owner | 204 | |
 | POST | `/adoptions/:id/requests` | bearer | 201 | adoption request |
 | GET | `/me/requests` · `/me/requests/received` | bearer | 200 | |
 | PATCH | `/requests/:id` | owner | 200 | accept/decline → phone reveal matrix |
 | GET/POST | `/services` · `/services/:id` | public (optional bearer) | 200 | geo filter when lat+lng |
 | POST | `/services` | bearer | 201 | |
-| PATCH | `/services/:id` | owner | 200 | |
+| PATCH | `/services/:id` | owner | 200 | on a live listing the change waits as `pendingEdit` |
 | GET/POST | `/services/:id/reviews` | public (optional bearer) / bearer | 200/201 | one review per user |
 | POST | `/services/:id/bookings` | bearer | 201 | |
 | GET/PATCH | `/bookings/:id` · `/me/bookings` | bearer | 200 | |
@@ -99,6 +101,40 @@ npm run dev                # http://localhost:4000
 | GET/PATCH | `/me/notifications` · `/me/notifications/read-all` | bearer | 200/204 | |
 | PATCH | `/admin/adoptions/:id` | admin | 200 | approve/reject + notify |
 | PATCH | `/admin/services/:id` | admin | 200 | approve publishes + verifies |
+
+### The surface the website needed (Phase 3.5)
+
+The website (`apps/web`) is the reference client, and it had five screens with no endpoint behind
+them. They are all here now; the shapes are the ones in `apps/web/lib/types.ts`, field for field.
+
+| Method | Route | Auth | Success | Notes |
+|---|---|---|---|---|
+| GET | `/me/cases` | bearer | 200 `{items,total,page,pageSize}` | every report the caller made, moderation included |
+| POST | `/me/pro` | bearer | 201 `{ user, demo, free }` | demo payment; needs an **approved** listing; same plan twice → `409`; days left kept |
+| GET | `/me/favorites` | bearer | 200 `{items,total,page,pageSize}` | saved adoption profiles, newest save first |
+| PUT | `/me/favorites/:adoptionId` | bearer | 200 | idempotent — saving twice is the same row |
+| DELETE | `/me/favorites/:adoptionId` | bearer | 204 | unsaving something never saved is not an error |
+| GET | `/admin/pending-edits` | admin | 200 `{items,total}` | `PendingEdit[]`: cases, adoptions and services in one queue |
+| PATCH | `/admin/cases/:id/edit` | admin | 200 | `{ decision: "approve" \| "reject" }` on the reporter's `pendingEdit` |
+| PATCH | `/admin/adoptions/:id/edit` | admin | 200 | same decision on a listing's `pendingEdit` |
+| PATCH | `/admin/services/:id/edit` | admin | 200 | same decision on a business listing's `pendingEdit` |
+
+**The second review.** An owner may edit their own live listing, but the public version does not
+change until a moderator decides: the change travels as `pendingEdit` on the row and is merged (or
+dropped) by the `/admin/.../:id/edit` endpoint. A listing that is still `pending` (or `rejected`,
+which goes back to `pending`) changes straight away — nobody has seen it yet. The owner is notified
+`editApproved` / `editRejected` either way.
+
+**Pro is derived, not stored.** `Service.pro` on the wire is computed from the owner's `users.pro`
+subscription on every read (`services/serialize.ts`), and the directory ordering reads the
+subscription in SQL. A subscription that expires turns the "featured" flag off by itself; the
+`services.pro` column is a cache, never the source of truth.
+
+**"Do you see this animal?"** is a vote, not a confirmation: `seen: false` counts too. The distance
+(≤ 1 km) is measured on the **server** from the `lat`/`lng` in the body — the web checks the same
+radius on the device, but the device is the client's, so the API check is the one that counts. Two
+"yes" raise the case to `verified`; two "no" (and more "no" than "yes") make it `suspicious` and send
+it back to the moderators. On creation the API asks the people within 3 km (`confirmAsk`).
 
 ### Phase 4 surface (admin + hardening)
 
@@ -111,6 +147,7 @@ npm run dev                # http://localhost:4000
 | PATCH | `/admin/cases/:id/moderation` | admin | 200 | approve/hidden |
 | GET | `/admin/adoptions` | admin | 200 | moderation queue |
 | GET | `/admin/services` | admin | 200 | moderation queue |
+| GET | `/admin/pending-edits` | admin | 200 `{items,total}` | the second-review queue (cases + adoptions + services) |
 
 ### The refresh-token store (`src/auth/refresh-token.service.ts`)
 
@@ -478,7 +515,7 @@ says so, and this is how the run above was done.
 
 Each one is a deliberate departure from `docs/BACKEND_PROMPT.md`, `PHASE1_PLAN.md` or
 `PHASE2_PLAN.md`, with the reason. The full list with the same numbering lives in
-`docs/BACKEND_PROMPT.md` §Deviations (D1–D9).
+`docs/BACKEND_PROMPT.md` §Deviations (D1–D9), plus D10–D14 for the website's missing endpoints.
 
 1. **`photo_probes` is a new table** (migration `20261010200738_photo_probes`). §4's table list does
    not include it. It is PHASE2_PLAN §6 option A, and the alternative — trusting client-extracted
@@ -517,6 +554,28 @@ Each one is a deliberate departure from `docs/BACKEND_PROMPT.md`, `PHASE1_PLAN.m
    logout coming back — refused, but the account's other devices keep working). Access tokens stay
    stateless: a deny-list for them is a different table with a different cost, and they live 15
    minutes.
+
+10. **`favorites` is a new table** (migration `20261021200000_pro_favorites_pending_edits`). §4's
+    table list does not include it. The website's adoption marketplace is built around the heart
+    button — "saved" is a filter tab of its own — and keeping it client-side would lose it the
+    moment the browser does. One row per `(userId, adoptionId)`, so saving twice is the same row.
+11. **`cases.pendingEdit`, `adoptions.pendingEdit` and `services.pendingEdit` are new `Json`
+    columns.** The second review (`docs/tasks/BACKEND.md` §2b) needs the owner's proposed change to
+    wait somewhere while the public version stays live. A separate `pending_edits` table would have
+    to mirror three different row shapes; a nullable column on each row keeps the change next to
+    what it changes, and deleting the row deletes the proposal with it.
+12. **`case_confirms.seen` is a new column, and `POST /cases/:id/confirm` now takes a body.** The
+    endpoint used to mean "I see it too" with an empty body, but the website asks the opposite
+    question too ("I don't see it") and the two answers have different effects. A `seen` boolean
+    makes the row a **vote**; `true` is the old behaviour. The body also carries the caller's
+    `lat`/`lng` so the 1 km rule can be enforced on the server.
+13. **Four notification kinds were added** (`confirmAsk`, `caseConfirmed`, `editApproved`,
+    `editRejected`) — values of the existing `NotificationKind` enum, not new tables.
+14. **The new migration is written but not applied here.** The Supabase project was unreachable
+    from this machine (`P1001`), so `prisma migrate deploy` could not run; the SQL in
+    `prisma/migrations/20261021200000_pro_favorites_pending_edits/` is what to run next. `prisma
+    generate` did run, so the code compiles and the unit suite covers the logic — but nothing in
+    this batch has been exercised against a real Postgres yet.
 
 ## Phase 2 implementation notes
 

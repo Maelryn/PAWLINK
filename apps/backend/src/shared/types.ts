@@ -47,8 +47,8 @@ export interface User extends UserLite {
   available?: boolean;
   /** Business account: the service listing it manages. */
   serviceId?: string;
-  /** PawLink Pro subscription (income). */
-  pro?: { plan: "pro"; since: string; until: string };
+  /** PawLink Pro subscription (income). `plan` is `pro` or the `pro+` tier. */
+  pro?: { plan: "pro" | "plus"; since: string; until: string };
   createdAt?: string;
 }
 
@@ -68,6 +68,11 @@ export interface Trust {
   checks: TrustCheck[];
   confirmations: number;
   flags: number;
+  /** People who answered "do you see this animal?" while standing near it (one answer each). */
+  confirmedBy?: string[];
+  deniedBy?: string[];
+  /** One "report as fake" per person. */
+  flaggedBy?: string[];
 }
 
 export interface AIAnalysis {
@@ -109,7 +114,12 @@ export interface Case {
   helpers: { user: UserLite; helpType: HelpType }[];
   createdAt: string;
   updatedAt: string;
+  /** The reporter's proposed changes: public only once a moderator approves them. */
+  pendingEdit?: CaseEdit;
 }
+
+/** What the reporter may change on their own report (the second review). */
+export type CaseEdit = { description?: string; conditionTags?: string[]; at: string };
 
 export interface EmergencyZone {
   id: string;
@@ -142,7 +152,14 @@ export interface Service {
   /** Pro subscribers: featured first + online appointments. */
   pro?: boolean;
   status?: "pending" | "approved" | "rejected";
+  /** The owner's proposed changes: public only once a moderator approves them. */
+  pendingEdit?: ServiceEdit;
 }
+
+/** What the owner may change on their business listing (the second review). */
+export type ServiceEdit = Partial<
+  Pick<Service, "name" | "phone" | "description" | "hours" | "location">
+> & { at: string };
 
 export interface Booking {
   id: string;
@@ -168,7 +185,15 @@ export type NotificationKind =
   | "help"
   | "review"
   | "serviceApproved"
-  | "proActive";
+  | "proActive"
+  /** "do you see this animal?" — sent to the people within 3 km of a new report. */
+  | "confirmAsk"
+  /** somebody standing next to the animal confirmed the report. */
+  | "caseConfirmed"
+  /** a moderator approved the change the owner proposed on a live listing. */
+  | "editApproved"
+  /** a moderator refused those changes. */
+  | "editRejected";
 
 export interface AppNotification {
   id: string;
@@ -214,6 +239,33 @@ export interface AdoptionProfile {
   /** Every listing is reviewed by an admin before it's public. */
   status: "pending" | "approved" | "rejected";
   createdAt: string;
+  /** The owner's proposed changes: public only once a moderator approves them. */
+  pendingEdit?: AdoptionEdit;
+}
+
+/** What the owner may change on their listing (the second review). */
+export type AdoptionEdit = Partial<
+  Omit<AdoptionProfile, "id" | "status" | "ownerId" | "shelter" | "createdAt" | "pendingEdit">
+> & { at: string };
+
+/**
+ * One row of the moderation queue for the second review (`GET /admin/pending-edits`).
+ *
+ * The three kinds share one shape on purpose: the admin screen shows them in
+ * one list, and one decision endpoint per kind keeps the "who may decide" rule
+ * in one place per module.
+ */
+export interface PendingEdit {
+  kind: "case" | "adoption" | "service";
+  id: string;
+  /** The title of the thing that was edited (case title, animal name, listing name). */
+  title: string;
+  ownerId: string;
+  ownerName: string;
+  /** When the owner proposed the change. */
+  at: string;
+  /** The proposed change itself. */
+  edit: CaseEdit | ServiceEdit | AdoptionEdit;
 }
 
 export interface AdoptionRequest {

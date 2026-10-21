@@ -1,6 +1,17 @@
 "use client";
 
-import type { AIAnalysis, Case, CaseStatus, GeoPoint, HelpType, Species, Triage, User } from "../types";
+import type {
+  AIAnalysis,
+  AdoptionProfile,
+  Case,
+  CaseStatus,
+  GeoPoint,
+  HelpType,
+  PendingEdit,
+  Species,
+  Triage,
+  User,
+} from "../types";
 import { api, type Page } from "./client";
 
 /* Every endpoint the website uses, typed like apps/web/lib/types.ts (the API mirrors these
@@ -31,10 +42,34 @@ export const auth = {
 
 export type MePatch = Partial<Pick<User, "name" | "avatar" | "phone" | "city" | "bio" | "photo" | "available" | "helpTypes" | "location">>;
 
+/** `?page=&pageSize=` — the paging half every `/me` list shares. */
+export interface PageQuery {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The demo PawLink Pro checkout (`POST /me/pro`). No real money moves; `demo` says so. */
+export interface ProPurchase {
+  plan: "pro" | "plus";
+  period: "month" | "year";
+  promoCode?: string;
+}
+
 export const me = {
   get: () => api<User>("/me"),
   update: (patch: MePatch) => api<User>("/me", { method: "PATCH", body: patch }),
   remove: () => api<void>("/me", { method: "DELETE" }),
+  /** Every report I made, moderation included (GET /me/cases). */
+  cases: (q: PageQuery = {}) => api<Page<Case>>("/me/cases", { query: { ...q } }),
+  /** The demo Pro subscription. Needs an approved business listing; days left are kept. */
+  pro: (purchase: ProPurchase) =>
+    api<{ user: User; demo: boolean; free: boolean }>("/me/pro", { body: purchase }),
+  /** Saved adoption profiles. */
+  favorites: (q: PageQuery = {}) => api<Page<AdoptionProfile>>("/me/favorites", { query: { ...q } }),
+  saveFavorite: (adoptionId: string) =>
+    api<AdoptionProfile>(`/me/favorites/${encodeURIComponent(adoptionId)}`, { method: "PUT" }),
+  removeFavorite: (adoptionId: string) =>
+    api<void>(`/me/favorites/${encodeURIComponent(adoptionId)}`, { method: "DELETE" }),
 };
 
 /* ─────────────── Phase 2 ✅ — cases, uploads (apps/backend/PHASE2_PLAN.md §5) ─────────────── */
@@ -82,16 +117,39 @@ export interface UploadSignature {
 }
 
 export const cases = {
-  list: (q: CaseQuery = {}) =>
-    api<Page<Case>>("/cases", { auth: false, query: { ...q, bbox: q.bbox?.join(",") } }),
+  list: (q: CaseQuery = {}, opts: { signal?: AbortSignal } = {}) =>
+    api<Page<Case>>("/cases", { auth: false, query: { ...q, bbox: q.bbox?.join(",") }, signal: opts.signal }),
   nearby: (p: GeoPoint, radiusKm = 25) => api<Page<Case & { distanceKm: number }>>("/cases/nearby", { query: { lat: p.lat, lng: p.lng, radiusKm } }),
   get: (id: string) => api<Case>(`/cases/${encodeURIComponent(id)}`, { auth: false }),
   create: (c: NewCase) => api<Case>("/cases", { body: c }),
   setStatus: (id: string, status: CaseStatus) => api<Case>(`/cases/${encodeURIComponent(id)}/status`, { method: "PATCH", body: { status } }),
   help: (id: string, helpType: HelpType, message?: string) => api<Case>(`/cases/${encodeURIComponent(id)}/help`, { body: { helpType, message } }),
-  confirm: (id: string) => api<Case>(`/cases/${encodeURIComponent(id)}/confirm`, { body: {} }),
+  /** "Do you see this animal?" — the server checks the ≤ 1 km rule itself and takes one answer per account. */
+  confirm: (id: string, answer: { seen: boolean } & GeoPoint) =>
+    api<Case>(`/cases/${encodeURIComponent(id)}/confirm`, { body: answer }),
+  /** The reporter's own edit. On a public report the server stores it as `pendingEdit`. */
+  update: (id: string, patch: { description?: string; conditionTags?: string[] }) =>
+    api<Case>(`/cases/${encodeURIComponent(id)}`, { method: "PATCH", body: patch }),
+  /** The reporter deletes their report. */
+  remove: (id: string) => api<void>(`/cases/${encodeURIComponent(id)}`, { method: "DELETE" }),
   flag: (id: string, reason?: string) => api<Case>(`/cases/${encodeURIComponent(id)}/flag`, { body: { reason } }),
   moderate: (id: string, decision: "approved" | "hidden") => api<Case>(`/admin/cases/${encodeURIComponent(id)}/moderation`, { method: "PATCH", body: { decision } }),
+};
+
+/* ─────────────── the second review + the Pro subscription (the website's missing endpoints) ─────────────── */
+
+/** One decision shape for the three kinds of proposed change. */
+export type EditDecision = "approve" | "reject";
+
+export const admin = {
+  /** Every proposed change waiting for a moderator: cases, adoptions and services in one list. */
+  pendingEdits: () => api<{ items: PendingEdit[]; total: number }>("/admin/pending-edits"),
+  decideCaseEdit: (id: string, decision: EditDecision) =>
+    api<Case>(`/admin/cases/${encodeURIComponent(id)}/edit`, { method: "PATCH", body: { decision } }),
+  decideAdoptionEdit: (id: string, decision: EditDecision) =>
+    api<AdoptionProfile>(`/admin/adoptions/${encodeURIComponent(id)}/edit`, { method: "PATCH", body: { decision } }),
+  decideServiceEdit: (id: string, decision: EditDecision) =>
+    api<unknown>(`/admin/services/${encodeURIComponent(id)}/edit`, { method: "PATCH", body: { decision } }),
 };
 
 export const uploads = {

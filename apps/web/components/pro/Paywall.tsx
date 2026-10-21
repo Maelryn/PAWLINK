@@ -9,6 +9,8 @@ import { AppIcon } from "@/components/brand/Logo";
 import { Segmented } from "@/components/ui/primitives";
 import { Burst, Sparkles } from "@/components/ui/Sparkles";
 import { useSession } from "@/lib/auth";
+import { ApiError, apiOn } from "@/lib/api/client";
+import { me as meApi } from "@/lib/api/endpoints";
 import { useI18n } from "@/lib/i18n";
 import { proActive, store, useStore } from "@/lib/store";
 import { paywallStartTier } from "@/lib/ui";
@@ -63,15 +65,29 @@ export function Paywall({ onClose }: { onClose: () => void }) {
 
   const pay = () => {
     setPaying(true);
-    setTimeout(() => {
-      setBurst(true);
-      store.activatePro(me!.id, period === "year" ? 365 : 30, tier);
-      toast.success(t.pro.paid);
-      setTimeout(() => {
-        onClose();
-        router.push("/account?tab=pro");
-      }, 1400);
-    }, 1100);
+    void (async () => {
+      try {
+        if (apiOn("auth") && me) {
+          // The demo checkout lives on the server: it checks the listing is approved,
+          // refuses the same plan twice and keeps the days left.
+          const { user } = await meApi.pro({ plan: tier, period, promoCode: free ? "DEMODAY" : undefined });
+          store.upsertUser(user, true);
+        } else {
+          await new Promise((r) => setTimeout(r, 1100));
+          store.activatePro(me!.id, period === "year" ? 365 : 30, tier);
+        }
+        setBurst(true);
+        toast.success(t.pro.paid);
+        setTimeout(() => {
+          onClose();
+          router.push("/account?tab=pro");
+        }, 1400);
+      } catch (e) {
+        const code = e instanceof ApiError ? e.code : "UNKNOWN";
+        toast.error(t.auth.errors[code] ?? (e instanceof Error ? e.message : t.auth.errors.UNKNOWN));
+        setPaying(false);
+      }
+    })();
   };
 
   return (

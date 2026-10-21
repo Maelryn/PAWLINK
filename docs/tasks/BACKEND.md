@@ -89,6 +89,26 @@ NEXT_PUBLIC_API_FEATURES=auth,cases,uploads
 - **Reports, edit / delete:** the reporter can `DELETE /cases/:id` and `PATCH /cases/:id { description, conditionTags }`. On a public case the change is stored as `pendingEdit` and goes to the same admin review as listings.
 - **Reports, verified by people nearby:** when a public case is created, users within **3 km** get a `confirmAsk` notification ("do you see this animal?"). Only someone within **1 km** of the case can answer, once: `POST /cases/:id/confirm { seen: boolean, lat, lng }` (check the distance server-side). Keep `trust.confirmedBy` / `trust.deniedBy` (user ids). 2 "yes" → `verified`; at least 2 "no" and more "no" than "yes" → `suspicious` + back to `moderation: "pending"`. A "yes" notifies the reporter (`caseConfirmed`). Until this exists the website sends a "no" to `/flag`.
 
+### Delivered (21 Oct 2026)
+
+Everything in *Shapes the website added since* except the two items below is in the API now — see
+`apps/backend/README.md` §"The surface the website needed (Phase 3.5)" for the routes, and
+`apps/web/lib/api/endpoints.ts` for the typed client wrappers (`me.cases`, `me.pro`,
+`me.favorites`, `cases.confirm({ seen, lat, lng })`, `cases.update`, `cases.remove`,
+`admin.pendingEdits`, `admin.decide*Edit`).
+
+- Pro: `pro | plus`, extends `until` keeping the days left, same plan twice → `409`, and the
+  featured flag is **derived from the owner's subscription on every read**, so expiry turns it off.
+- Favourites: `GET/PUT/DELETE /me/favorites[/:adoptionId]` (`favorites` table).
+- Second review: `pendingEdit` on cases, adoptions and services; `GET /admin/pending-edits`;
+  `PATCH /admin/{cases,adoptions,services}/:id/edit { decision }`; `editApproved` / `editRejected`.
+- Reports: `PATCH /cases/:id`, `DELETE /cases/:id`, and `POST /cases/:id/confirm { seen, lat, lng }`
+  with the server-side 1 km rule, one answer per account, 2 yes → `verified`, 2 no →
+  `suspicious` + moderation. New reports send `confirmAsk` to the people within 3 km.
+
+Still missing on purpose (not part of this batch): `AdoptionProfile.status: "adopted"` +
+`PATCH /adoptions/:id { status }`, and the `resolved` / `nearbyCase` notification kinds.
+
 ### Before deploying the API (important for the judges)
 
 - **Refresh cookie across domains:** the website is on Vercel and the API on another domain, so in production the refresh cookie needs `sameSite: 'none'` + `secure: true`. With `lax` the browser won't send it from Vercel and users are logged out on every reload.

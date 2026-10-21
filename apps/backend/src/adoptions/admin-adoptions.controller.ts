@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/c
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -11,6 +12,7 @@ import {
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { AdoptionsService } from './adoptions.service';
 import { ModerateAdoptionDto } from './dto/adoption.dto';
+import { EditDecisionDto } from '../common/dto/edit-decision.dto';
 import { QueryAdoptionsDto } from './dto/query-adoptions.dto';
 import type { AdoptionProfile } from '../shared/types';
 import type { Paginated } from '../shared/pagination';
@@ -52,5 +54,24 @@ export class AdminAdoptionsController {
   @ApiForbiddenResponse({ description: 'FORBIDDEN — the caller is not an admin.' })
   async moderate(@Param('id') id: string, @Body() dto: ModerateAdoptionDto): Promise<AdoptionProfile> {
     return this.adoptions.moderate(id, dto);
+  }
+
+  @Patch(':id/edit')
+  @ApiOperation({
+    summary: 'Approve or refuse the change the owner proposed',
+    description:
+      'The second review: the owner corrected their live listing, and the public version stays ' +
+      'as it is until a moderator decides. `approve` merges the change, `reject` drops it. The ' +
+      'owner is notified either way.',
+  })
+  @ApiParam({ name: 'id', description: 'The adoption listing id.' })
+  @ApiOkResponse({ description: 'The listing, with the change merged or dropped.' })
+  @ApiForbiddenResponse({ description: 'FORBIDDEN — the caller is not an admin.' })
+  @ApiNotFoundResponse({ description: 'NO_PENDING_EDIT — nothing to decide.' })
+  async decideEdit(
+    @Param('id') id: string,
+    @Body() dto: EditDecisionDto,
+  ): Promise<AdoptionProfile> {
+    return this.adoptions.decideEdit(id, dto.decision);
   }
 }

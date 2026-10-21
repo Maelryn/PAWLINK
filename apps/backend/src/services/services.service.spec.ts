@@ -274,12 +274,13 @@ describe('bookings', () => {
 });
 
 describe('the directory query', () => {
-  it('orders pro first, then distance, and filters by radius when a point is given', async () => {
+  it('orders the featured (Pro) listings first, then distance, and filters by radius when a point is given', async () => {
     const { service, statements } = makeService();
     await service.list({ lat: 36.632, lng: 4.205, radiusKm: 25 });
     const sql = statements[0] ?? '';
     expect(sql).toContain('ST_DWithin');
-    expect(sql).toContain('pro DESC');
+    // The flag is derived from the owner's subscription, not from the stale column.
+    expect(sql).toContain("u.pro->>'until'::timestamptz > now()");
     expect(sql).toContain('km ASC');
   });
 
@@ -288,7 +289,7 @@ describe('the directory query', () => {
     await service.list({});
     const sql = statements[0] ?? '';
     expect(sql).not.toContain('ST_DWithin');
-    expect(sql).toContain('pro DESC');
+    expect(sql).toContain("u.pro->>'until'::timestamptz > now()");
     expect(sql).toContain('rating DESC');
   });
 

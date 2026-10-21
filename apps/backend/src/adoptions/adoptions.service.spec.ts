@@ -34,6 +34,7 @@ interface Options {
   probes?: Array<{ probeId: string; exif: Record<string, unknown>; dHash: string | null }>;
   duplicateHash?: boolean;
   requestCreateFails?: boolean;
+  favoriteExists?: boolean;
 }
 
 function makeService(options: Options = {}) {
@@ -81,7 +82,8 @@ function makeService(options: Options = {}) {
 
   const prisma = {
     adoption: {
-      findUnique: async () => adoption,
+      // `adoption: null` means "no such listing" — a real 404, not the default row.
+      findUnique: async () => (options.adoption === null ? null : adoption),
       findMany: async () => [adoption],
       count: async () => 1,
       create: async ({ data }: { data: Record<string, unknown> }) => {
@@ -110,6 +112,24 @@ function makeService(options: Options = {}) {
       update: async ({ data }: { data: Record<string, unknown> }) => {
         written.push({ model: 'adoptionRequest.update', data });
         return { ...request, ...data };
+      },
+    },
+    favorite: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        if (options.favoriteExists) {
+          throw new Prisma.PrismaClientKnownRequestError('unique', {
+            code: 'P2002',
+            clientVersion: 'test',
+          });
+        }
+        written.push({ model: 'favorite.create', data });
+        return { id: 'f1', ...data, createdAt: new Date() };
+      },
+      findMany: async () => [{ adoption, createdAt: new Date('2026-10-12T10:00:00Z') }],
+      count: async () => 1,
+      deleteMany: async ({ where }: { where: Record<string, unknown> }) => {
+        written.push({ model: 'favorite.deleteMany', data: where });
+        return { count: 1 };
       },
     },
     user: { findUnique: async () => options.ownerRow ?? adoption.owner },
@@ -293,5 +313,213 @@ describe('the admin decision', () => {
       subject: 'Rex',
       href: '/adopt/a1',
     });
+  });
+});
+
+describe('favourites — the saved adoption profiles', () => {
+  it('saves a listing for the caller', async () => {
+    const { service, written } = makeService();
+    const profile = await service.saveFavorite('u-requester', 'a1');
+
+    expect(profile.id).toBe('a1');
+    expect(written).toContainEqual({
+      model: 'favorite.create',
+      data: { userId: 'u-requester', adoptionId: 'a1' },
+    });
+  });
+
+  it('saving twice is the same row, not an error', async () => {
+    const { service } = makeService({ favoriteExists: true });
+    await expect(service.saveFavorite('u-requester', 'a1')).resolves.toMatchObject({ id: 'a1' });
+  });
+
+  it('refuses to save a listing that does not exist', async () => {
+    const { service } = makeService({ adoption: null });
+    await expect(service.saveFavorite('u-requester', 'nope')).rejects.toMatchObject({
+      status: 404,
+    });
+  });
+
+  it('un-saving something that was never saved is not an error', async () => {
+    const { service, written } = makeService();
+    await expect(service.removeFavorite('u-requester', 'a1')).resolves.toBeUndefined();
+    expect(written).toContainEqual({
+      model: 'favorite.deleteMany',
+      data: { userId: 'u-requester', adoptionId: 'a1' },
+    });
+  });
+
+  it('lists the saved listings', async () => {
+    const { service } = makeService();
+    const page = await service.favoritesOf('u-requester', 1, 20);
+    expect(page.total).toBe(1);
+    expect(page.items[0].id).toBe('a1');
+  });
+});
+
+describe('the second review — a live listing waits for a moderator', () => {
+  it('stores the change as pendingEdit instead of changing the public listing', async () => {
+    const { service, written } = makeService();
+    const profile = await service.update('a1', { name: 'Rexy' }, OWNER);
+
+    const update = written.find((w) => w.model === 'adoption.update');
+    expect(update?.data.name).toBeUndefined();
+    expect(update?.data.pendingEdit).toMatchObject({ name: 'Rexy' });
+    expect(profile.pendingEdit).toMatchObject({ name: 'Rexy' });
+  });
+
+  it('applies the change straight away on a listing that is not approved yet', async () => {
+    const { service, written } = makeService({
+      adoption: {
+        id: 'a1',
+        name: 'Rex',
+        ownerId: 'u-owner',
+        status: 'pending',
+        owner: { id: 'u-owner', name: 'Amina', phone: null },
+        shelter: null,
+        photos: [],
+        vaccinations: [],
+        medicalHistory: [],
+        behavior: [],
+        careNeeds: [],
+        species: 'dog',
+        sex: 'male',
+        ageMonths: 14,
+        breed: null,
+        healthStatus: 'Bon état',
+        story: '',
+        ownerPhone: null,
+        lat: 36.632,
+        lng: 4.205,
+        address: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    await service.update('a1', { name: 'Rexy' }, OWNER);
+
+    const update = written.find((w) => w.model === 'adoption.update');
+    expect(update?.data.name).toBe('Rexy');
+    expect(update?.data.pendingEdit).toBeUndefined();
+  });
+
+  it('sends the change back to its owner while it waits', async () => {
+    const { service } = makeService({
+      adoption: {
+        id: 'a1',
+        name: 'Rex',
+        ownerId: 'u-owner',
+        status: 'approved',
+        owner: { id: 'u-owner', name: 'Amina', phone: null },
+        shelter: null,
+        photos: [],
+        vaccinations: [],
+        medicalHistory: [],
+        behavior: [],
+        careNeeds: [],
+        species: 'dog',
+        sex: 'male',
+        ageMonths: 14,
+        breed: null,
+        healthStatus: 'Bon état',
+        story: '',
+        ownerPhone: null,
+        lat: 36.632,
+        lng: 4.205,
+        address: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        pendingEdit: { name: 'Rexy', at: '2026-10-20T10:00:00.000Z' },
+      },
+    });
+
+    const page = await service.pendingEdits();
+    expect(page).toEqual([
+      expect.objectContaining({
+        kind: 'adoption',
+        id: 'a1',
+        title: 'Rex',
+        ownerId: 'u-owner',
+        at: '2026-10-20T10:00:00.000Z',
+      }),
+    ]);
+  });
+
+  it('approve merges the change and notifies editApproved', async () => {
+    const { service, notified, written } = makeService({
+      adoption: {
+        id: 'a1',
+        name: 'Rex',
+        ownerId: 'u-owner',
+        status: 'approved',
+        owner: { id: 'u-owner', name: 'Amina', phone: null },
+        shelter: null,
+        photos: [],
+        vaccinations: [],
+        medicalHistory: [],
+        behavior: [],
+        careNeeds: [],
+        species: 'dog',
+        sex: 'male',
+        ageMonths: 14,
+        breed: null,
+        healthStatus: 'Bon état',
+        story: '',
+        ownerPhone: null,
+        lat: 36.632,
+        lng: 4.205,
+        address: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        pendingEdit: { name: 'Rexy', at: '2026-10-20T10:00:00.000Z' },
+      },
+    });
+
+    await service.decideEdit('a1', 'approve');
+
+    const update = written.find((w) => w.model === 'adoption.update');
+    expect(update?.data.name).toBe('Rexy');
+    expect(notified).toEqual([
+      { userId: 'u-owner', kind: 'editApproved', subject: 'Rex', href: '/adopt/a1' },
+    ]);
+  });
+
+  it('reject drops the change and notifies editRejected', async () => {
+    const { service, notified, written } = makeService({
+      adoption: {
+        id: 'a1',
+        name: 'Rex',
+        ownerId: 'u-owner',
+        status: 'approved',
+        owner: { id: 'u-owner', name: 'Amina', phone: null },
+        shelter: null,
+        photos: [],
+        vaccinations: [],
+        medicalHistory: [],
+        behavior: [],
+        careNeeds: [],
+        species: 'dog',
+        sex: 'male',
+        ageMonths: 14,
+        breed: null,
+        healthStatus: 'Bon état',
+        story: '',
+        ownerPhone: null,
+        lat: 36.632,
+        lng: 4.205,
+        address: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        pendingEdit: { name: 'Rexy', at: '2026-10-20T10:00:00.000Z' },
+      },
+    });
+
+    await service.decideEdit('a1', 'reject');
+
+    const update = written.find((w) => w.model === 'adoption.update');
+    expect(update?.data.name).toBeUndefined();
+    expect(notified).toEqual([
+      { userId: 'u-owner', kind: 'editRejected', subject: 'Rex', href: '/adopt/a1' },
+    ]);
   });
 });

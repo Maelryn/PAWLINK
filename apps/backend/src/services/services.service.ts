@@ -20,11 +20,14 @@ import type {
   UpdateServiceDto,
 } from './dto/service.dto';
 import { DEFAULT_RADIUS_KM, type QueryServicesDto } from './dto/query-services.dto';
-import type { Booking, Review, Service } from '../shared/types';
+import type { Booking, Review, Service, ServiceEdit, PendingEdit } from '../shared/types';
+import { pendingEditAt, pendingEditFields } from '../shared/pending-edit';
 
 /** The rows every read needs, in one shape. */
 const SERVICE_INCLUDE = {
-  owner: { select: { id: true, name: true, avatar: true } },
+  // `pro` comes along because the listing is featured while the owner's
+  // subscription runs — the flag is derived from it on every read.
+  owner: { select: { id: true, name: true, avatar: true, pro: true } },
 } satisfies Prisma.ServiceInclude;
 
 const REVIEW_INCLUDE = {
@@ -94,9 +97,19 @@ export class ServicesService {
     const kmSelect = geo
       ? Prisma.sql`, round((ST_Distance(location, ${point(query.lat!, query.lng!)}) / 1000)::numeric, 1) AS km`
       : Prisma.empty;
+    // A listing is featured while its owner's Pro subscription runs, so the
+    // order reads the owner's subscription — not the `pro` column, which
+    // cannot know about a subscription that expired an hour ago.
+    const featured = Prisma.sql`
+      (EXISTS (
+        SELECT 1 FROM users u
+        WHERE u.id = services."ownerId"
+          AND u.pro->>'until'::timestamptz > now()
+      ))::int
+    `;
     const orderBy = geo
-      ? Prisma.sql`ORDER BY pro DESC, km ASC, "createdAt" DESC`
-      : Prisma.sql`ORDER BY pro DESC, rating DESC, "createdAt" DESC`;
+      ? Prisma.sql`ORDER BY ${featured} DESC, km ASC, "createdAt" DESC`
+      : Prisma.sql`ORDER BY ${featured} DESC, rating DESC, "createdAt" DESC`;
 
     const rows = await this.prisma.$queryRaw<Array<{ id: string; total: bigint; km: number | null }>>(
       Prisma.sql`
@@ -196,7 +209,14 @@ export class ServicesService {
     return serviceRowToService(row);
   }
 
-  /** `PATCH /services/:id` — owner only, content fields only. */
+  /**
+   * `PATCH /services/:id` — owner only, content fields only.
+   *
+   * The **second review**: on a live listing the change waits for a moderator
+   * as `pendingEdit` and the public version stays as it is
+   * (`PATCH /admin/services/:id/edit`). A listing still waiting for its first
+   * moderation changes straight away.
+   */
   async update(id: string, dto: UpdateServiceDto, user: AuthenticatedUser): Promise<Service> {
     const row = await this.prisma.service.findUnique({ where: { id } });
     if (!row) throw new ApiError(404, 'NOT_FOUND', 'Ce service n’existe pas.');
@@ -204,23 +224,93 @@ export class ServicesService {
       throw new ApiError(403, 'SERVICE_NOT_OWNER', 'Seul le propriétaire peut modifier cette fiche.');
     }
 
+    const patch: Record<string, unknown> = {};
+    if (dto.name !== undefined) patch.name = dto.name;
+    if (dto.phone !== undefined) patch.phone = dto.phone;
+    if (dto.description !== undefined) patch.description = dto.description;
+    if (dto.hours !== undefined) patch.hours = dto.hours;
+    if (dto.openNow !== undefined) patch.openNow = dto.openNow;
+    if (dto.photo !== undefined) patch.photo = dto.photo;
+    if (dto.tags !== undefined) patch.tags = dto.tags;
+    // The position travels as one `location` object — the shape the web edits
+    // (`ServiceEdit`) and the shape the pending edit is read back with.
+    if (dto.lat !== undefined || dto.lng !== undefined || dto.address !== undefined) {
+      patch.location = {
+        lat: dto.lat ?? row.lat,
+        lng: dto.lng ?? row.lng,
+        ...(dto.address ?? row.address ? { address: dto.address ?? row.address } : {}),
+      };
+    }
+
+    const live = row.status === 'approved';
+    const data: Prisma.ServiceUpdateInput = live
+      ? { pendingEdit: { ...patch, at: new Date().toISOString() } as Prisma.InputJsonValue }
+      : servicePatchToRow(patch);
+
     const updated = await this.prisma.service.update({
       where: { id },
-      data: {
-        ...(dto.name !== undefined ? { name: dto.name } : {}),
-        ...(dto.lat !== undefined ? { lat: dto.lat } : {}),
-        ...(dto.lng !== undefined ? { lng: dto.lng } : {}),
-        ...(dto.address !== undefined ? { address: dto.address } : {}),
-        ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
-        ...(dto.openNow !== undefined ? { openNow: dto.openNow } : {}),
-        ...(dto.photo !== undefined ? { photo: dto.photo } : {}),
-        ...(dto.tags !== undefined ? { tags: dto.tags } : {}),
-        ...(dto.description !== undefined ? { description: dto.description } : {}),
-        ...(dto.hours !== undefined ? { hours: dto.hours } : {}),
-      },
+      data,
       include: SERVICE_INCLUDE,
     });
     return serviceRowToService(updated);
+  }
+
+  /**
+   * `PATCH /admin/services/:id/edit` — the moderator decides on a proposed change.
+   *
+   * `approve` merges the change into the public listing; `reject` drops it. The
+   * owner is told either way.
+   */
+  async decideEdit(id: string, decision: 'approve' | 'reject'): Promise<Service> {
+    const row = await this.prisma.service.findUnique({ where: { id } });
+    if (!row) throw new ApiError(404, 'NOT_FOUND', 'Ce service n’existe pas.');
+
+    const edit = row.pendingEdit;
+    if (!edit) {
+      throw new ApiError(404, 'NO_PENDING_EDIT', 'Cette fiche n’a pas de modification en attente.');
+    }
+
+    const patch = pendingEditFields(edit);
+    const updated = await this.prisma.service.update({
+      where: { id },
+      data:
+        decision === 'approve'
+          ? { ...servicePatchToRow(patch), pendingEdit: Prisma.DbNull }
+          : { pendingEdit: Prisma.DbNull },
+      include: SERVICE_INCLUDE,
+    });
+
+    if (row.ownerId) {
+      await this.notifications.notify(
+        row.ownerId,
+        decision === 'approve' ? 'editApproved' : 'editRejected',
+        row.name,
+        '/account?tab=pro',
+      );
+    }
+    return serviceRowToService(updated);
+  }
+
+  /**
+   * The listings waiting for a moderator — the second review queue
+   * (`GET /admin/pending-edits`).
+   */
+  async pendingEdits(): Promise<PendingEdit[]> {
+    const rows = await this.prisma.service.findMany({
+      where: { pendingEdit: { not: Prisma.DbNull } },
+      include: SERVICE_INCLUDE,
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return rows.map((row) => ({
+      kind: 'service' as const,
+      id: row.id,
+      title: row.name,
+      ownerId: row.ownerId ?? '',
+      ownerName: row.owner?.name ?? '',
+      at: pendingEditAt(row.pendingEdit, row.updatedAt),
+      edit: row.pendingEdit as unknown as ServiceEdit,
+    }));
   }
 
   /**
@@ -381,4 +471,32 @@ export class ServicesService {
 
 function point(lat: number, lng: number): Prisma.Sql {
   return Prisma.sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`;
+}
+
+/**
+ * The proposed change → the columns of the `services` row.
+ *
+ * `location` is the one field that splits into three columns, and the
+ * `location` trigger keeps the geography column in step.
+ */
+function servicePatchToRow(patch: Record<string, unknown>): Prisma.ServiceUpdateInput {
+  const data: Prisma.ServiceUpdateInput = {};
+  if (patch.name !== undefined) data.name = String(patch.name);
+  if (patch.phone !== undefined) data.phone = patch.phone === null ? null : String(patch.phone);
+  if (patch.description !== undefined) {
+    data.description = patch.description === null ? null : String(patch.description);
+  }
+  if (patch.hours !== undefined) data.hours = patch.hours === null ? null : String(patch.hours);
+  if (patch.openNow !== undefined) data.openNow = patch.openNow as boolean | null;
+  if (patch.photo !== undefined) data.photo = patch.photo === null ? null : String(patch.photo);
+  if (patch.tags !== undefined) data.tags = patch.tags as string[];
+
+  const location = patch.location as { lat?: number; lng?: number; address?: string } | undefined;
+  if (location && typeof location.lat === 'number' && typeof location.lng === 'number') {
+    data.lat = location.lat;
+    data.lng = location.lng;
+    data.address = location.address ?? null;
+  }
+
+  return data;
 }

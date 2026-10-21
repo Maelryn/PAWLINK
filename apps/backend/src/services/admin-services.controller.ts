@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/c
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -13,6 +14,7 @@ import { CurrentUser } from '../common/decorators/auth.decorators';
 import type { AuthenticatedUser } from '../common/decorators/auth.decorators';
 import { ServicesService } from './services.service';
 import { ModerateServiceDto } from './dto/service.dto';
+import { EditDecisionDto } from '../common/dto/edit-decision.dto';
 import { QueryServicesDto } from './dto/query-services.dto';
 import type { Paginated } from '../shared/pagination';
 import type { Viewer } from '../shared/pagination';
@@ -60,5 +62,21 @@ export class AdminServicesController {
   @ApiForbiddenResponse({ description: 'FORBIDDEN — the caller is not an admin.' })
   async moderate(@Param('id') id: string, @Body() dto: ModerateServiceDto): Promise<Service> {
     return this.services.moderate(id, dto);
+  }
+
+  @Patch(':id/edit')
+  @ApiOperation({
+    summary: 'Approve or refuse the change the owner proposed',
+    description:
+      'The second review: the owner corrected their live listing, and the public version stays ' +
+      'as it is until a moderator decides. `approve` merges the change, `reject` drops it. The ' +
+      'owner is notified either way.',
+  })
+  @ApiParam({ name: 'id', description: 'The service listing id.' })
+  @ApiOkResponse({ description: 'The listing, with the change merged or dropped.' })
+  @ApiForbiddenResponse({ description: 'FORBIDDEN — the caller is not an admin.' })
+  @ApiNotFoundResponse({ description: 'NO_PENDING_EDIT — nothing to decide.' })
+  async decideEdit(@Param('id') id: string, @Body() dto: EditDecisionDto): Promise<Service> {
+    return this.services.decideEdit(id, dto.decision);
   }
 }

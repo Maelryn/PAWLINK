@@ -171,6 +171,14 @@ enum NotificationKind {
   review
   serviceApproved
   proActive
+  /// "do you see this animal?" — asked to the people within 3 km of a new report.
+  confirmAsk
+  /// somebody standing next to the animal confirmed the report.
+  caseConfirmed
+  /// a moderator approved the changes the owner proposed on a live listing.
+  editApproved
+  /// a moderator refused those changes.
+  editRejected
 }
 
 // ─────────────────────────── models ───────────────────────────
@@ -215,6 +223,7 @@ model User {
   phoneOtps         PhoneOtp[]
   photoProbes       PhotoProbe[]
   refreshTokens     RefreshToken[]
+  favorites         Favorite[]
 
   @@index([role], map: "users_role_idx")
   @@index([email], map: "users_email_idx")
@@ -319,6 +328,10 @@ model Case {
   reporterOnSite  Boolean?
   /// null = public · pending = hidden until an admin approves · hidden = removed from the map
   moderation      ModerationStatus?
+  /// The reporter's proposed changes to a public report (description, conditionTags).
+  /// They wait for a moderator (`PATCH /admin/cases/:id/edit`); the public version
+  /// stays until then. Deviation from docs/BACKEND_PROMPT.md §4's table list.
+  pendingEdit    Json?
   trustLevel      TrustLevel
   trustScore      Float             @default(0)
   trustConfirmations Int            @default(0)
@@ -359,6 +372,9 @@ model CaseConfirm {
   id        String   @id @default(cuid())
   caseId    String
   userId    String
+  /// true = "I see the animal", false = "I do not see it". The answer is a vote,
+  /// not only a confirmation: two "no" send the report back to moderation.
+  seen     Boolean  @default(true)
   createdAt DateTime @default(now())
 
   case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -456,6 +472,10 @@ model Service {
   verified    Boolean       @default(false)
   /// PawLink Pro: featured first in listings
   pro         Boolean       @default(false)
+  /// The owner's proposed changes to a live listing (name, phone, hours, ...).
+  /// They wait for a moderator (PATCH /admin/services/:id/edit); the public
+  /// version stays until then. Deviation from docs/BACKEND_PROMPT.md §4's table list.
+  pendingEdit Json?
   status      ServiceStatus @default(pending)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -535,12 +555,16 @@ model Adoption {
   /// geography(Point, 4326) maintained by trigger
   location       Unsupported("geography")?
   status         AdoptionStatus @default(pending)
+  /// The owner's proposed changes to a live listing. They wait for a moderator
+  /// (PATCH /admin/adoptions/:id/edit). Deviation from docs/BACKEND_PROMPT.md §4's table list.
+  pendingEdit    Json?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
   shelter  Service?         @relation(fields: [shelterId], references: [id])
   owner    User             @relation("AdoptionOwner", fields: [ownerId], references: [id])
   requests AdoptionRequest[]
+  favorites Favorite[]
 
   @@index([location], map: "adoptions_location_gist", type: Gist)
   @@index([status], map: "adoptions_status_idx")
@@ -564,6 +588,23 @@ model AdoptionRequest {
   /// one request per user per listing (§3.6)
   @@unique([adoptionId, fromId], map: "adoption_requests_adoption_user_unique")
   @@index([fromId], map: "adoption_requests_from_idx")
+}
+
+/// A saved adoption profile — the heart of the adoption marketplace.
+/// One row per (account, listing): saving twice is the same row.
+/// Deviation from docs/BACKEND_PROMPT.md §4's table list — see README §Deviations.
+model Favorite {
+  @@map("favorites")
+  id         String   @id @default(cuid())
+  userId     String
+  adoptionId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adoption Adoption @relation(fields: [adoptionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, adoptionId], map: "favorites_user_adoption_unique")
+  @@index([userId], map: "favorites_user_idx")
 }
 
 model Notification {

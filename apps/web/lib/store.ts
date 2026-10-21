@@ -110,6 +110,13 @@ function syncFeatured(services: Service[], users: User[]): Service[] {
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const lite = (u: User) => ({ id: u.id, name: u.name, avatar: u.avatar });
 
+/** The reports made on this device during this session. The server's list doesn't know them
+    yet (a report held for moderation never appears in it), so a list refresh must not drop
+    them — otherwise the pin we just dropped disappears from the map. */
+const freshLocal = new Map<string, Case>();
+/** Only the last few: they are here to survive a refresh, not to be an archive. */
+const FRESH_LOCAL_MAX = 20;
+
 function notify(userId: string | undefined, kind: NotificationKind, subject: string, href: string) {
   if (!userId) return [];
   return [{ id: uid("n"), userId, kind, subject, href, read: false, createdAt: now() }];
@@ -144,6 +151,7 @@ export const store = {
 
   resetDemo() {
     localStorage.removeItem(KEY);
+    freshLocal.clear();
     state = { ...seed(), hydrated: true, lastCreatedId: null, authChecked: true, sessionId: state.sessionId };
     persist();
     emit();
@@ -356,14 +364,21 @@ export const store = {
   /** Cases coming from the API (GET /cases, POST responses, realtime): replace by id or add. */
   upsertCase(c: Case, opts: { justCreated?: boolean } = {}) {
     const exists = state.cases.some((x) => x.id === c.id);
+    if (opts.justCreated) {
+      freshLocal.set(c.id, c);
+      if (freshLocal.size > FRESH_LOCAL_MAX) freshLocal.delete(freshLocal.keys().next().value!);
+    }
     set({
       cases: exists ? state.cases.map((x) => (x.id === c.id ? c : x)) : [c, ...state.cases],
       ...(opts.justCreated && c.moderation !== "pending" ? { lastCreatedId: c.id } : {}),
     });
   },
-  /** The public map list from GET /cases replaces the demo cases. */
+  /** The public list from GET /cases replaces the demo cases — the reports we just made stay:
+      the server's list doesn't know them yet. */
   setCases(list: Case[]) {
-    set({ cases: list });
+    const ids = new Set(list.map((c) => c.id));
+    const keep = [...freshLocal.values()].filter((c) => !ids.has(c.id));
+    set({ cases: keep.length ? [...list, ...keep] : list });
   },
   recentReportsBy(userId: string) {
     const hourAgo = Date.now() - 3_600_000;

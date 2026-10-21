@@ -1,9 +1,25 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -12,10 +28,12 @@ import { CurrentUser } from '../common/decorators/auth.decorators';
 import { AdoptionsService } from '../adoptions/adoptions.service';
 import { ServicesService } from '../services/services.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CasesService } from '../cases/cases.service';
 import { PageQueryDto } from '../common/dto/page.dto';
 import { MeService } from './me.service';
 import { UpdateMeDto } from './dto/update-me.dto';
-import type { User } from '../shared/types';
+import { ActivateProDto } from './dto/pro.dto';
+import type { AdoptionProfile, User } from '../shared/types';
 
 /**
  * `/me` — the authenticated caller's own profile and their marketplace rows.
@@ -34,6 +52,7 @@ export class MeController {
     private readonly adoptions: AdoptionsService,
     private readonly services: ServicesService,
     private readonly notifications: NotificationsService,
+    private readonly cases: CasesService,
   ) {}
 
   @Get()
@@ -116,5 +135,76 @@ export class MeController {
   @ApiNoContentResponse({ description: '204 — done.' })
   async readAllNotifications(@CurrentUser() user: { sub: string }): Promise<void> {
     await this.notifications.readAll(user.sub);
+  }
+
+  // ─────────── the rows the website was missing ───────────
+
+  @Get('cases')
+  @ApiOperation({
+    summary: 'My reports',
+    description:
+      'Every case the caller reported, newest first — including the ones still held for ' +
+      'moderation, which nobody else can see.',
+  })
+  @ApiOkResponse({ description: '`{ items, total, page, pageSize }` of `Case`.' })
+  async myCases(@CurrentUser() user: { sub: string }, @Query() query: PageQueryDto) {
+    return this.cases.mine(user.sub, query.page, query.pageSize);
+  }
+
+  @Post('pro')
+  @Throttle({ default: { limit: 10, ttl: 3_600_000 } })
+  @ApiOperation({
+    summary: 'Activate PawLink Pro (demo payment)',
+    description:
+      'The demo payment: no money moves and the answer says `demo: true`. The account must own ' +
+      'an **approved** business listing, and the same plan cannot be bought twice while it runs — ' +
+      'paying again keeps the days left and extends `until`. The real payment (Chargily — CIB / ' +
+      'Edahabia) would be a webhook calling the same service.',
+  })
+  @ApiCreatedResponse({ description: '`{ user, demo, free }` — the user carries the new `pro`.' })
+  @ApiForbiddenResponse({ description: 'PRO_NO_LISTING · PRO_LISTING_NOT_APPROVED' })
+  async activatePro(@CurrentUser() user: { sub: string }, @Body() dto: ActivateProDto) {
+    return this.me.activatePro(user.sub, dto);
+  }
+
+  @Get('favorites')
+  @ApiOperation({
+    summary: 'My saved adoption profiles',
+    description: 'The listings the caller saved — the heart of the adoption marketplace.',
+  })
+  @ApiOkResponse({ description: '`{ items, total, page, pageSize }` of `AdoptionProfile`.' })
+  async myFavorites(@CurrentUser() user: { sub: string }, @Query() query: PageQueryDto) {
+    return this.adoptions.favoritesOf(user.sub, query.page, query.pageSize);
+  }
+
+  @Put('favorites/:adoptionId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Save an adoption profile',
+    description: 'Saving the same listing twice is the same row — the endpoint is idempotent.',
+  })
+  @ApiParam({ name: 'adoptionId', description: 'The adoption listing id.' })
+  @ApiOkResponse({ description: 'The saved listing.' })
+  @ApiNotFoundResponse({ description: 'NOT_FOUND — no such listing.' })
+  async saveFavorite(
+    @CurrentUser() user: { sub: string },
+    @Param('adoptionId') adoptionId: string,
+  ): Promise<AdoptionProfile> {
+    return this.adoptions.saveFavorite(user.sub, adoptionId);
+  }
+
+  @Delete('favorites/:adoptionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Unsave an adoption profile',
+    description: 'Un-saving something that was never saved is not an error.',
+  })
+  @ApiParam({ name: 'adoptionId', description: 'The adoption listing id.' })
+  @ApiNoContentResponse({ description: '204 — unsaved.' })
+  async removeFavorite(
+    @CurrentUser() user: { sub: string },
+    @Param('adoptionId') adoptionId: string,
+  ): Promise<void> {
+    await this.adoptions.removeFavorite(user.sub, adoptionId);
   }
 }

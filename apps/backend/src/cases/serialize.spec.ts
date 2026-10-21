@@ -198,3 +198,34 @@ describe('trustRowsToTrust', () => {
     expect(trustRowsToTrust('unverified', 0, 0, 0, [])).toMatchObject({ level: 'unverified' });
   });
 });
+
+describe('"do you see this animal?" — who answered', () => {
+  it('keeps the yes and the no apart, so the web can refuse a second answer', () => {
+    const trust = trustRowsToTrust(
+      'verified',
+      0.9,
+      2,
+      0,
+      [],
+      [
+        { userId: 'u2', seen: true },
+        { userId: 'u3', seen: true },
+        { userId: 'u4', seen: false },
+      ],
+    );
+
+    expect(trust.confirmedBy).toEqual(['u2', 'u3']);
+    expect(trust.deniedBy).toEqual(['u4']);
+  });
+
+  it('omits both lists when nobody answered — never an empty array on the wire', () => {
+    const trust = trustRowsToTrust('unverified', 0.5, 0, 0, []);
+    expect(trust).not.toHaveProperty('confirmedBy');
+    expect(trust).not.toHaveProperty('deniedBy');
+  });
+
+  it('carries the people who flagged the report', () => {
+    const trust = trustRowsToTrust('suspicious', 0.2, 0, 1, [], [], [{ userId: 'u5' }]);
+    expect(trust.flaggedBy).toEqual(['u5']);
+  });
+});

@@ -1,8 +1,9 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -18,7 +19,9 @@ import { parseBbox } from './bbox';
 import { CasesService, type Paginated, type Viewer } from './cases.service';
 import { QueryCasesDto, NearbyCasesDto, DEFAULT_NEARBY_RADIUS_KM } from './dto/query-cases.dto';
 import { CreateCaseDto } from './dto/create-case.dto';
-import { ConfirmCaseDto, FlagCaseDto, OfferHelpDto, PatchCaseStatusDto } from './dto/case.dto';
+import { FlagCaseDto, OfferHelpDto, PatchCaseStatusDto } from './dto/case.dto';
+import { ConfirmCaseDto } from './dto/confirm-case.dto';
+import { UpdateCaseDto } from './dto/update-case.dto';
 import type { Case } from '../shared/types';
 
 /**
@@ -167,18 +170,55 @@ export class CasesController {
   @Post(':id/confirm')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: '"I see it too"',
+    summary: '"Do you see this animal?"',
     description:
-      'One confirmation per account. Two confirmations raise an `unverified` case to `verified`.',
+      'The answer is a vote: `seen: true` confirms the report, `seen: false` denies it. The ' +
+      'caller must be within 1 km of the animal — the server measures the distance itself — and ' +
+      'has one answer per report. Two "yes" raise the case to `verified`; two "no" (and more ' +
+      '"no" than "yes") make it `suspicious` and send it back to the moderators.',
   })
   @ApiOkResponse({ description: 'The updated case.' })
   @ApiParam({ name: 'id', description: 'The case id.' })
+  @ApiForbiddenResponse({ description: 'CONFIRM_TOO_FAR · CONFIRM_OWN_REPORT' })
   confirm(
     @Param('id') id: string,
     @Body() dto: ConfirmCaseDto,
     @CurrentUser() user: Viewer,
   ): Promise<Case> {
     return this.cases.confirm(id, dto, user as never);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'The reporter corrects their report',
+    description:
+      'The description and the condition tags only. On a public report the change waits for a ' +
+      'moderator (`pendingEdit`); on a report still held for moderation it applies straight away.',
+  })
+  @ApiOkResponse({ description: 'The updated case.' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
+  @ApiForbiddenResponse({ description: 'CASE_NOT_OWNER' })
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateCaseDto,
+    @CurrentUser() user: Viewer,
+  ): Promise<Case> {
+    return this.cases.update(id, dto, user as never);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'The reporter removes their report',
+    description:
+      'The report and everything attached to it (helpers, answers, flags) go with it. Only the ' +
+      'reporter may do it.',
+  })
+  @ApiNoContentResponse({ description: '204 — gone.' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
+  @ApiForbiddenResponse({ description: 'CASE_NOT_OWNER' })
+  remove(@Param('id') id: string, @CurrentUser() user: Viewer): Promise<void> {
+    return this.cases.remove(id, user as never);
   }
 
   @Post(':id/flag')

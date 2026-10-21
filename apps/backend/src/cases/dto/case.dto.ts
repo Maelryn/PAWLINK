@@ -44,16 +44,3 @@ export class FlagCaseDto {
   @MaxLength(500)
   reason?: string;
 }
-
-/**
- * `POST /cases/:id/confirm` — "I see it too".
- *
- * Deliberately empty: the confirmation is the authenticated caller's existence,
- * so there is nothing to send and nothing to validate.
- */
-@ApiSchema({
-  description:
-    'Confirms the case is real. The body is empty — the confirmation is the authenticated ' +
-    'caller’s existence. One confirmation per account.',
-})
-export class ConfirmCaseDto {}

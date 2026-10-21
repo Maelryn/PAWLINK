@@ -1,6 +1,6 @@
 import type { Case as CaseRow, CaseHelper, CaseConfirm, CaseFlag, TrustCheck, User as UserRow } from '@prisma/client';
 import { aiOrUndefined } from '../shared/ai-analysis';
-import type { Case, Trust, UserLite } from '../shared/types';
+import type { Case, CaseEdit, Trust, UserLite } from '../shared/types';
 
 /**
  * The ONLY place a `cases` row becomes the frontend `Case`
@@ -40,6 +40,8 @@ export function trustRowsToTrust(
   confirmations: number,
   flags: number,
   checks: TrustCheck[],
+  confirms: Array<{ userId: string; seen: boolean }> = [],
+  flagRows: Array<{ userId: string }> = [],
 ): Trust {
   const ORDER: TrustCheck['check'][] = [
     'account',
@@ -53,6 +55,12 @@ export function trustRowsToTrust(
   ];
 
   const byId = new Map(checks.map((c) => [c.check, c]));
+  // Who answered "do you see this animal?" — the yes and the no are kept apart,
+  // because the web shows both counts and refuses a second answer.
+  const confirmedBy = confirms.filter((c) => c.seen).map((c) => c.userId);
+  const deniedBy = confirms.filter((c) => !c.seen).map((c) => c.userId);
+  const flaggedBy = flagRows.map((f) => f.userId);
+
   return {
     level,
     score: Math.round(score * 100) / 100,
@@ -62,6 +70,9 @@ export function trustRowsToTrust(
     }),
     confirmations,
     flags,
+    ...(confirmedBy.length > 0 ? { confirmedBy } : {}),
+    ...(deniedBy.length > 0 ? { deniedBy } : {}),
+    ...(flaggedBy.length > 0 ? { flaggedBy } : {}),
   };
 }
 
@@ -87,9 +98,19 @@ export function caseRowToCase(row: CaseRowWithRelations): Case {
     ...(row.emergencyZoneId ? { emergencyZoneId: row.emergencyZoneId } : {}),
     ...(row.reporterOnSite != null ? { reporterOnSite: row.reporterOnSite } : {}),
     moderation: row.moderation ?? undefined,
-    trust: trustRowsToTrust(row.trustLevel, row.trustScore, row.trustConfirmations, row.trustFlags, row.trustChecks),
+    trust: trustRowsToTrust(
+      row.trustLevel,
+      row.trustScore,
+      row.trustConfirmations,
+      row.trustFlags,
+      row.trustChecks,
+      row.confirms,
+      row.flags,
+    ),
     helpers: row.helpers.map((h) => ({ user: toLite(h.user), helpType: h.helpType })),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    // The reporter's proposed change: public only once a moderator approves it.
+    ...(row.pendingEdit ? { pendingEdit: row.pendingEdit as unknown as CaseEdit } : {}),
   };
 }

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/c
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -13,6 +14,7 @@ import { CurrentUser } from '../common/decorators/auth.decorators';
 import { CasesService, type Paginated, type Viewer } from '../cases/cases.service';
 import { QueryCasesDto } from '../cases/dto/query-cases.dto';
 import { ModerateCaseDto } from '../cases/dto/moderate-case.dto';
+import { EditDecisionDto } from '../common/dto/edit-decision.dto';
 import { parseBbox } from '../cases/bbox';
 import type { Case } from '../shared/types';
 
@@ -73,5 +75,25 @@ export class AdminCasesController {
     @CurrentUser() user: Viewer,
   ): Promise<Case> {
     return this.cases.moderate(id, dto.decision, user as never);
+  }
+
+  @Patch(':id/edit')
+  @ApiOperation({
+    summary: 'Approve or refuse the change the reporter proposed',
+    description:
+      'The second review: the reporter corrected their report, and the public version stays as ' +
+      'it is until a moderator decides. `approve` merges the change, `reject` drops it. The ' +
+      'reporter is notified either way.',
+  })
+  @ApiParam({ name: 'id', description: 'The case id.' })
+  @ApiOkResponse({ description: 'The case, with the change merged or dropped.' })
+  @ApiForbiddenResponse({ description: 'FORBIDDEN — admin only.' })
+  @ApiNotFoundResponse({ description: 'NO_PENDING_EDIT — nothing to decide.' })
+  decideEdit(
+    @Param('id') id: string,
+    @Body() dto: EditDecisionDto,
+    @CurrentUser() user: Viewer,
+  ): Promise<Case> {
+    return this.cases.decideEdit(id, dto.decision, user as never);
   }
 }

@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { Bell, Briefcase, Camera, Check, ChevronRight, Heart, House, MapPin, Pencil, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { MyAdoptions } from "@/components/adopt/AdoptionPanels";
 import { CaseRow } from "@/components/cases/CaseBits";
@@ -16,6 +16,8 @@ import { TopNav } from "@/components/layout/TopNav";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Avatar, Emoji3D, TimeAgo } from "@/components/ui/primitives";
 import { useSession, saveProfile } from "@/lib/auth";
+import { apiOn } from "@/lib/api/client";
+import { me as meApi } from "@/lib/api/endpoints";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, proActive, store, useStore } from "@/lib/store";
@@ -432,6 +434,17 @@ function BecomeBusiness({ me }: { me: User }) {
 function MyReports({ me }: { me: User }) {
   const { t } = useI18n();
   const mine = useStore((s) => s.cases).filter((c) => c.reporter.id === me.id);
+
+  // With the API on, the map only syncs public cases: a report still held for
+  // moderation never reaches the store. GET /me/cases is the one place it is
+  // visible, so the dashboard asks for it directly.
+  useEffect(() => {
+    if (!apiOn("cases")) return;
+    meApi
+      .cases({ pageSize: 100 })
+      .then((p) => p.items.forEach((c) => store.upsertCase(c)))
+      .catch(() => {});
+  }, []);
   if (!mine.length)
     return (
       <section className={cn(card, "flex flex-col items-center gap-3 py-12 text-center")}>
