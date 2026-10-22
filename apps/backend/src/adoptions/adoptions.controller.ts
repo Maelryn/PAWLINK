@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -99,6 +100,20 @@ export class AdoptionsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AdoptionProfile> {
     return this.adoptions.update(id, dto, user);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete my listing',
+    description: 'Owner only. The row and everything attached to it go with it.',
+  })
+  @ApiParam({ name: 'id', description: 'The adoption listing id.' })
+  @ApiNoContentResponse({ description: '204 — gone.' })
+  @ApiForbiddenResponse({ description: 'ADOPTION_NOT_OWNER' })
+  @ApiNotFoundResponse({ description: 'NOT_FOUND' })
+  async remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser): Promise<void> {
+    return this.adoptions.remove(id, user);
   }
 
   @Post(':id/requests')

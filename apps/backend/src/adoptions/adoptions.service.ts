@@ -676,6 +676,22 @@ export class AdoptionsService {
       data: usable.map((hash) => ({ subjectType: 'adoption', subjectId: adoptionId, hash })),
     });
   }
+
+  /**
+   * `DELETE /adoptions/:id` — the owner removes their listing.
+   *
+   * The row goes with its requests and saved profiles (the foreign keys
+   * cascade). Only the owner may do it.
+   */
+  async remove(id: string, user: AuthenticatedUser): Promise<void> {
+    const existing = await this.prisma.adoption.findUnique({ where: { id } });
+    if (!existing) throw new ApiError(404, 'NOT_FOUND', 'Cette annonce n’existe pas.');
+    if (existing.ownerId !== user.sub) {
+      throw new ApiError(403, 'ADOPTION_NOT_OWNER', 'Seul le propriétaire peut supprimer cette annonce.');
+    }
+
+    await this.prisma.adoption.delete({ where: { id } });
+  }
 }
 
 export type { AdoptionRowWithRelations };
