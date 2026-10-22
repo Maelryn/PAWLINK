@@ -1,0 +1,25 @@
+{
+  "schema_version": "0.2",
+  "is_animal_report": true,
+  "detected_language": "en",
+  "animal": {
+    "type": "unknown",
+    "category": "unknown"
+  },
+  "situation_category": "unclear",
+  "summary": "Animal appears stable but may need assistance.",
+  "red_flags": [],
+  "hazards": [],
+  "urgency": "non_urgent",
+  "urgency_reason": "AI unavailable - applying stable fallback.",
+  "confidence": "medium",
+  "needs": ["rescue_volunteer"],
+  "follow_up_questions": [],
+  "guidance_keys": ["contact_vet_or_rescue"],
+  "animalDetected": false,
+  "isRealPhoto": false,
+  "forced_urgent_by_rule": false,
+  "forcedUrgentByRule": false,
+  "ai_status": "failed",
+  "needs_human_review": true
+}

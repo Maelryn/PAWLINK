@@ -233,11 +233,11 @@
         "red_flags": [],
         "hazards": [],
         "urgency": "needs_attention",
-        "needs": ["veterinarian"],
+        "needs": ["rescue_volunteer"],
         "follow_up_questions": ["How long has he been there?", "Is he eating?", "Does he have vomiting or diarrhea?", "Is he coughing or having discharge from his eyes or nose?", "Does he have a collar or identification?"],
         "guidance_keys": ["provide_clean_water", "keep_safe_place", "separate_from_other_animals", "contact_vet_or_rescue", "dont_mix_with_other_animals", "dont_give_medication", "dont_force_food_water"]
       },
-      "needs_optional": ["rescue_volunteer", "shelter"], "dropped_questions": ["Does he have any wounds? (report says no big wounds)"],
+      "needs_optional": ["veterinarian", "shelter"], "dropped_questions": ["Does he have any wounds? (report says no big wounds)"],
       "label_source": "VET-PDF (AMBIGUOUS: resolved by architect)",
       "label_note": "PDF label is literally 'Stable / Needs attention'. Resolved to needs_attention because the PDF's own section 5 recommends a veterinary examination for the weight loss and weakness. If the vet prefers non_urgent, change this one value. The PDF's section 5 is also cut off mid-sentence."
     }

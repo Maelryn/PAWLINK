@@ -1,0 +1,25 @@
+{
+  "schema_version": "0.2",
+  "is_animal_report": true,
+  "detected_language": "en",
+  "animal": {
+    "type": "unknown",
+    "category": "unknown"
+  },
+  "situation_category": "unclear",
+  "summary": "Urgent animal situation requiring immediate attention.",
+  "red_flags": [],
+  "hazards": [],
+  "urgency": "urgent",
+  "urgency_reason": "AI unavailable - applying urgent fallback for safety.",
+  "confidence": "high",
+  "needs": ["veterinarian", "rescue_volunteer"],
+  "follow_up_questions": [],
+  "guidance_keys": ["contact_vet_immediately"],
+  "animalDetected": false,
+  "isRealPhoto": false,
+  "forced_urgent_by_rule": true,
+  "forcedUrgentByRule": true,
+  "ai_status": "failed",
+  "needs_human_review": true
+}

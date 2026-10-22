@@ -84,6 +84,9 @@ export interface AIAnalysis {
   forcedUrgentByRule: boolean;
   disclaimer: string;
   model: string;
+  animalDetected?: boolean;
+  isRealPhoto?: boolean;
+  speciesDetected?: Species;
 }
 
 export interface Case {
