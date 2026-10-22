@@ -78,7 +78,14 @@ export const NOTIFICATION_KINDS = [
   'caseConfirmed',
   'editApproved',
   'editRejected',
-] as const;
+  'resolved',
+  'nearbyCase',
+  'adoptCancelled',
+  'adoptDone',
+  'bookingCancelled',
+  'helperOnWay',
+  'helperOnSite',
+  'nextHelp',] as const;
 
 /** Roles a human may pick for themselves. `admin` is deliberately absent. */
 export const SIGNABLE_ROLES = ['reporter', 'volunteer', 'vet'] as const;

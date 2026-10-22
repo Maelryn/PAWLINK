@@ -206,7 +206,23 @@ export type NotificationKind =
   /** a moderator approved the change the owner proposed on a live listing. */
   | "editApproved"
   /** a moderator refused those changes. */
-  | "editRejected";
+  | "editRejected"
+  /** a case the recipient reported or helped on was resolved. */
+  | "resolved"
+  /** a new case was reported near an available helper. */
+  | "nearbyCase"
+  /** the adopter cancelled their request. */
+  | "adoptCancelled"
+  /** the animal was officially adopted. */
+  | "adoptDone"
+  /** the person who booked cancelled the appointment. */
+  | "bookingCancelled"
+  /** a helper is on the way to the animal. */
+  | "helperOnWay"
+  /** a helper has reached the animal. */
+  | "helperOnSite"
+  /** a case near the recipient needs more help. */
+  | "nextHelp";
 
 export interface AppNotification {
   id: string;
