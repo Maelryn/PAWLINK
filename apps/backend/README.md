@@ -66,6 +66,8 @@ npm run dev                # http://localhost:4000
 | POST | `/cases` | bearer + verified phone | 201 | response **includes `trust`**; `@Throttle` 15/h per IP, 5/h per account |
 | PATCH | `/cases/:id/status` | volunteer / vet / admin | 200 | a reporter gets `403 FORBIDDEN` |
 | POST | `/cases/:id/help` | bearer | 200 | `open → in_progress`; emits `help.offered` + `case.updated`; writes a `help` notification |
+| PATCH | `/cases/:id/help` | bearer | 200 | the helper says where they are: `{ stage: "onway" \| "onsite" }` → `helpers[].stage` + `stageAt` |
+| POST | `/cases/:id/next-help` | reporter / helper | 200 | `{ types }` → `Case.nextHelp = { types, by, at }`; offering that help later removes it |
 | POST | `/cases/:id/confirm` | bearer | 200 | body `{ seen, lat, lng }`; **server-side ≤ 1 km**, one answer per account; 2 "yes" → `verified`, 2 "no" → `suspicious` + back to moderation |
 | PATCH | `/cases/:id` | reporter | 200 | description/tags only; a public report stores the change as `pendingEdit` |
 | DELETE | `/cases/:id` | reporter | 204 | the row and its notifications go with it |
@@ -86,11 +88,13 @@ npm run dev                # http://localhost:4000
 | GET | `/adoptions` | public (optional bearer) | 200 `{items,total,page,pageSize}` | approved only, plus caller's own |
 | GET | `/adoptions/:id` | public (optional bearer) | 200 | 404 unless approved/owner/admin |
 | POST | `/adoptions` | bearer + verified phone | 201 | EXIF/pHash photo validation |
-| PATCH | `/adoptions/:id` | owner | 200 | on a live listing the change waits as `pendingEdit` |
+| PATCH | `/adoptions/:id` | owner | 200 | on a live listing the change waits as `pendingEdit`; `{ status: "adopted" }` closes it |
+| PATCH | `/adoptions/:id/status` | owner | 200 | `{ status: "adopted" }` — leaves the public market; waiting requests are declined |
 | DELETE | `/adoptions/:id` | owner | 204 | |
 | POST | `/adoptions/:id/requests` | bearer | 201 | adoption request |
 | GET | `/me/requests` · `/me/requests/received` | bearer | 200 | |
 | PATCH | `/requests/:id` | owner | 200 | accept/decline → phone reveal matrix |
+| DELETE | `/requests/:id` | requester | 200 | withdraw a `sent`/`accepted` request → `status: "cancelled"` |
 | GET/POST | `/services` · `/services/:id` | public (optional bearer) | 200 | geo filter when lat+lng |
 | POST | `/services` | bearer | 201 | |
 | PATCH | `/services/:id` | owner | 200 | on a live listing the change waits as `pendingEdit` |
@@ -118,6 +122,13 @@ them. They are all here now; the shapes are the ones in `apps/web/lib/types.ts`,
 | PATCH | `/admin/cases/:id/edit` | admin | 200 | `{ decision: "approve" \| "reject" }` on the reporter's `pendingEdit` |
 | PATCH | `/admin/adoptions/:id/edit` | admin | 200 | same decision on a listing's `pendingEdit` |
 | PATCH | `/admin/services/:id/edit` | admin | 200 | same decision on a business listing's `pendingEdit` |
+
+The remaining type gaps against `apps/web/lib/types.ts` are closed too: `User.availability`
+(`now | usually | away`), `Case.helpers[].stage`/`stageAt`, `Case.nextHelp`, `Case.answers`,
+`EmergencyZone.endedAt`/`radiusKm`, `AdoptionProfile.status: "adopted"`,
+`AdoptionRequest.fromPhone` (only on an accepted request) and
+`AdoptionRequest.status: "cancelled"`. The migration is
+`prisma/migrations/20261022120000_type_gaps`.
 
 **The second review.** An owner may edit their own live listing, but the public version does not
 change until a moderator decides: the change travels as `pendingEdit` on the row and is merged (or
@@ -571,11 +582,20 @@ Each one is a deliberate departure from `docs/BACKEND_PROMPT.md`, `PHASE1_PLAN.m
     `lat`/`lng` so the 1 km rule can be enforced on the server.
 13. **Four notification kinds were added** (`confirmAsk`, `caseConfirmed`, `editApproved`,
     `editRejected`) — values of the existing `NotificationKind` enum, not new tables.
-14. **The new migration is written but not applied here.** The Supabase project was unreachable
-    from this machine (`P1001`), so `prisma migrate deploy` could not run; the SQL in
-    `prisma/migrations/20261021200000_pro_favorites_pending_edits/` is what to run next. `prisma
-    generate` did run, so the code compiles and the unit suite covers the logic — but nothing in
-    this batch has been exercised against a real Postgres yet.
+14. **The new migrations were written off the machine that could reach the database.** The Supabase
+    project was unreachable from it (`P1001`, IPv6-only host), so `prisma migrate deploy` could
+    not run there. They have since been applied through the **session pooler**:
+    `20261021200000_pro_favorites_pending_edits`, `20261022120000_type_gaps` and
+    `20261022130000_notification_kinds` are all in the database, `prisma migrate status` reports
+    "Database schema is up to date!" and `prisma migrate diff` reports "No difference detected".
+    The batch has been exercised against the real Postgres since.
+15. **The remaining eight notification kinds are now enum values too** (migration
+    `20261022130000_notification_kinds`): `resolved`, `nearbyCase`, `adoptCancelled`, `adoptDone`,
+    `bookingCancelled`, `helperOnWay`, `helperOnSite`, `nextHelp`. They were already part of
+    `apps/web/lib/types.ts` and the website's demo store, so leaving them out of the database meant
+    any future endpoint writing one would fail with `P2009`/`22P02`. Only the vocabulary changed:
+    the endpoints that fire them are still to come (see the "Still missing on purpose" paragraph
+    in `docs/tasks/BACKEND.md`).
 
 ## Phase 2 implementation notes
 

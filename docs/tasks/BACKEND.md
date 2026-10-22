@@ -106,8 +106,12 @@ Everything in *Shapes the website added since* except the two items below is in 
   with the server-side 1 km rule, one answer per account, 2 yes → `verified`, 2 no →
   `suspicious` + moderation. New reports send `confirmAsk` to the people within 3 km.
 
-Still missing on purpose (not part of this batch): `AdoptionProfile.status: "adopted"` +
-`PATCH /adoptions/:id { status }`, and the `resolved` / `nearbyCase` notification kinds.
+Still missing on purpose (not part of this batch): the endpoints that emit the `resolved`,
+`nearbyCase`, `adoptCancelled`, `adoptDone`, `bookingCancelled`, `helperOnWay`, `helperOnSite` and
+`nextHelp` notifications. The eight values are now in the `NotificationKind` enum (migration
+`20261022130000_notification_kinds`), so a future endpoint only needs its behaviour, not a schema
+change. `AdoptionProfile.status: "adopted"` and `PATCH /adoptions/:id { status }` **are** in the
+API now, along with the type gaps (migration `20261022120000_type_gaps`).
 
 ### Before deploying the API (important for the judges)
 
