@@ -16,6 +16,8 @@ interface ZoneSqlRow {
   type: string;
   active: boolean;
   startedAt: Date;
+  endedAt: Date | null;
+  radiusKm: number | null;
   polygon: string;
   center_lat: number;
   center_lng: number;
@@ -57,6 +59,7 @@ export class ZonesService {
     const rows = await this.prisma.$queryRaw<ZoneSqlRow[]>(Prisma.sql`
       SELECT
         z.id, z.name, z.region, z.type, z.active, z."startedAt",
+        z."endedAt", z."radiusKm",
         ST_AsGeoJSON(z.polygon::geometry) AS polygon,
         ST_Y(ST_Centroid(z.polygon::geometry)) AS center_lat,
         ST_X(ST_Centroid(z.polygon::geometry)) AS center_lng,
@@ -89,6 +92,7 @@ export class ZonesService {
     const rows = await this.prisma.$queryRaw<ZoneSqlRow[]>(Prisma.sql`
       SELECT
         z.id, z.name, z.region, z.type, z.active, z."startedAt",
+        z."endedAt", z."radiusKm",
         ST_AsGeoJSON(z.polygon::geometry) AS polygon,
         ST_Y(ST_Centroid(z.polygon::geometry)) AS center_lat,
         ST_X(ST_Centroid(z.polygon::geometry)) AS center_lng,
@@ -113,6 +117,7 @@ export class ZonesService {
     }
     const polygon = parsePolygon(dto.polygon);
     const startedAt = dto.startedAt ? this.dateOr400(dto.startedAt) : new Date();
+    const active = dto.active ?? true;
     const id = randomUUID();
 
     await this.prisma.emergencyZone.create({
@@ -123,8 +128,11 @@ export class ZonesService {
         type: dto.type,
         lat: 0, // replaced below by ST_Centroid
         lng: 0,
-        active: dto.active ?? true,
+        active,
         startedAt,
+        // An admin may declare a zone that is already over (a past alert).
+        endedAt: active ? null : new Date(),
+        radiusKm: dto.radiusKm ?? null,
         // Placeholder until the first read recomputes it from live cases.
         stats: { cases: 0, urgent: 0, helpers: 0 },
       },
@@ -145,6 +153,10 @@ export class ZonesService {
         ...(dto.region !== undefined ? { region: dto.region } : {}),
         ...(dto.type !== undefined ? { type: dto.type } : {}),
         ...(dto.active !== undefined ? { active: dto.active } : {}),
+        // Ending an alert stamps the end once; reopening it clears it.
+        ...(dto.active === false ? { endedAt: existing.endedAt ?? new Date() } : {}),
+        ...(dto.active === true ? { endedAt: null } : {}),
+        ...(dto.radiusKm !== undefined ? { radiusKm: dto.radiusKm } : {}),
       },
     });
     if (dto.polygon !== undefined && dto.polygon !== null) {
@@ -227,6 +239,8 @@ function rowToWire(row: ZoneSqlRow): EmergencyZone {
     center: { lat: Number(row.center_lat), lng: Number(row.center_lng) },
     active: row.active,
     startedAt: row.startedAt.toISOString(),
+    ...(row.endedAt ? { endedAt: row.endedAt.toISOString() } : {}),
+    ...(row.radiusKm != null ? { radiusKm: Number(row.radiusKm) } : {}),
     stats: {
       cases: Number(row.cases),
       urgent: Number(row.urgent),

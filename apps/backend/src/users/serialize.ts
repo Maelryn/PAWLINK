@@ -71,6 +71,7 @@ export function userRowToUser(u: UserRow): User {
     bio: u.bio ?? undefined,
     photo: u.photo ?? undefined,
     available: u.available ?? undefined,
+    availability: u.availability ?? undefined,
     serviceId: u.serviceId ?? undefined,
     pro: readPro(u.pro),
     createdAt: u.createdAt.toISOString(),

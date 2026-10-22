@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -61,6 +62,17 @@ export class CreateZoneDto {
   @IsBoolean()
   active?: boolean;
 
+  @ApiPropertyOptional({
+    example: 12,
+    description: 'The radius in km the admin declared, when the zone was drawn as a circle.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.5)
+  @Max(200)
+  radiusKm?: number;
+
   @ApiPropertyOptional({ description: 'ISO date the emergency started.' })
   @IsOptional()
   @IsString()
@@ -100,6 +112,17 @@ export class UpdateZoneDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @ApiPropertyOptional({
+    example: 12,
+    description: 'The radius in km the admin declared, when the zone was drawn as a circle.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.5)
+  @Max(200)
+  radiusKm?: number;
 }
 
 @ApiSchema({ description: 'The `GET /emergency-zones` filters.' })

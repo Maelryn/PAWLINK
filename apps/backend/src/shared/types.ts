@@ -45,6 +45,8 @@ export interface User extends UserLite {
   /** Profile photo (data URL until Cloudinary is plugged in). */
   photo?: string;
   available?: boolean;
+  /** Finer than `available`: "now" = can go right away, "usually" = most days, "away" = not suggested for cases. */
+  availability?: "now" | "usually" | "away";
   /** Business account: the service listing it manages. */
   serviceId?: string;
   /** PawLink Pro subscription (income). `plan` is `pro` or the `pro+` tier. */
@@ -74,6 +76,9 @@ export interface Trust {
   /** One "report as fake" per person. */
   flaggedBy?: string[];
 }
+
+/** Quick yes/no questions the triage asks when something important is missing. */
+export type FollowUpId = "conscious" | "bleeding" | "walk" | "eating";
 
 export interface AIAnalysis {
   triage: Triage;
@@ -111,7 +116,12 @@ export interface Case {
   trust?: Trust;
   /** Low-trust reports wait for a moderator before appearing publicly. */
   moderation?: "pending" | "approved" | "hidden";
-  helpers: { user: UserLite; helpType: HelpType }[];
+  /** People helping, and where they are: offered → on the way → with the animal. */
+  helpers: { user: UserLite; helpType: HelpType; stage?: "onway" | "onsite"; stageAt?: string }[];
+  /** The person with the animal asked for the next step (a vet, transport, a shelter…). */
+  nextHelp?: { types: HelpType[]; by: string; at: string };
+  /** The reporter's answers to the triage's quick questions. */
+  answers?: Partial<Record<FollowUpId, boolean>>;
   createdAt: string;
   updatedAt: string;
   /** The reporter's proposed changes: public only once a moderator approves them. */
@@ -130,6 +140,9 @@ export interface EmergencyZone {
   center: GeoPoint;
   active: boolean;
   startedAt: string;
+  /** set when an admin ends the alert */
+  endedAt?: string;
+  radiusKm?: number;
   stats: { cases: number; urgent: number; helpers: number };
 }
 
@@ -236,8 +249,8 @@ export interface AdoptionProfile {
   ownerId: string;
   ownerPhone?: string;
   location: GeoPoint;
-  /** Every listing is reviewed by an admin before it's public. */
-  status: "pending" | "approved" | "rejected";
+  /** Every listing is reviewed by an admin before it's public; `adopted` once the owner confirms it found its family (then it leaves the list). */
+  status: "pending" | "approved" | "rejected" | "adopted";
   createdAt: string;
   /** The owner's proposed changes: public only once a moderator approves them. */
   pendingEdit?: AdoptionEdit;
@@ -272,9 +285,11 @@ export interface AdoptionRequest {
   id: string;
   adoptionId: string;
   from: UserLite;
+  /** Adopter phone, shown to the owner only once they accept (both sides get each other number). */
+  fromPhone?: string;
   message: string;
   housing: "apartment" | "house" | "farm";
   experience: boolean;
-  status: "sent" | "accepted" | "declined";
+  status: "sent" | "accepted" | "declined" | "cancelled";
   createdAt: string;
 }

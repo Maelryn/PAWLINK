@@ -63,6 +63,7 @@ describe('userRowToUser', () => {
         bio: 'Vétérinaire',
         photo: 'https://example.test/p.jpg',
         available: true,
+        availability: 'usually',
         serviceId: 's2',
       }),
     );
@@ -75,9 +76,15 @@ describe('userRowToUser', () => {
       rating: 4.9,
       city: 'Larbaâ Nath Irathen',
       available: true,
+      availability: 'usually',
       serviceId: 's2',
       phoneVerified: true,
     });
+  });
+
+  it('omits availability when the row has none (old accounts)', () => {
+    expect(userRowToUser(makeRow({ availability: null })).availability).toBeUndefined();
+    expect(userRowToUser(makeRow({ availability: 'away' })).availability).toBe('away');
   });
 
   it('serializes createdAt as an ISO 8601 UTC string', () => {

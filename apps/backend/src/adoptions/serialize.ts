@@ -21,7 +21,7 @@ export type AdoptionRowWithRelations = AdoptionRow & {
 
 /** The subsets of an `AdoptionRequest` row plus its author, in wire shape. */
 export type RequestRowWithAuthor = AdoptionRequestRow & {
-  from: Pick<UserRow, 'id' | 'name' | 'avatar'>;
+  from: Pick<UserRow, 'id' | 'name' | 'avatar' | 'phone'>;
 };
 
 function toLite(user: Pick<UserRow, 'id' | 'name' | 'avatar'>): UserLite {
@@ -87,10 +87,15 @@ export function adoptionRowToProfile(
 }
 
 export function requestRowToWire(row: RequestRowWithAuthor): AdoptionRequest {
+  // The adopter's number is part of the deal: both sides get each other's phone
+  // **once the owner accepts**, and not before (BACKEND_PROMPT §3.6).
+  const fromPhone = row.status === 'accepted' ? (row.from.phone ?? undefined) : undefined;
+
   return {
     id: row.id,
     adoptionId: row.adoptionId,
     from: toLite(row.from),
+    ...(fromPhone ? { fromPhone } : {}),
     message: row.message,
     housing: row.housing,
     experience: row.experience,

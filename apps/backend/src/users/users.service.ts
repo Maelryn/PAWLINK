@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { HelpType, Role, User as UserRow } from '@prisma/client';
+import type { Availability, HelpType, Role, User as UserRow } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { SIGNABLE_ROLES } from '../shared/enums';
@@ -50,6 +50,7 @@ export interface UpdateProfileData {
   lng?: number | null;
   address?: string | null;
   available?: boolean;
+  availability?: Availability;
   helpTypes?: HelpType[];
 }
 
@@ -100,6 +101,7 @@ export class UsersService {
     if (patch.lng !== undefined) data.lng = patch.lng;
     if (patch.address !== undefined) data.address = patch.address;
     if (patch.available !== undefined) data.available = patch.available;
+    if (patch.availability !== undefined) data.availability = patch.availability;
     if (patch.helpTypes !== undefined) data.helpTypes = patch.helpTypes;
 
     return this.prisma.user.update({ where: { id }, data });
@@ -137,6 +139,7 @@ export class UsersService {
         address: null,
         helpTypes: [],
         available: null,
+        availability: null,
         rating: null,
         serviceId: null,
         pro: Prisma.DbNull,

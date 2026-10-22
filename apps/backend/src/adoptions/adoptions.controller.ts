@@ -20,6 +20,7 @@ import { AdoptionsService } from './adoptions.service';
 import {
   CreateAdoptionDto,
   CreateRequestDto,
+  MarkAdoptedDto,
   UpdateAdoptionDto,
 } from './dto/adoption.dto';
 import { QueryAdoptionsDto } from './dto/query-adoptions.dto';
@@ -100,6 +101,24 @@ export class AdoptionsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AdoptionProfile> {
     return this.adoptions.update(id, dto, user);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({
+    summary: 'Mark my listing as adopted',
+    description:
+      'Owner only, and only on a live (`approved`) listing. The animal leaves the public market; ' +
+      'requests still waiting are declined so nobody waits forever.',
+  })
+  @ApiParam({ name: 'id', description: 'The adoption listing id.' })
+  @ApiOkResponse({ description: 'The listing with `status: "adopted"`.' })
+  @ApiForbiddenResponse({ description: 'ADOPTION_NOT_OWNER · ADOPTION_NOT_LIVE' })
+  async markAdopted(
+    @Param('id') id: string,
+    @Body() _dto: MarkAdoptedDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<AdoptionProfile> {
+    return this.adoptions.markAdopted(id, user);
   }
 
   @Delete(':id')

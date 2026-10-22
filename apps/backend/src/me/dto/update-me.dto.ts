@@ -15,7 +15,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { HELP_TYPES } from '../../shared/enums';
+import { AVAILABILITY, HELP_TYPES } from '../../shared/enums';
 import { PHONE_ERROR_MESSAGE, PHONE_MAX_LENGTH, PHONE_PATTERN } from '../../shared/phone';
 
 /** `{ lat, lng }` — the wire shape in `GeoPoint` (apps/web/lib/types.ts). */
@@ -103,6 +103,16 @@ export class UpdateMeDto {
   @IsOptional()
   @IsBoolean()
   available?: boolean;
+
+  @ApiPropertyOptional({
+    enum: AVAILABILITY,
+    description:
+      'How available a helper is: `now` (can go right away), `usually` (most days), `away` ' +
+      '(not suggested for new cases). Finer than the on/off `available` flag.',
+  })
+  @IsOptional()
+  @IsIn(AVAILABILITY)
+  availability?: (typeof AVAILABILITY)[number];
 
   @ApiPropertyOptional({
     enum: HELP_TYPES,

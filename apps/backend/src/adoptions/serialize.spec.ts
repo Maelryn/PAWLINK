@@ -94,7 +94,27 @@ describe('the phone-reveal matrix', () => {
     expect('ownerPhone' in profile).toBe(false);
   });
 
-  it('never puts a phone on an AdoptionRequest, whatever the viewer is', () => {
+  it('reveals the adopter phone only on an accepted request', () => {
+    const base = {
+      id: 'r1',
+      adoptionId: 'a1',
+      fromId: 'u-accepted',
+      message: 'Je peux adopter Rex.',
+      housing: 'house' as const,
+      experience: true,
+      createdAt: new Date('2026-10-10T10:00:00Z'),
+      from: { id: 'u-accepted', name: 'Sofiane', avatar: '', phone: '+213 555 09 08 07' },
+    };
+
+    const pending = requestRowToWire({ ...base, status: 'sent' as const });
+    expect('fromPhone' in pending).toBe(false);
+    expect(JSON.stringify(pending)).not.toContain('555');
+
+    const accepted = requestRowToWire({ ...base, status: 'accepted' as const });
+    expect(accepted.fromPhone).toBe('+213 555 09 08 07');
+  });
+
+  it('omits fromPhone when an accepted requester has no phone on file', () => {
     const wire = requestRowToWire({
       id: 'r1',
       adoptionId: 'a1',
@@ -102,13 +122,11 @@ describe('the phone-reveal matrix', () => {
       message: 'Je peux adopter Rex.',
       housing: 'house' as const,
       experience: true,
-      status: 'sent' as const,
+      status: 'accepted' as const,
       createdAt: new Date('2026-10-10T10:00:00Z'),
-      from: { id: 'u-accepted', name: 'Sofiane', avatar: '' },
+      from: { id: 'u-accepted', name: 'Sofiane', avatar: '', phone: null },
     });
-    expect('phone' in wire).toBe(false);
-    expect('ownerPhone' in wire).toBe(false);
-    expect(JSON.stringify(wire)).not.toContain('555');
+    expect('fromPhone' in wire).toBe(false);
   });
 });
 

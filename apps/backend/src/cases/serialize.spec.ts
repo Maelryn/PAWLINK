@@ -124,8 +124,46 @@ describe('caseRowToCase', () => {
     });
   });
 
-  it('passes ai through untouched — the AI contract is the API contract', () => {
-    const ai = {
+  it('carries the helper stage, nextHelp and answers', () => {
+    const now = new Date('2026-10-03T10:00:00.000Z');
+    const c = caseRowToCase(
+      makeRow({
+        helpers: [
+          {
+            id: 'h1',
+            caseId: 'c1',
+            userId: 'u2',
+            helpType: 'transport',
+            message: null,
+            stage: 'onsite',
+            stageAt: now,
+            createdAt: now,
+            user: { id: 'u2', name: 'Amine Haddad', avatar: '' },
+          } as unknown as CaseHelper & { user: Pick<UserRow, 'id' | 'name' | 'avatar'> },
+        ],
+        nextHelp: { types: ['transport', 'foster'], by: 'u1', at: '2026-10-03T11:00:00.000Z' },
+        answers: { conscious: true, bleeding: false, walk: 'yes', unrelated: true },
+      }),
+    );
+
+    expect(c.helpers[0]).toMatchObject({ stage: 'onsite', stageAt: now.toISOString() });
+    expect(c.nextHelp).toEqual({
+      types: ['transport', 'foster'],
+      by: 'u1',
+      at: '2026-10-03T11:00:00.000Z',
+    });
+    // unknown questions and non-boolean answers never reach the wire
+    expect(c.answers).toEqual({ conscious: true, bleeding: false });
+  });
+
+  it('drops malformed nextHelp and answers instead of passing the Json through', () => {
+    expect(caseRowToCase(makeRow({ nextHelp: { types: [], by: 'u1', at: 'x' } })).nextHelp).toBeUndefined();
+    expect(caseRowToCase(makeRow({ nextHelp: [] })).nextHelp).toBeUndefined();
+    expect(caseRowToCase(makeRow({ answers: [] })).answers).toBeUndefined();
+    expect(caseRowToCase(makeRow({ answers: { conscious: 'yes' } })).answers).toBeUndefined();
+  });
+
+  it('passes ai through untouched — the AI contract is the API contract', () => {    const ai = {
       triage: 'urgent',
       confidence: 0.93,
       summary: 'A cat appears to be in immediate danger.',

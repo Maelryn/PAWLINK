@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Delete, HttpCode, HttpStatus, Param, Patch } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/auth.decorators';
 import type { AuthenticatedUser } from '../common/decorators/auth.decorators';
@@ -32,5 +32,22 @@ export class RequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<AdoptionRequest> {
     return this.adoptions.decideRequest(id, dto, user);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Withdraw my request',
+    description:
+      'The requester only, while the request is `sent` or `accepted`. The row is kept with `status: ' +
+      'cancelled`; a request already declined or cancelled answers `409 REQUEST_ALREADY_ANSWERED`.',
+  })
+  @ApiParam({ name: 'id', description: 'The adoption request id.' })
+  @ApiOkResponse({ description: 'The cancelled `AdoptionRequest`.' })
+  async cancel(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<AdoptionRequest> {
+    return this.adoptions.cancelRequest(id, user);
   }
 }

@@ -36,17 +36,26 @@ export const TRIAGE = ['urgent', 'monitoring', 'stable'] as const;
 
 export const CASE_STATUS = ['open', 'in_progress', 'resolved'] as const;
 
+/** The three levels of a helper's availability. */
+export const AVAILABILITY = ['now', 'usually', 'away'] as const;
+
+/** Where a helper is in the rescue. */
+export const HELPER_STAGES = ['onway', 'onsite'] as const;
+
+/** The quick questions the triage asks — keys of `Case.answers`. */
+export const FOLLOW_UP_IDS = ['conscious', 'bleeding', 'walk', 'eating'] as const;
+
 export const CASE_CATEGORY = ['companion', 'livestock'] as const;
 
 export const SERVICE_TYPES = ['vet', 'shelter', 'transport', 'boarding', 'training', 'store'] as const;
 
-export const ADOPTION_STATUSES = ['pending', 'approved', 'rejected'] as const;
+export const ADOPTION_STATUSES = ['pending', 'approved', 'rejected', 'adopted'] as const;
 
 export const SEXES = ['male', 'female'] as const;
 
 export const HOUSING = ['apartment', 'house', 'farm'] as const;
 
-export const REQUEST_STATUSES = ['sent', 'accepted', 'declined'] as const;
+export const REQUEST_STATUSES = ['sent', 'accepted', 'declined', 'cancelled'] as const;
 
 export const BOOKING_STATUSES = ['sent', 'confirmed', 'declined'] as const;
 
@@ -65,6 +74,10 @@ export const NOTIFICATION_KINDS = [
   'review',
   'serviceApproved',
   'proActive',
+  'confirmAsk',
+  'caseConfirmed',
+  'editApproved',
+  'editRejected',
 ] as const;
 
 /** Roles a human may pick for themselves. `admin` is deliberately absent. */

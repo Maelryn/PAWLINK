@@ -19,7 +19,7 @@ import { parseBbox } from './bbox';
 import { CasesService, type Paginated, type Viewer } from './cases.service';
 import { QueryCasesDto, NearbyCasesDto, DEFAULT_NEARBY_RADIUS_KM } from './dto/query-cases.dto';
 import { CreateCaseDto } from './dto/create-case.dto';
-import { FlagCaseDto, OfferHelpDto, PatchCaseStatusDto } from './dto/case.dto';
+import { FlagCaseDto, HelperStageDto, NextHelpDto, OfferHelpDto, PatchCaseStatusDto } from './dto/case.dto';
 import { ConfirmCaseDto } from './dto/confirm-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
 import type { Case } from '../shared/types';
@@ -165,6 +165,43 @@ export class CasesController {
     @CurrentUser() user: Viewer,
   ): Promise<Case> {
     return this.cases.offerHelp(id, dto, user as never);
+  }
+
+  @Patch(':id/help')
+  @ApiOperation({
+    summary: 'The helper says where they are',
+    description:
+      '`onway` while they travel, `onsite` once they reach the animal. Only somebody who offered ' +
+      'help on this case may move; a resolved case answers `409 CASE_RESOLVED`.',
+  })
+  @ApiOkResponse({ description: 'The updated case, with the helper’s `stage` and `stageAt`.' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
+  @ApiForbiddenResponse({ description: 'CASE_HELPER_ONLY' })
+  setHelperStage(
+    @Param('id') id: string,
+    @Body() dto: HelperStageDto,
+    @CurrentUser() user: Viewer,
+  ): Promise<Case> {
+    return this.cases.setHelperStage(id, dto, user as never);
+  }
+
+  @Post(':id/next-help')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Ask for the next step',
+    description:
+      'The reporter or a helper records the help still needed (`Case.nextHelp`: `types`, `by`, ' +
+      '`at`). Offering one of those kinds of help later removes it from the list.',
+  })
+  @ApiOkResponse({ description: 'The updated case, with `nextHelp` set.' })
+  @ApiParam({ name: 'id', description: 'The case id.' })
+  @ApiForbiddenResponse({ description: 'CASE_NEXT_HELP_FORBIDDEN · CASE_RESOLVED' })
+  requestNextHelp(
+    @Param('id') id: string,
+    @Body() dto: NextHelpDto,
+    @CurrentUser() user: Viewer,
+  ): Promise<Case> {
+    return this.cases.requestNextHelp(id, dto, user as never);
   }
 
   @Post(':id/confirm')

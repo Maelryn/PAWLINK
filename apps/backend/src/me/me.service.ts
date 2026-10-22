@@ -48,6 +48,7 @@ export class MeService {
       bio: dto.bio,
       photo: dto.photo,
       available: dto.available,
+      availability: dto.availability,
       helpTypes: dto.helpTypes as UpdateProfileData['helpTypes'],
     };
 

@@ -9,14 +9,14 @@ import { UsersService } from '../users/users.service';
 import { TrustService } from './trust.service';
 import { DHashService, DUPLICATE_THRESHOLD } from '../uploads/dhash.service';
 import { UploadsService } from '../uploads/uploads.service';
-import { caseRowToCase, type CaseRowWithRelations } from './serialize';
+import { caseRowToCase, readNextHelp, type CaseRowWithRelations } from './serialize';
 import { NotificationsService } from '../notifications/notifications.service';
 import { pendingEditAt } from '../shared/pending-edit';
-import type { CreateCaseDto } from './dto/create-case.dto';
+import type { CreateCaseDto, TriageAnswersDto } from './dto/create-case.dto';
 import type { Paginated, Viewer } from '../shared/pagination';
 import type { CaseListQuery } from './dto/query-cases.dto';
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from './dto/query-cases.dto';
-import type { FlagCaseDto, OfferHelpDto, PatchCaseStatusDto } from './dto/case.dto';
+import type { FlagCaseDto, HelperStageDto, NextHelpDto, OfferHelpDto, PatchCaseStatusDto } from './dto/case.dto';
 import type { ConfirmCaseDto } from './dto/confirm-case.dto';
 import type { UpdateCaseDto } from './dto/update-case.dto';
 import type { Case, CaseEdit, PendingEdit } from '../shared/types';
@@ -273,6 +273,7 @@ export class CasesService {
           trustScore: trust.score,
           trustConfirmations: trust.confirmations,
           trustFlags: trust.flags,
+          answers: triageAnswersJson(dto.answers) ?? Prisma.DbNull,
         },
         include: CASE_INCLUDE,
       });
@@ -352,6 +353,16 @@ export class CasesService {
     const existing = await this.prisma.case.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Signalement introuvable.');
 
+    // Offering the help that was still needed removes it from `nextHelp`
+    // (the web store does the same); when it was the last one, the request ends.
+    const asked = readNextHelp(existing.nextHelp);
+    const left = asked?.types.filter((type) => type !== dto.helpType) ?? [];
+    const nextHelpPatch: Prisma.CaseUpdateInput = asked
+      ? left.length > 0
+        ? { nextHelp: { ...asked, types: left } as Prisma.InputJsonValue }
+        : { nextHelp: Prisma.DbNull }
+      : {};
+
     const row = await this.prisma.$transaction(async (tx) => {
       // One helper row per person: a new offer supersedes the previous one.
       await tx.caseHelper.deleteMany({ where: { caseId: id, userId: user.sub } });
@@ -366,7 +377,10 @@ export class CasesService {
 
       return tx.case.update({
         where: { id },
-        data: { status: existing.status === 'open' ? 'in_progress' : existing.status },
+        data: {
+          status: existing.status === 'open' ? 'in_progress' : existing.status,
+          ...nextHelpPatch,
+        },
         include: CASE_INCLUDE,
       });
     });
@@ -384,6 +398,83 @@ export class CasesService {
       await this.notifications.notify(existing.reporterId, 'help', user.name, `/cases/${id}`);
     }
 
+    return serialized;
+  }
+
+  /**
+   * `PATCH /cases/:id/help` — the helper says where they are.
+   *
+   * `onway` when they leave, `onsite` when they reach the animal. Only someone
+   * who actually offered help on this case may move; a resolved case is closed
+   * to new steps.
+   */
+  async setHelperStage(id: string, dto: HelperStageDto, user: AuthenticatedUser): Promise<Case> {
+    const existing = await this.prisma.case.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Signalement introuvable.');
+    if (existing.status === 'resolved') {
+      throw new ApiError(409, 'CASE_RESOLVED', 'Ce signalement est déjà résolu.');
+    }
+
+    const helper = await this.prisma.caseHelper.findFirst({
+      where: { caseId: id, userId: user.sub },
+    });
+    if (!helper) {
+      throw new ApiError(
+        403,
+        'CASE_HELPER_ONLY',
+        'Seule une personne qui a proposé son aide sur ce signalement peut indiquer où elle est.',
+      );
+    }
+
+    await this.prisma.caseHelper.update({
+      where: { id: helper.id },
+      data: { stage: dto.stage, stageAt: new Date() },
+    });
+
+    const row = await this.prisma.case.findUniqueOrThrow({ where: { id }, include: CASE_INCLUDE });
+    const serialized = caseRowToCase(row as unknown as CaseRowWithRelations);
+    this.realtime.caseUpdated({ case: serialized });
+    return serialized;
+  }
+
+  /**
+   * `POST /cases/:id/next-help` — the person with the animal asks for the next step.
+   *
+   * Stores `Case.nextHelp = { types, by, at }`. The reporter and the people
+   * already helping may ask; offering that kind of help later removes it from
+   * the list (`offerHelp`).
+   */
+  async requestNextHelp(id: string, dto: NextHelpDto, user: AuthenticatedUser): Promise<Case> {
+    const existing = await this.prisma.case.findUnique({ where: { id }, include: CASE_INCLUDE });
+    if (!existing) throw new NotFoundException('Signalement introuvable.');
+    if (existing.status === 'resolved') {
+      throw new ApiError(409, 'CASE_RESOLVED', 'Ce signalement est déjà résolu.');
+    }
+
+    const participant =
+      existing.reporterId === user.sub || existing.helpers.some((h) => h.userId === user.sub);
+    if (!participant) {
+      throw new ApiError(
+        403,
+        'CASE_NEXT_HELP_FORBIDDEN',
+        'Seul l’auteur du signalement ou une personne qui aide peut demander la prochaine étape.',
+      );
+    }
+
+    const nextHelp = {
+      types: [...new Set(dto.types)],
+      by: user.sub,
+      at: new Date().toISOString(),
+    };
+
+    const row = await this.prisma.case.update({
+      where: { id },
+      data: { nextHelp: nextHelp as Prisma.InputJsonValue },
+      include: CASE_INCLUDE,
+    });
+
+    const serialized = caseRowToCase(row as unknown as CaseRowWithRelations);
+    this.realtime.caseUpdated({ case: serialized });
     return serialized;
   }
 
@@ -881,6 +972,20 @@ function envelope(box: { minLng: number; minLat: number; maxLng: number; maxLat:
 /** The trust score never leaves [0, 1] — an answer moves it, it never breaks it. */
 function clampScore(score: number): number {
   return Math.min(1, Math.max(0, Math.round(score * 100) / 100));
+}
+
+/**
+ * The triage answers as stored Json: only the questions that were answered,
+ * nothing else — the column accepts anything and the frontend trusts the shape.
+ */
+function triageAnswersJson(answers?: TriageAnswersDto): Prisma.InputJsonValue | undefined {
+  if (!answers) return undefined;
+  const out: Record<string, boolean> = {};
+  if (answers.conscious !== undefined) out.conscious = answers.conscious;
+  if (answers.bleeding !== undefined) out.bleeding = answers.bleeding;
+  if (answers.walk !== undefined) out.walk = answers.walk;
+  if (answers.eating !== undefined) out.eating = answers.eating;
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function point(lat: number, lng: number): Prisma.Sql {

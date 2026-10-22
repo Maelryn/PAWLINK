@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNumber,
@@ -56,6 +57,37 @@ export class CreateCaseLocationDto {
   @IsString()
   @MaxLength(200)
   address?: string;
+}
+
+/**
+ * The reporter's answers to the triage's quick questions. Every answer is
+ * optional: the questions are asked only when something important is missing.
+ */
+@ApiSchema({
+  description:
+    'The reporter’s answers to the triage’s quick questions. Only the answered questions are ' +
+    'stored, so the triage can stop asking them.',
+})
+export class TriageAnswersDto {
+  @ApiPropertyOptional({ description: 'Is the animal conscious?' })
+  @IsOptional()
+  @IsBoolean()
+  conscious?: boolean;
+
+  @ApiPropertyOptional({ description: 'Is it bleeding?' })
+  @IsOptional()
+  @IsBoolean()
+  bleeding?: boolean;
+
+  @ApiPropertyOptional({ description: 'Can it walk?' })
+  @IsOptional()
+  @IsBoolean()
+  walk?: boolean;
+
+  @ApiPropertyOptional({ description: 'Is it eating?' })
+  @IsOptional()
+  @IsBoolean()
+  eating?: boolean;
 }
 
 /**
@@ -134,6 +166,15 @@ export class CreateCaseDto {
   @IsString({ each: true })
   @ArrayMaxSize(20)
   conditionTags?: string[];
+
+  @ApiPropertyOptional({
+    type: TriageAnswersDto,
+    description: 'The reporter’s answers to the triage’s quick questions — stored on the case.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TriageAnswersDto)
+  answers?: TriageAnswersDto;
 
   @ApiPropertyOptional({
     description: "The device's own GPS, when the reporter is standing next to the animal.",

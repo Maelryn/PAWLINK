@@ -175,14 +175,15 @@ export class CreateAdoptionDto {
 }
 
 /**
- * `PATCH /adoptions/:id` — content fields only, owner only. `status`,
- * `ownerId` and `ownerPhone` are absent on purpose: the first is an admin
- * decision, the other two come from the token and the owner's row.
+ * `PATCH /adoptions/:id` — owner only. Content fields, plus `status: "adopted"`
+ * to close the listing: every other status is an admin decision. `ownerId` and
+ * `ownerPhone` are absent on purpose — they come from the token and the owner's row.
  */
 @ApiSchema({
   description:
     'Edits the content of a listing, owner only. Every field is optional; omit one to leave it ' +
-    'untouched. `status` is an admin decision and is not editable here.',
+    'untouched. `status` accepts only `adopted` (closing the listing) — moderation statuses are ' +
+    'admin decisions.',
 })
 export class UpdateAdoptionDto {
   @ApiPropertyOptional({ maxLength: 80, description: 'The animal’s name.' })
@@ -277,6 +278,16 @@ export class UpdateAdoptionDto {
   @ValidateNested()
   @Type(() => AdoptionLocationDto)
   location?: AdoptionLocationDto;
+
+  @ApiPropertyOptional({
+    enum: ['adopted'],
+    description:
+      'The owner confirms the animal found its family. The listing leaves the public market; ' +
+      'requests still waiting are declined.',
+  })
+  @IsOptional()
+  @IsIn(['adopted'])
+  status?: 'adopted';
 }
 
 /** `POST /adoptions/:id/requests` — a real form, not a comment. */
@@ -310,6 +321,21 @@ export class DecideRequestDto {
   @ApiProperty({ enum: ['accepted', 'declined'], description: 'The decision.' })
   @IsIn(['accepted', 'declined'])
   status!: 'accepted' | 'declined';
+}
+
+/** `PATCH /adoptions/:id/status` — the owner closes the listing as adopted. */
+@ApiSchema({
+  description:
+    'The owner confirms the animal found its family. The listing becomes `adopted` and leaves the ' +
+    'public marketplace; requests still waiting are declined.',
+})
+export class MarkAdoptedDto {
+  @ApiProperty({
+    enum: ['adopted'],
+    description: 'Only `adopted` is accepted — moderation statuses are admin-only.',
+  })
+  @IsIn(['adopted'])
+  status!: 'adopted';
 }
 
 /** `PATCH /admin/adoptions/:id` — the moderation decision. */

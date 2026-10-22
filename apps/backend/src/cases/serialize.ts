@@ -1,6 +1,8 @@
 import type { Case as CaseRow, CaseHelper, CaseConfirm, CaseFlag, TrustCheck, User as UserRow } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { aiOrUndefined } from '../shared/ai-analysis';
-import type { Case, CaseEdit, Trust, UserLite } from '../shared/types';
+import { FOLLOW_UP_IDS, HELP_TYPES } from '../shared/enums';
+import type { Case, CaseEdit, FollowUpId, HelpType, Trust, UserLite } from '../shared/types';
 
 /**
  * The ONLY place a `cases` row becomes the frontend `Case`
@@ -27,6 +29,35 @@ export interface CaseRowWithRelations extends CaseRow {
 
 function toLite(user: Pick<UserRow, 'id' | 'name' | 'avatar'>): UserLite {
   return { id: user.id, name: user.name, avatar: user.avatar };
+}
+
+function isHelpType(value: unknown): value is HelpType {
+  return typeof value === 'string' && (HELP_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * `cases.answers` is a Json column: keep only known questions with boolean
+ * answers, so a hand-edited row can never reach the frontend as a surprise.
+ */
+function readAnswers(value: Prisma.JsonValue | null): Case['answers'] {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
+  const answers: Partial<Record<FollowUpId, boolean>> = {};
+  for (const id of FOLLOW_UP_IDS) {
+    if (typeof source[id] === 'boolean') answers[id] = source[id] as boolean;
+  }
+  return Object.keys(answers).length > 0 ? answers : undefined;
+}
+
+/** `cases.nextHelp` is a Json column: `{ types, by, at }`, validated the same way. */
+export function readNextHelp(value: Prisma.JsonValue | null): Case['nextHelp'] {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
+  const types = Array.isArray(source.types) ? source.types.filter(isHelpType) : [];
+  if (types.length === 0 || typeof source.by !== 'string' || typeof source.at !== 'string') {
+    return undefined;
+  }
+  return { types, by: source.by, at: source.at };
 }
 
 /**
@@ -77,6 +108,9 @@ export function trustRowsToTrust(
 }
 
 export function caseRowToCase(row: CaseRowWithRelations): Case {
+  const nextHelp = readNextHelp(row.nextHelp);
+  const answers = readAnswers(row.answers);
+
   return {
     id: row.id,
     title: row.title,
@@ -107,7 +141,14 @@ export function caseRowToCase(row: CaseRowWithRelations): Case {
       row.confirms,
       row.flags,
     ),
-    helpers: row.helpers.map((h) => ({ user: toLite(h.user), helpType: h.helpType })),
+    helpers: row.helpers.map((h) => ({
+      user: toLite(h.user),
+      helpType: h.helpType,
+      ...(h.stage ? { stage: h.stage } : {}),
+      ...(h.stageAt ? { stageAt: h.stageAt.toISOString() } : {}),
+    })),
+    ...(nextHelp ? { nextHelp } : {}),
+    ...(answers ? { answers } : {}),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     // The reporter's proposed change: public only once a moderator approves it.

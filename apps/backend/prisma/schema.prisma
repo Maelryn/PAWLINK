@@ -71,6 +71,19 @@ enum CaseStatus {
   resolved
 }
 
+/// How ready a helper is: can go right away, most days, or not suggested at all.
+enum Availability {
+  now
+  usually
+  away
+}
+
+/// Where a helper is in the rescue: on the way, then with the animal.
+enum HelperStage {
+  onway
+  onsite
+}
+
 enum CaseCategory {
   companion
   livestock
@@ -118,6 +131,8 @@ enum AdoptionStatus {
   pending
   approved
   rejected
+  /// The owner confirmed the animal found its family: it leaves the public list.
+  adopted
 }
 
 enum Sex {
@@ -150,6 +165,8 @@ enum RequestStatus {
   sent
   accepted
   declined
+  /// The adopter withdrew their request (before or after it was accepted).
+  cancelled
 }
 
 enum BookingStatus {
@@ -203,6 +220,8 @@ model User {
   bio             String?
   photo           String?
   available       Boolean?
+  /// Finer than `available`: `now` = can go right away, `usually` = most days, `away` = not suggested.
+  availability    Availability?
   /// The service listing this account manages. No FK: services.ownerId already points back here.
   serviceId       String?
   /// PawLink Pro subscription, shape { plan: "pro", since, until } (User.pro in types.ts)
@@ -292,6 +311,10 @@ model EmergencyZone {
   polygon   Unsupported("geography")?
   active    Boolean  @default(true)
   startedAt DateTime
+  /// Set when an admin ends the alert (`active` becomes false).
+  endedAt   DateTime?
+  /// The radius the admin declared, when the zone was drawn as a circle.
+  radiusKm  Float?
   /// { cases, urgent, helpers } — recomputed from live data when zones are read
   stats     Json
   createdAt DateTime @default(now())
@@ -332,6 +355,10 @@ model Case {
   /// They wait for a moderator (`PATCH /admin/cases/:id/edit`); the public version
   /// stays until then. Deviation from docs/BACKEND_PROMPT.md §4's table list.
   pendingEdit    Json?
+  /// The next step the person with the animal asked for: { types: HelpType[], by: userId, at }.
+  nextHelp       Json?
+  /// The reporter's answers to the triage's quick questions: { conscious?, bleeding?, walk?, eating? }.
+  answers        Json?
   trustLevel      TrustLevel
   trustScore      Float             @default(0)
   trustConfirmations Int            @default(0)
@@ -359,6 +386,10 @@ model CaseHelper {
   userId    String
   helpType  HelpType
   message   String?
+  /// null = offered only; `onway` = on the way; `onsite` = with the animal.
+  stage     HelperStage?
+  /// When the helper reached the current stage.
+  stageAt   DateTime?
   createdAt DateTime @default(now())
 
   case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)

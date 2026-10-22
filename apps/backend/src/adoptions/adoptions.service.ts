@@ -35,7 +35,8 @@ const ADOPTION_INCLUDE = {
 } satisfies Prisma.AdoptionInclude;
 
 const REQUEST_INCLUDE = {
-  from: { select: { id: true, name: true, avatar: true } },
+  // `phone` is selected but only serialized on an accepted request.
+  from: { select: { id: true, name: true, avatar: true, phone: true } },
 } satisfies Prisma.AdoptionRequestInclude;
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -265,6 +266,10 @@ export class AdoptionsService {
     if (row.ownerId !== user.sub) {
       throw new ApiError(403, 'ADOPTION_NOT_OWNER', 'Seul le propriétaire peut modifier cette annonce.');
     }
+
+    // Closing the listing travels through the same `PATCH /adoptions/:id`
+    // (the shape the website uses) and keeps its own rule in `markAdopted`.
+    if (dto.status === 'adopted') return this.markAdopted(id, user);
 
     // A photo swap goes through the same probe pipeline as a creation.
     const nextPhotos = dto.photos ?? row.photos;
@@ -539,6 +544,95 @@ export class AdoptionsService {
     return requestRowToWire(updated);
   }
 
+  /**
+   * `PATCH /adoptions/:id/status { status: "adopted" }` — the owner confirms
+   * the animal found its family. The listing leaves the public marketplace and
+   * the requests still waiting get a clear "no" instead of waiting forever.
+   */
+  async markAdopted(id: string, user: AuthenticatedUser): Promise<AdoptionProfile> {
+    const row = await this.prisma.adoption.findUnique({ where: { id }, include: ADOPTION_INCLUDE });
+    if (!row) throw new ApiError(404, 'NOT_FOUND', 'Cette annonce n’existe pas.');
+    if (row.ownerId !== user.sub) {
+      throw new ApiError(403, 'ADOPTION_NOT_OWNER', 'Seul le propriétaire peut clôturer cette annonce.');
+    }
+    if (row.status !== 'approved' && row.status !== 'adopted') {
+      throw new ApiError(
+        409,
+        'ADOPTION_NOT_LIVE',
+        'Seule une annonce publiée peut être marquée comme adoptée.',
+      );
+    }
+
+    const waiting = await this.prisma.adoptionRequest.findMany({
+      where: { adoptionId: id, status: 'sent' },
+      select: { fromId: true },
+    });
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (waiting.length > 0) {
+        await tx.adoptionRequest.updateMany({
+          where: { adoptionId: id, status: 'sent' },
+          data: { status: 'declined' },
+        });
+      }
+      return tx.adoption.update({
+        where: { id },
+        data: { status: 'adopted', pendingEdit: Prisma.DbNull },
+        include: ADOPTION_INCLUDE,
+      });
+    });
+
+    for (const request of waiting) {
+      await this.notifications.notify(request.fromId, 'adoptDeclined', row.name, `/adopt/${id}`);
+    }
+
+    return adoptionRowToProfile(updated, { sub: user.sub, role: user.role }, new Set([id]));
+  }
+
+  /**
+   * `DELETE /adoptions/:id` — the owner removes their listing.
+   *
+   * The row goes with its requests and saved profiles (the foreign keys
+   * cascade). Only the owner may do it.
+   */
+  async remove(id: string, user: AuthenticatedUser): Promise<void> {
+    const existing = await this.prisma.adoption.findUnique({ where: { id } });
+    if (!existing) throw new ApiError(404, 'NOT_FOUND', 'Cette annonce n’existe pas.');
+    if (existing.ownerId !== user.sub) {
+      throw new ApiError(403, 'ADOPTION_NOT_OWNER', 'Seul le propriétaire peut supprimer cette annonce.');
+    }
+
+    await this.prisma.adoption.delete({ where: { id } });
+  }
+
+  /**
+   * `DELETE /requests/:id` — the adopter withdraws their request.
+   *
+   * Allowed while the request is `sent` or `accepted` (the web lets the adopter
+   * change their mind even after a yes); a decided-and-closed one answers
+   * `409 REQUEST_ALREADY_ANSWERED`. The row is kept with `status: cancelled`.
+   */
+  async cancelRequest(id: string, user: AuthenticatedUser): Promise<AdoptionRequest> {
+    const request = await this.prisma.adoptionRequest.findUnique({
+      where: { id },
+      include: REQUEST_INCLUDE,
+    });
+    if (!request) throw new ApiError(404, 'NOT_FOUND', 'Cette demande n’existe pas.');
+    if (request.fromId !== user.sub) {
+      throw new ApiError(403, 'REQUEST_NOT_REQUESTER', 'Seule la personne qui a demandé peut annuler.');
+    }
+    if (request.status !== 'sent' && request.status !== 'accepted') {
+      throw new ApiError(409, 'REQUEST_ALREADY_ANSWERED', 'Cette demande est déjà close.');
+    }
+
+    const updated = await this.prisma.adoptionRequest.update({
+      where: { id },
+      data: { status: 'cancelled' },
+      include: REQUEST_INCLUDE,
+    });
+    return requestRowToWire(updated);
+  }
+
   /** `PATCH /admin/adoptions/:id` — approve/reject. Notifies the owner either way. */
   async moderate(id: string, dto: ModerateAdoptionDto): Promise<AdoptionProfile> {
     const row = await this.prisma.adoption.findUnique({ where: { id }, include: ADOPTION_INCLUDE });
@@ -675,22 +769,6 @@ export class AdoptionsService {
     await this.prisma.photoHash.createMany({
       data: usable.map((hash) => ({ subjectType: 'adoption', subjectId: adoptionId, hash })),
     });
-  }
-
-  /**
-   * `DELETE /adoptions/:id` — the owner removes their listing.
-   *
-   * The row goes with its requests and saved profiles (the foreign keys
-   * cascade). Only the owner may do it.
-   */
-  async remove(id: string, user: AuthenticatedUser): Promise<void> {
-    const existing = await this.prisma.adoption.findUnique({ where: { id } });
-    if (!existing) throw new ApiError(404, 'NOT_FOUND', 'Cette annonce n’existe pas.');
-    if (existing.ownerId !== user.sub) {
-      throw new ApiError(403, 'ADOPTION_NOT_OWNER', 'Seul le propriétaire peut supprimer cette annonce.');
-    }
-
-    await this.prisma.adoption.delete({ where: { id } });
   }
 }
 
