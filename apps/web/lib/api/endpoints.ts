@@ -3,11 +3,17 @@
 import type {
   AIAnalysis,
   AdoptionProfile,
+  AdoptionRequest,
+  AppNotification,
+  Booking,
   Case,
   CaseStatus,
+  EmergencyZone,
   GeoPoint,
   HelpType,
   PendingEdit,
+  Review,
+  Service,
   Species,
   Triage,
   User,
@@ -70,6 +76,17 @@ export const me = {
     api<AdoptionProfile>(`/me/favorites/${encodeURIComponent(adoptionId)}`, { method: "PUT" }),
   removeFavorite: (adoptionId: string) =>
     api<void>(`/me/favorites/${encodeURIComponent(adoptionId)}`, { method: "DELETE" }),
+  /** My adoption listings, any status (dashboard). */
+  adoptions: (q: PageQuery = {}) => api<Page<AdoptionProfile>>("/me/adoptions", { query: { ...q } }),
+  /** Adoption requests I sent. */
+  requests: (q: PageQuery = {}) => api<Page<AdoptionRequest>>("/me/requests", { query: { ...q } }),
+  /** Adoption requests on my listings. */
+  receivedRequests: (q: PageQuery = {}) => api<Page<AdoptionRequest>>("/me/requests/received", { query: { ...q } }),
+  /** Bookings I made. */
+  bookings: (q: PageQuery = {}) => api<Page<Booking>>("/me/bookings", { query: { ...q } }),
+  /** My notifications, newest first. */
+  notifications: (q: PageQuery = {}) => api<Page<AppNotification>>("/me/notifications", { query: { ...q } }),
+  readAllNotifications: () => api<void>("/me/notifications/read-all", { method: "POST" }),
 };
 
 /* ─────────────── Phase 2 ✅ — cases, uploads (apps/backend/PHASE2_PLAN.md §5) ─────────────── */
@@ -150,6 +167,12 @@ export const admin = {
     api<AdoptionProfile>(`/admin/adoptions/${encodeURIComponent(id)}/edit`, { method: "PATCH", body: { decision } }),
   decideServiceEdit: (id: string, decision: EditDecision) =>
     api<unknown>(`/admin/services/${encodeURIComponent(id)}/edit`, { method: "PATCH", body: { decision } }),
+  /** Admin moderation: approve / reject a pending adoption listing. */
+  moderateAdoption: (id: string, status: "approved" | "rejected") =>
+    api<AdoptionProfile>(`/admin/adoptions/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
+  /** Admin moderation: approve / reject a pending service listing. */
+  moderateService: (id: string, status: "approved" | "rejected") =>
+    api<Service>(`/admin/services/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
 };
 
 export const uploads = {
@@ -177,4 +200,204 @@ export interface AnalyzeInput {
    until then the website shows its own rule-based triage (lib/ai/analyze.ts). */
 export const ai = {
   analyze: (b: AnalyzeInput) => api<AIAnalysis & { animalDetected?: boolean; isRealPhoto?: boolean }>("/ai/analyze", { body: b }),
+};
+
+/* ─────────────── Phase 3 — adoptions, services, zones, notifications ─────────────── */
+
+/** `?status=&page=&pageSize=` — the marketplace query (adoptions). */
+export interface AdoptionQuery {
+  status?: AdoptionProfile["status"];
+  page?: number;
+  pageSize?: number;
+}
+
+/** Body of `POST /adoptions`. Mirrors `CreateAdoptionDto`. */
+export interface NewAdoption {
+  name: string;
+  species: Species;
+  breed?: string;
+  sex: AdoptionProfile["sex"];
+  ageMonths: number;
+  photos: string[];
+  probeIds: string[];
+  healthStatus: string;
+  vaccinations?: { name: string; date: string }[];
+  medicalHistory?: { date: string; note: string }[];
+  behavior?: string[];
+  careNeeds?: string[];
+  story: string;
+  shelterId?: string;
+  location: GeoPoint;
+}
+
+/** Body of `PATCH /adoptions/:id`. Mirrors `UpdateAdoptionDto`. */
+export type AdoptionPatch = Partial<
+  Pick<
+    NewAdoption,
+    | "name"
+    | "breed"
+    | "photos"
+    | "probeIds"
+    | "healthStatus"
+    | "vaccinations"
+    | "medicalHistory"
+    | "behavior"
+    | "careNeeds"
+    | "story"
+    | "location"
+  >
+>;
+
+/** Body of `POST /adoptions/:id/requests`. */
+export interface NewAdoptionRequest {
+  message: string;
+  housing: AdoptionRequest["housing"];
+  experience: boolean;
+}
+
+/** Body of `PATCH /requests/:id`. */
+export interface DecideAdoptionRequest {
+  status: "accepted" | "declined";
+}
+
+export const adoptions = {
+  list: (q: AdoptionQuery = {}, opts: { signal?: AbortSignal } = {}) =>
+    api<Page<AdoptionProfile>>("/adoptions", { query: { ...q }, signal: opts.signal }),
+  get: (id: string) => api<AdoptionProfile>(`/adoptions/${encodeURIComponent(id)}`),
+  create: (a: NewAdoption) => api<AdoptionProfile>("/adoptions", { body: a }),
+  update: (id: string, patch: AdoptionPatch) =>
+    api<AdoptionProfile>(`/adoptions/${encodeURIComponent(id)}`, { method: "PATCH", body: patch }),
+  remove: (id: string) => api<void>(`/adoptions/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  /** Ask to adopt a listing. */
+  createRequest: (id: string, r: NewAdoptionRequest) =>
+    api<AdoptionRequest>(`/adoptions/${encodeURIComponent(id)}/requests`, { body: r }),
+  /** Owner-only decision on a request (also available as `requests.decide`). */
+  decideRequest: (requestId: string, decision: DecideAdoptionRequest) =>
+    api<AdoptionRequest>(`/requests/${encodeURIComponent(requestId)}`, { method: "PATCH", body: decision }),
+  /** Admin moderation: approve / reject a pending listing. */
+  moderate: (id: string, status: "approved" | "rejected") =>
+    api<AdoptionProfile>(`/admin/adoptions/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
+  // aliases
+  getOne: (id: string) => adoptions.get(id),
+  findOne: (id: string) => adoptions.get(id),
+  add: (a: NewAdoption) => adoptions.create(a),
+  patch: (id: string, p: AdoptionPatch) => adoptions.update(id, p),
+  request: (id: string, r: NewAdoptionRequest) => adoptions.createRequest(id, r),
+  sendRequest: (id: string, r: NewAdoptionRequest) => adoptions.createRequest(id, r),
+  answerRequest: (requestId: string, decision: DecideAdoptionRequest) => adoptions.decideRequest(requestId, decision),
+};
+
+/** Top-level `/requests/:id` route, mirroring the backend controller. */
+export const requests = {
+  decide: (id: string, status: "accepted" | "declined") =>
+    api<AdoptionRequest>(`/requests/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
+};
+
+/** `GET /services` query. */
+export interface ServiceQuery {
+  lat?: number;
+  lng?: number;
+  type?: Service["type"];
+  radiusKm?: number;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** Body of `POST /services`. Mirrors `CreateServiceDto` (lat/lng, not a GeoPoint). */
+export interface NewService {
+  type: Service["type"];
+  name: string;
+  lat: number;
+  lng: number;
+  address?: string;
+  phone?: string;
+  openNow?: boolean;
+  photo?: string;
+  tags?: string[];
+  description?: string;
+  hours?: string;
+}
+
+/** Body of `PATCH /services/:id`. Mirrors `UpdateServiceDto`. */
+export type ServicePatch = Partial<Omit<NewService, "type">> & { type?: Service["type"] };
+
+export const services = {
+  list: (q: ServiceQuery = {}, opts: { signal?: AbortSignal } = {}) =>
+    api<Page<Service & { distanceKm?: number }>>("/services", { query: { ...q }, signal: opts.signal }),
+  get: (id: string) => api<Service>(`/services/${encodeURIComponent(id)}`),
+  create: (s: NewService) => api<Service>("/services", { body: s }),
+  update: (id: string, patch: ServicePatch) =>
+    api<Service>(`/services/${encodeURIComponent(id)}`, { method: "PATCH", body: patch }),
+  reviews: (id: string, q: PageQuery = {}) =>
+    api<Page<Review>>(`/services/${encodeURIComponent(id)}/reviews`, { query: { ...q } }),
+  addReview: (id: string, r: { rating: Review["rating"]; text: string }) =>
+    api<Review>(`/services/${encodeURIComponent(id)}/reviews`, { body: r }),
+  replyReview: (id: string, reviewId: string, reply: string) =>
+    api<Review>(`/services/${encodeURIComponent(id)}/reviews/${encodeURIComponent(reviewId)}`, {
+      method: "PATCH",
+      body: { reply },
+    }),
+  book: (id: string, b: { date: string; time: string; animal: string; reason: string }) =>
+    api<Booking>(`/services/${encodeURIComponent(id)}/bookings`, { body: b }),
+  moderate: (id: string, status: "approved" | "rejected") =>
+    api<Service>(`/admin/services/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
+  // aliases
+  findOne: (id: string) => services.get(id),
+  add: (s: NewService) => services.create(s),
+  patch: (id: string, p: ServicePatch) => services.update(id, p),
+  listReviews: (id: string, q: PageQuery = {}) => services.reviews(id, q),
+  review: (id: string, r: { rating: Review["rating"]; text: string }) => services.addReview(id, r),
+  reply: (id: string, reviewId: string, reply: string) => services.replyReview(id, reviewId, reply),
+  createBooking: (id: string, b: { date: string; time: string; animal: string; reason: string }) => services.book(id, b),
+  addBooking: (id: string, b: { date: string; time: string; animal: string; reason: string }) => services.book(id, b),
+};
+
+/** Top-level `/bookings/:id` route, mirroring the backend controller. */
+export const bookings = {
+  decide: (id: string, status: "confirmed" | "declined") =>
+    api<Booking>(`/bookings/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
+};
+
+/** Emergency zones (`/emergency-zones`). */
+export interface ZoneQuery {
+  active?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface NewZone {
+  name: string;
+  region: string;
+  type: EmergencyZone["type"];
+  polygon?: unknown;
+  active?: boolean;
+  startedAt?: string;
+}
+
+export type ZonePatch = Partial<NewZone>;
+
+export const zones = {
+  list: (q: ZoneQuery = {}, opts: { signal?: AbortSignal } = {}) =>
+    api<Page<EmergencyZone>>("/emergency-zones", { query: { ...q }, auth: false, signal: opts.signal }),
+  create: (z: NewZone) => api<EmergencyZone>("/emergency-zones", { body: z }),
+  update: (id: string, patch: ZonePatch) =>
+    api<EmergencyZone>(`/emergency-zones/${encodeURIComponent(id)}`, { method: "PATCH", body: patch }),
+  remove: (id: string) => api<void>(`/emergency-zones/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  // aliases
+  all: (q: ZoneQuery = {}, opts: { signal?: AbortSignal } = {}) => zones.list(q, opts),
+  delete: (id: string) => zones.remove(id),
+};
+
+/** Alias matching the backend resource name. */
+export const emergencyZones = zones;
+
+/** Notifications (live under `/me`). */
+export const notifications = {
+  list: (q: PageQuery = {}) => api<Page<AppNotification>>("/me/notifications", { query: { ...q } }),
+  readAll: () => api<void>("/me/notifications/read-all", { method: "POST" }),
+  // aliases
+  all: (q: PageQuery = {}) => notifications.list(q),
+  markAllRead: () => notifications.readAll(),
+  readAllNotifications: () => notifications.readAll(),
 };
