@@ -21,6 +21,18 @@ const OWNER: AuthenticatedUser = { sub: 'u-owner', role: 'reporter', name: 'Amin
 const CLIENT: AuthenticatedUser = { sub: 'u-client', role: 'reporter', name: 'Sofiane' };
 const ADMIN: AuthenticatedUser = { sub: 'u-admin', role: 'admin', name: 'Inès' };
 
+/**
+ * The featured-flag predicate, and the spelling that silently breaks it.
+ *
+ * In Postgres `::` binds **tighter** than `->>`, so the broken spelling
+ * parses as `pro->>('until'::timestamptz)` — it casts the *key*, not the
+ * value, and every read of the directory dies with "invalid input syntax for
+ * type timestamp with time zone: until". The two look identical in a diff,
+ * so both spellings are pinned here.
+ */
+const FEATURED_SQL = "(u.pro->>'until')::timestamptz > now()";
+const BROKEN_FEATURED_SQL = "u.pro->>'until'::timestamptz > now()";
+
 const SERVICE_ROW = {
   id: 's1',
   type: 'vet' as const,
@@ -280,7 +292,8 @@ describe('the directory query', () => {
     const sql = statements[0] ?? '';
     expect(sql).toContain('ST_DWithin');
     // The flag is derived from the owner's subscription, not from the stale column.
-    expect(sql).toContain("u.pro->>'until'::timestamptz > now()");
+    expect(sql).toContain(FEATURED_SQL);
+    expect(sql).not.toContain(BROKEN_FEATURED_SQL);
     expect(sql).toContain('km ASC');
   });
 
@@ -289,8 +302,21 @@ describe('the directory query', () => {
     await service.list({});
     const sql = statements[0] ?? '';
     expect(sql).not.toContain('ST_DWithin');
-    expect(sql).toContain("u.pro->>'until'::timestamptz > now()");
+    expect(sql).toContain(FEATURED_SQL);
+    expect(sql).not.toContain(BROKEN_FEATURED_SQL);
     expect(sql).toContain('rating DESC');
+  });
+
+  it('extracts the Pro date before casting it — `::` binds tighter than `->>`', async () => {
+    // The spelling that breaks the whole endpoint: `pro->>'until'::timestamptz`
+    // parses as `pro->>('until'::timestamptz)`, casting the *key* 'until' and
+    // failing with "invalid input syntax for type timestamp with time zone".
+    // It reads like a cleanup, so it is pinned from both sides.
+    const { service, statements } = makeService();
+    await service.list({});
+    const sql = statements[0] ?? '';
+    expect(sql).toContain(FEATURED_SQL);
+    expect(sql).not.toContain(BROKEN_FEATURED_SQL);
   });
 
   it('parameterizes the search term — never interpolates it', async () => {

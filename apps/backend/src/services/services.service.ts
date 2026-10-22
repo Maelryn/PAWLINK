@@ -104,7 +104,11 @@ export class ServicesService {
       (EXISTS (
         SELECT 1 FROM users u
         WHERE u.id = services."ownerId"
-          AND u.pro->>'until'::timestamptz > now()
+          -- The parentheses are load-bearing: "::" binds tighter than "->>",
+          -- so pro->>'until'::timestamptz casts the *key* 'until' and every
+          -- read of the directory dies with "invalid input syntax for type
+          -- timestamp with time zone". Extract first, cast second.
+          AND (u.pro->>'until')::timestamptz > now()
       ))::int
     `;
     const orderBy = geo
