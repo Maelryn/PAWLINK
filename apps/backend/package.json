@@ -18,7 +18,9 @@
     "prisma:status": "prisma migrate status",
     "seed": "ts-node scripts/seed.ts",
     "seed:admin": "ts-node scripts/create-admin.ts",
-    "docs:check": "ts-node scripts/docs-check.ts"
+    "docs:check": "ts-node scripts/docs-check.ts",
+    "ai:eval": "ts-node scripts/ai-eval.ts",
+    "try-ai": "ts-node scripts/try-ai.ts"
   },
   "prisma": {
     "seed": "ts-node scripts/seed.ts"
@@ -37,6 +39,7 @@
     "testEnvironment": "node"
   },
   "dependencies": {
+    "@google/genai": "^2.30.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
@@ -61,7 +64,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "^0.35.5",
-    "socket.io": "^4.8.4"
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
