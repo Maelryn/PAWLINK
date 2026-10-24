@@ -16,6 +16,7 @@ import { ServicesModule } from './services/services.module';
 import { ZonesModule } from './zones/zones.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
+import { AiModule } from './ai/ai.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -46,6 +47,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
     ZonesModule,
     // Phase 4 — admin (stats, users/roles, moderation queues live in their own modules)
     AdminModule,
+    // AI triage (Katia) — library + HTTP surface
+    AiModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
