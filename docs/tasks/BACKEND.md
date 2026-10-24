@@ -72,10 +72,7 @@ NEXT_PUBLIC_API_FEATURES=auth,cases,uploads
 
 ### Still needed from the API
 
-1. **Resolving a case:** the reporter and the people helping on that case should be able to set `resolved` (today it's volunteer / vet / admin only, so the website only shows the button to them when the API is on).
-2. **Nearby helpers:** when a public case is created, a `nearbyCase` notification for nearby available volunteers / vets (the website does it in demo mode and the video shows it).
-3. **Demo reports:** when `reporterOnSite: false`, the `onSite` check must be `false` so it can never be "verified".
-4. **Cloudinary credentials** in the API env, otherwise reports have no photo.
+1. **Cloudinary credentials** in the API env, otherwise reports have no photo.
 
 ### Shapes the website added since (please mirror them in `apps/web/lib/types.ts` terms)
 
@@ -106,12 +103,10 @@ Everything in *Shapes the website added since* except the two items below is in 
   with the server-side 1 km rule, one answer per account, 2 yes → `verified`, 2 no →
   `suspicious` + moderation. New reports send `confirmAsk` to the people within 3 km.
 
-Still missing on purpose (not part of this batch): the endpoints that emit the `resolved`,
-`nearbyCase`, `adoptCancelled`, `adoptDone`, `bookingCancelled`, `helperOnWay`, `helperOnSite` and
-`nextHelp` notifications. The eight values are now in the `NotificationKind` enum (migration
-`20261022130000_notification_kinds`), so a future endpoint only needs its behaviour, not a schema
-change. `AdoptionProfile.status: "adopted"` and `PATCH /adoptions/:id { status }` **are** in the
-API now, along with the type gaps (migration `20261022120000_type_gaps`).
+The deferred notification flows are implemented: case resolution, nearby available helper alerts,
+adoption cancellation/completion, booking cancellation, helper arrival stages and next-help requests.
+`reporterOnSite: false` now forces the `onSite` trust check to fail. Booking cancellation adds the
+`cancelled` enum value in migration `20261025100000_booking_cancelled`.
 
 ### Before deploying the API (important for the judges)
 

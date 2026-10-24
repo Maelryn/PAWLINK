@@ -173,6 +173,7 @@ enum BookingStatus {
   sent
   confirmed
   declined
+  cancelled
 }
 
 enum NotificationKind {

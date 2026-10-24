@@ -585,6 +585,8 @@ export class AdoptionsService {
     for (const request of waiting) {
       await this.notifications.notify(request.fromId, 'adoptDeclined', row.name, `/adopt/${id}`);
     }
+    const accepted = await this.prisma.adoptionRequest.findMany({ where: { adoptionId: id, status: 'accepted' }, select: { fromId: true } });
+    await Promise.all(accepted.map((request) => this.notifications.notify(request.fromId, 'adoptDone', row.name, `/adopt/${id}`)));
 
     return adoptionRowToProfile(updated, { sub: user.sub, role: user.role }, new Set([id]));
   }
@@ -615,7 +617,7 @@ export class AdoptionsService {
   async cancelRequest(id: string, user: AuthenticatedUser): Promise<AdoptionRequest> {
     const request = await this.prisma.adoptionRequest.findUnique({
       where: { id },
-      include: REQUEST_INCLUDE,
+      include: { ...REQUEST_INCLUDE, adoption: true },
     });
     if (!request) throw new ApiError(404, 'NOT_FOUND', 'Cette demande n’existe pas.');
     if (request.fromId !== user.sub) {
@@ -630,6 +632,7 @@ export class AdoptionsService {
       data: { status: 'cancelled' },
       include: REQUEST_INCLUDE,
     });
+    await this.notifications.notify(request.adoption.ownerId, 'adoptCancelled', request.adoption.name, `/adopt/${request.adoptionId}`);
     return requestRowToWire(updated);
   }
 

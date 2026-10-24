@@ -185,7 +185,7 @@ export interface Booking {
   time: string;
   animal: string;
   reason: string;
-  status: "sent" | "confirmed" | "declined";
+  status: "sent" | "confirmed" | "declined" | "cancelled";
   createdAt: string;
 }
 

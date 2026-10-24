@@ -136,7 +136,7 @@ export class CasesController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Move a case along its lifecycle',
-    description: 'Volunteer, vet or admin only. A reporter gets `403 FORBIDDEN`.',
+    description: 'Any reporter/helper may resolve their case; volunteer, vet or admin may change any lifecycle status.',
   })
   @ApiOkResponse({ description: 'The updated case; `case.updated` is broadcast.' })
   @ApiForbiddenResponse({ description: 'FORBIDDEN' })

@@ -14,8 +14,8 @@ import { CASE_STATUS, HELP_TYPES, HELPER_STAGES } from '../../shared/enums';
 /** `PATCH /cases/:id/status` — the case lifecycle, volunteer/vet/admin only. */
 @ApiSchema({
   description:
-    'Moves a case along its lifecycle. A reporter gets `403 FORBIDDEN` — only a volunteer, a ' +
-    'vet or an admin may change the status.',
+    'Moves a case along its lifecycle. The reporter and helpers may resolve it; volunteers, vets ' +
+    'and admins may change lifecycle status.',
 })
 export class PatchCaseStatusDto {
   @ApiProperty({ enum: CASE_STATUS, description: 'open → in_progress → resolved.' })

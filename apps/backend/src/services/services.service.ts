@@ -437,6 +437,17 @@ export class ServicesService {
     return bookingRowToWire(updated);
   }
 
+  /** The booker withdraws a request; the provider receives a cancellation notice. */
+  async cancelBooking(id: string, user: AuthenticatedUser): Promise<Booking> {
+    const booking = await this.prisma.booking.findUnique({ where: { id }, include: { ...BOOKING_INCLUDE, service: true } });
+    if (!booking) throw new ApiError(404, 'NOT_FOUND', 'Cette réservation n’existe pas.');
+    if (booking.fromId !== user.sub) throw new ApiError(403, 'BOOKING_NOT_BOOKER', 'Seule la personne qui a réservé peut annuler.');
+    if (booking.status !== 'sent' && booking.status !== 'confirmed') throw new ApiError(409, 'BOOKING_ALREADY_ANSWERED', 'Cette réservation est déjà close.');
+    const updated = await this.prisma.booking.update({ where: { id }, data: { status: 'cancelled' }, include: BOOKING_INCLUDE });
+    if (booking.service.ownerId) await this.notifications.notify(booking.service.ownerId, 'bookingCancelled', booking.service.name, `/services/${booking.serviceId}`);
+    return bookingRowToWire(updated);
+  }
+
   /** `PATCH /admin/services/:id` — approve publishes + verifies + notifies; reject is silent. */
   async moderate(id: string, dto: ModerateServiceDto): Promise<Service> {
     const row = await this.prisma.service.findUnique({ where: { id } });

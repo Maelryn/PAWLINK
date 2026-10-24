@@ -65,7 +65,7 @@ npm run dev                # http://localhost:4000
 | GET | `/cases/nearby?lat=&lng=&radiusKm=` | bearer | 200 | `ST_DWithin`, ordered by the KNN operator; each item carries `distanceKm` |
 | GET | `/cases/:id` | public (optional bearer) | 200 | a held case is a 404 unless the caller is its reporter |
 | POST | `/cases` | bearer + verified phone | 201 | response **includes `trust`**; `@Throttle` 15/h per IP, 5/h per account |
-| PATCH | `/cases/:id/status` | volunteer / vet / admin | 200 | a reporter gets `403 FORBIDDEN` |
+| PATCH | `/cases/:id/status` | reporter / helper to resolve; volunteer / vet / admin for lifecycle | 200 | resolution notifies the other participants |
 | POST | `/cases/:id/help` | bearer | 200 | `open → in_progress`; emits `help.offered` + `case.updated`; writes a `help` notification |
 | PATCH | `/cases/:id/help` | bearer | 200 | the helper says where they are: `{ stage: "onway" \| "onsite" }` → `helpers[].stage` + `stageAt` |
 | POST | `/cases/:id/next-help` | reporter / helper | 200 | `{ types }` → `Case.nextHelp = { types, by, at }`; offering that help later removes it |
@@ -101,7 +101,7 @@ npm run dev                # http://localhost:4000
 | PATCH | `/services/:id` | owner | 200 | on a live listing the change waits as `pendingEdit` |
 | GET/POST | `/services/:id/reviews` | public (optional bearer) / bearer | 200/201 | one review per user |
 | POST | `/services/:id/bookings` | bearer | 201 | |
-| GET/PATCH | `/bookings/:id` · `/me/bookings` | bearer | 200 | |
+| PATCH/DELETE | `/bookings/:id` · `/me/bookings` | bearer | 200/204 | Owner decides; booker may withdraw while sent or confirmed |
 | GET/POST/PATCH/DELETE | `/emergency-zones` | public (GET) / admin (write) | 200/201 | PostGIS polygon + ST_Centroid |
 | GET/PATCH | `/me/notifications` · `/me/notifications/read-all` | bearer | 200/204 | |
 | PATCH | `/admin/adoptions/:id` | admin | 200 | approve/reject + notify |
@@ -594,9 +594,9 @@ Each one is a deliberate departure from `docs/BACKEND_PROMPT.md`, `PHASE1_PLAN.m
     `20261022130000_notification_kinds`): `resolved`, `nearbyCase`, `adoptCancelled`, `adoptDone`,
     `bookingCancelled`, `helperOnWay`, `helperOnSite`, `nextHelp`. They were already part of
     `apps/web/lib/types.ts` and the website's demo store, so leaving them out of the database meant
-    any future endpoint writing one would fail with `P2009`/`22P02`. Only the vocabulary changed:
-    the endpoints that fire them are still to come (see the "Still missing on purpose" paragraph
-    in `docs/tasks/BACKEND.md`).
+    any future endpoint writing one would fail with `P2009`/`22P02`. Their emitting flows are now
+    implemented: case resolution, nearby helper alerts, adoption and booking cancellation/completion,
+    helper stages and next-help requests.
 
 ## Phase 2 implementation notes
 

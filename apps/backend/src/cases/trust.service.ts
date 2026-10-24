@@ -59,6 +59,8 @@ export interface TrustCheckInput {
   duplicatePhoto?: boolean;
   /** Reports this account has already made in the last hour. */
   recentReports: number;
+  /** A remote/demo report cannot pass the reporter-on-site trust check. */
+  reporterOnSite?: boolean;
   /** Whether `ST_Within` placed the pin inside Algeria. */
   inAlgeria: boolean;
   /** Overrides "now", so the freshness check stays testable. */
@@ -114,8 +116,10 @@ export class TrustService {
       },
       {
         id: 'onSite',
-        ok: onSiteDistance === null ? null : onSiteDistance < MAX_ON_SITE_KM,
-        ...(onSiteDistance !== null
+        ok: input.reporterOnSite === false ? false : onSiteDistance === null ? null : onSiteDistance < MAX_ON_SITE_KM,
+        ...(input.reporterOnSite === false
+          ? { detail: 'Le reporter a indiqué être absent du lieu' }
+          : onSiteDistance !== null
           ? { detail: `Reporter à ${onSiteDistance.toFixed(2)} km` }
           : {}),
       },

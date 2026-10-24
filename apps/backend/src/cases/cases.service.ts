@@ -244,6 +244,7 @@ export class CasesService {
       device: dto.device ? { lat: dto.device.lat, lng: dto.device.lng } : null,
       duplicatePhoto: duplicate,
       recentReports,
+      reporterOnSite: dto.reporterOnSite,
       inAlgeria: inAlgeria.ok,
     });
 
@@ -343,7 +344,10 @@ export class CasesService {
 
   /** `PATCH /cases/:id/status` — volunteer / vet / admin only. */
   async updateStatus(id: string, dto: PatchCaseStatusDto, user: AuthenticatedUser): Promise<Case> {
-    if (!STATUS_ROLES.includes(user.role)) {
+    const existing = await this.prisma.case.findUnique({ where: { id }, include: { helpers: true } });
+    if (!existing) throw new NotFoundException('Signalement introuvable.');
+    const participant = existing.reporterId === user.sub || existing.helpers.some((h) => h.userId === user.sub);
+    if (dto.status === 'resolved' ? (!participant && !STATUS_ROLES.includes(user.role)) : !STATUS_ROLES.includes(user.role)) {
       throw new ForbiddenException(
         'Seuls les bénévoles, vétérinaires et admins peuvent changer le statut.',
       );
@@ -357,6 +361,10 @@ export class CasesService {
 
     const serialized = caseRowToCase(row as unknown as CaseRowWithRelations);
     this.realtime.caseUpdated({ case: serialized });
+    if (dto.status === 'resolved' && existing.status !== 'resolved') {
+      const recipients = [...new Set([existing.reporterId, ...existing.helpers.map((h) => h.userId)])].filter((id) => id !== user.sub);
+      await Promise.all(recipients.map((recipient) => this.notifications.notify(recipient, 'resolved', row.title, `/cases/${id}`)));
+    }
     return serialized;
   }
 
@@ -369,7 +377,7 @@ export class CasesService {
    * real use, a Phase 3 hook exercised in Phase 2.
    */
   async offerHelp(id: string, dto: OfferHelpDto, user: AuthenticatedUser): Promise<Case> {
-    const existing = await this.prisma.case.findUnique({ where: { id } });
+    const existing = await this.prisma.case.findUnique({ where: { id }, include: { helpers: true } });
     if (!existing) throw new NotFoundException('Signalement introuvable.');
 
     // Offering the help that was still needed removes it from `nextHelp`
@@ -428,7 +436,7 @@ export class CasesService {
    * to new steps.
    */
   async setHelperStage(id: string, dto: HelperStageDto, user: AuthenticatedUser): Promise<Case> {
-    const existing = await this.prisma.case.findUnique({ where: { id } });
+    const existing = await this.prisma.case.findUnique({ where: { id }, include: { helpers: true } });
     if (!existing) throw new NotFoundException('Signalement introuvable.');
     if (existing.status === 'resolved') {
       throw new ApiError(409, 'CASE_RESOLVED', 'Ce signalement est déjà résolu.');
@@ -453,6 +461,8 @@ export class CasesService {
     const row = await this.prisma.case.findUniqueOrThrow({ where: { id }, include: CASE_INCLUDE });
     const serialized = caseRowToCase(row as unknown as CaseRowWithRelations);
     this.realtime.caseUpdated({ case: serialized });
+    const recipients = [...new Set([existing.reporterId, ...existing.helpers.map((h) => h.userId)])].filter((recipient) => recipient !== user.sub);
+    await Promise.all(recipients.map((recipient) => this.notifications.notify(recipient, dto.stage === 'onway' ? 'helperOnWay' : 'helperOnSite', user.name, `/cases/${id}`)));
     return serialized;
   }
 
@@ -494,6 +504,8 @@ export class CasesService {
 
     const serialized = caseRowToCase(row as unknown as CaseRowWithRelations);
     this.realtime.caseUpdated({ case: serialized });
+    const recipients = [...new Set([existing.reporterId, ...existing.helpers.map((h) => h.userId)])].filter((recipient) => recipient !== user.sub);
+    await Promise.all(recipients.map((recipient) => this.notifications.notify(recipient, 'nextHelp', existing.title, `/cases/${id}`)));
     return serialized;
   }
 
@@ -915,6 +927,21 @@ export class CasesService {
     for (const person of people) {
       await this.notifications.notify(person.id, 'confirmAsk', row.title, `/cases/${row.id}#verify`);
     }
+
+    const helpers = await this.prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT id FROM users
+        WHERE role IN ('volunteer', 'vet')
+          AND COALESCE(available, false) = true
+          AND COALESCE(availability::text, 'now') <> 'away'
+          AND lat IS NOT NULL AND lng IS NOT NULL
+          AND "passwordHash" IS NOT NULL
+          AND id <> ${row.reporter.id}
+          AND ST_DWithin(ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography,
+            ${point(row.location.lat, row.location.lng)}, ${Math.round(CONFIRM_ASK_RADIUS_KM * 1000)})
+      `,
+    );
+    await Promise.all(helpers.map((helper) => this.notifications.notify(helper.id, 'nearbyCase', row.title, `/cases/${row.id}`)));
   }
 
   /** An `emergencyZoneId` that does not exist is a 400, not a foreign-key 409. */

@@ -1,5 +1,5 @@
-import { Body, Controller, Param, Patch } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, HttpCode, HttpStatus, Param, Patch } from '@nestjs/common';
+import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/auth.decorators';
 import type { AuthenticatedUser } from '../common/decorators/auth.decorators';
 import { ServicesService } from './services.service';
@@ -33,5 +33,14 @@ export class BookingsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<Booking> {
     return this.services.decideBooking(id, dto, user);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Cancel a booking', description: 'The booker may cancel a sent or confirmed booking; the provider receives `bookingCancelled`.' })
+  @ApiParam({ name: 'id', description: 'The booking id.' })
+  @ApiNoContentResponse({ description: '204 — cancelled.' })
+  async cancel(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.services.cancelBooking(id, user);
   }
 }
