@@ -1,0 +1,16 @@
+name: Keep Render backend awake
+
+# Free-tier Render services sleep after ~15 min of inactivity.
+# Ping the health endpoint every 14 minutes to keep pawlink-backend warm.
+on:
+  schedule:
+    - cron: "*/14 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: |
+          curl -fsS --max-time 60 https://pawlink-backend.onrender.com/health || true
