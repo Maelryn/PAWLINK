@@ -12,6 +12,8 @@ import { Avatar, Emoji3D, Stars, TimeAgo } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
 import { SERVICE_EMOJI } from "@/lib/species";
 import { ratingOf, store, useStore } from "@/lib/store";
+import { apiOn } from "@/lib/api/client";
+import { services as servicesApi, bookings as bookingsApi } from "@/lib/api/endpoints";
 import type { Review, User } from "@/lib/types";
 import { cn, hashHue } from "@/lib/utils";
 
@@ -85,6 +87,7 @@ export function BusinessPanel({ me }: { me: User }) {
         className={cn(card, "space-y-3")}
         onSubmit={(e) => {
           e.preventDefault();
+          if (apiOn("services")) void servicesApi.update(s.id, { name: f.name.trim(), phone: f.phone.trim(), description: f.description.trim(), hours: f.hours.trim(), address: f.address.trim() }).catch(() => {});
           store.proposeServiceEdit(s.id, { name: f.name.trim(), phone: f.phone.trim(), description: f.description.trim(), hours: f.hours.trim(), location: { ...s.location, address: f.address.trim() } });
           if (s.status !== "approved") return toast.success(t.acct.saved);
           // a business that just updated its listing is the right moment to mention Pro (only if it doesn't have it)
@@ -137,8 +140,8 @@ export function BusinessPanel({ me }: { me: User }) {
                 </div>
                 {b.status === "sent" ? (
                   <div className="flex gap-1.5">
-                    <button type="button" onClick={() => store.answerBooking(b.id, "confirmed")} className="flex h-10 w-10 items-center justify-center rounded-full bg-stable text-white" aria-label={t.biz.confirm}><Check className="h-4 w-4" /></button>
-                    <button type="button" onClick={() => store.answerBooking(b.id, "declined")} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface" aria-label={t.biz.decline}><X className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => { if (apiOn("services")) void bookingsApi.decide(b.id, "confirmed").catch(() => {}); store.answerBooking(b.id, "confirmed"); }} className="flex h-10 w-10 items-center justify-center rounded-full bg-stable text-white" aria-label={t.biz.confirm}><Check className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => { if (apiOn("services")) void bookingsApi.decide(b.id, "declined").catch(() => {}); store.answerBooking(b.id, "declined"); }} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface" aria-label={t.biz.decline}><X className="h-4 w-4" /></button>
                   </div>
                 ) : (
                   <span className={cn("text-[12.5px] font-semibold", b.status === "confirmed" ? "text-stable" : b.status === "cancelled" ? "text-label-2" : "text-urgent")}>{b.status === "cancelled" ? t.market.status.cancelled : `${b.status === "confirmed" ? t.biz.confirm : t.biz.decline} ✓`}</span>
@@ -184,7 +187,7 @@ function ReviewReply({ r, canReply }: { r: Review; canReply: boolean }) {
         <div className="mt-2 rounded-[14px] bg-surface p-3 text-[13.5px]"><b>{t.biz.replied}:</b> {r.reply}</div>
       ) : (
         canReply && (
-          <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (text.trim()) store.replyReview(r.id, text.trim()); }}>
+          <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (text.trim()) { if (apiOn("services")) void servicesApi.replyReview(r.serviceId, r.id, text.trim()).catch(() => {}); store.replyReview(r.id, text.trim()); } }}>
             <input value={text} onChange={(e) => setText(e.target.value)} placeholder={t.biz.replyPh} className="h-10 flex-1 rounded-full bg-surface px-4 text-[14px] outline-none" />
             <Button type="submit" size="sm">{t.biz.reply}</Button>
           </form>

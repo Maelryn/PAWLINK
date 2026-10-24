@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { reservedRequestOf, store, useStore } from "@/lib/store";
+import { apiOn } from "@/lib/api/client";
+import { adoptions as adoptionsApi } from "@/lib/api/endpoints";
 import type { User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +53,7 @@ export function MyAdoptions({ me }: { me: User }) {
             </span>
           </Link>
           {a.status !== "adopted" && !reservedRequestOf(a, requests) && (
-            <ConfirmButton onConfirm={() => { store.removeAdoption(a.id); toast(t.life.deleted); }} className="flex h-10 shrink-0 items-center justify-center rounded-full bg-surface-2 px-3 text-label-2" armedClassName="bg-urgent text-white text-[12px] font-semibold">
+            <ConfirmButton onConfirm={() => { if (apiOn("adoptions")) void adoptionsApi.remove(a.id).catch(() => {}); store.removeAdoption(a.id); toast(t.life.deleted); }} className="flex h-10 shrink-0 items-center justify-center rounded-full bg-surface-2 px-3 text-label-2" armedClassName="bg-urgent text-white text-[12px] font-semibold">
               <Trash2 className="h-4 w-4" aria-label={t.life.delete} />
             </ConfirmButton>
           )}
