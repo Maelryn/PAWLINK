@@ -1,4 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
@@ -28,9 +29,40 @@ export function configureApp(app: INestApplication): INestApplication {
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document, {
-    swaggerOptions: { persistAuthorization: true },
-    customSiteTitle: 'PawLink API — /docs-json for the machine-readable spec',
+
+  const httpAdapter = app.getHttpAdapter();
+
+  // Serve the spec as JSON (the frontend generates its typed client from this).
+  httpAdapter.get('/docs-json', (_req: Request, res: Response) => res.json(document));
+
+  // Swagger UI loaded from a CDN so it works on serverless hosts (Vercel) where
+  // the swagger-ui-dist assets shipped in node_modules are not served.
+  httpAdapter.get('/docs', (_req: Request, res: Response) => {
+    res.type('html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PawLink API — /docs-json for the machine-readable spec</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <link rel="icon" type="image/png" href="https://unpkg.com/swagger-ui-dist@5/favicon-32x32.png" sizes="32x32" />
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = function () {
+      window.ui = SwaggerUIBundle({
+        url: '/docs-json',
+        dom_id: '#swagger-ui',
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: 'StandaloneLayout',
+        persistAuthorization: true,
+      });
+    };
+  </script>
+</body>
+</html>`);
   });
 
   return app;
