@@ -20,6 +20,8 @@ import { useSession } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { SERVICE_COLOR, SERVICE_EMOJI } from "@/lib/species";
 import { ratingOf, store, useStore } from "@/lib/store";
+import { apiOn } from "@/lib/api/client";
+import { services as servicesApi } from "@/lib/api/endpoints";
 import { gmapsDirections } from "@/lib/trust";
 import type { Service } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -213,6 +215,7 @@ function BookingCard({ s }: { s: Service }) {
             e.preventDefault();
             if (!me) return router.push(`/login?next=/services/${s.id}`);
             if (new Date(`${f.date}T${f.time || "23:59"}`).getTime() < Date.now()) return toast.error(t.svc.pastDate);
+            if (apiOn("services")) void servicesApi.book(s.id, { date: f.date, time: f.time, animal: f.animal, reason: f.reason }).catch(() => {});
             store.book({ id: `b${Date.now()}`, serviceId: s.id, from: { id: me.id, name: me.name, avatar: "" }, ...f, status: "sent", createdAt: new Date().toISOString() });
             toast.success(t.svc.sent);
           }}
@@ -248,6 +251,7 @@ function ReviewForm({ serviceId }: { serviceId: string }) {
       onSubmit={(e) => {
         e.preventDefault();
         if (!rating) return;
+        if (apiOn("services")) void servicesApi.addReview(serviceId, { rating: rating as 1 | 2 | 3 | 4 | 5, text }).catch(() => {});
         store.addReview({ id: existing?.id ?? `rv${Date.now()}`, serviceId, author: { id: user.id, name: user.name, avatar: "" }, rating: rating as 1 | 2 | 3 | 4 | 5, text, createdAt: new Date().toISOString() });
         toast.success(t.review.thanks);
       }}

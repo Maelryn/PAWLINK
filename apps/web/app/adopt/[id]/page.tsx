@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/Button";
 import { Emoji3D } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
 import { store, useStore, reservedRequestOf } from "@/lib/store";
+import { apiOn } from "@/lib/api/client";
+import { adoptions as adoptionsApi, requests as requestsApi } from "@/lib/api/endpoints";
 import { useSession } from "@/lib/auth";
 import { useHideTabBar } from "@/lib/ui";
 import { AnimatePresence } from "motion/react";
@@ -222,8 +224,8 @@ export default function AdoptionProfilePage() {
                 <div className="px-2 text-[14px] font-semibold">{t.life.withName(reservedReq.from.name)}</div>
                 <p className="px-2 text-[12.5px] text-label-2">{t.life.howEnded}</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={() => { store.markAdopted(a.id); toast.success(t.life.adopted); }}>{t.life.adopted}</Button>
-                  <ConfirmButton onConfirm={() => { store.reopenAdoption(a.id); toast(t.life.reopened); }} className="h-11 rounded-full bg-surface-2 text-[14px] font-semibold">
+                  <Button onClick={() => { if (apiOn("adoptions")) void adoptionsApi.setStatus(a.id, "adopted").catch(() => {}); store.markAdopted(a.id); toast.success(t.life.adopted); }}>{t.life.adopted}</Button>
+                  <ConfirmButton onConfirm={() => { if (apiOn("adoptions")) void adoptionsApi.update(a.id, {}).catch(() => {}); store.reopenAdoption(a.id); toast(t.life.reopened); }} className="h-11 rounded-full bg-surface-2 text-[14px] font-semibold">
                     {t.life.notWorked}
                   </ConfirmButton>
                 </div>
@@ -255,7 +257,7 @@ export default function AdoptionProfilePage() {
                 )}
                 {a.status === "adopted" && <p className="px-2 text-[13px] font-semibold text-stable">🎉 {t.market.adopted}</p>}
                 {(myReq.status === "sent" || myReq.status === "accepted") && a.status !== "adopted" && (
-                  <ConfirmButton onConfirm={() => { store.cancelRequest(myReq.id); toast(t.life.cancelled); }} className="h-10 w-full rounded-full text-[13.5px] font-semibold text-label-2">
+                  <ConfirmButton onConfirm={() => { if (apiOn("adoptions")) void requestsApi.decide(myReq.id, "declined").catch(() => {}); store.cancelRequest(myReq.id); toast(t.life.cancelled); }} className="h-10 w-full rounded-full text-[13.5px] font-semibold text-label-2">
                     {t.life.cancelReq}
                   </ConfirmButton>
                 )}

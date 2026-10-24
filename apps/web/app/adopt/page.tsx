@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { reservedRequestOf, store, useStore } from "@/lib/store";
 import { syncAdoptions } from "@/lib/sync";
 import { apiOn } from "@/lib/api/client";
+import { me as meApi } from "@/lib/api/endpoints";
 import { useSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -67,6 +68,7 @@ export default function AdoptPage() {
       return;
     }
     const on = store.toggleFavorite(user.id, id);
+    if (apiOn("adoptions")) { if (on) void meApi.saveFavorite(id).catch(() => {}); else void meApi.removeFavorite(id).catch(() => {}); }
     if (navigator.vibrate) navigator.vibrate(on ? 12 : 6);
     toast.success(on ? t.adopt.saved : t.adopt.removed);
   };

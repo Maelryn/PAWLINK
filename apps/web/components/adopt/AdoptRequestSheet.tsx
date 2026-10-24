@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/Button";
 import { Emoji3D, useMounted } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
 import { store } from "@/lib/store";
+import { apiOn } from "@/lib/api/client";
+import { adoptions as adoptionsApi } from "@/lib/api/endpoints";
 import type { AdoptionProfile, AdoptionRequest, User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +44,8 @@ export function AdoptRequestSheet({ a, me, open, onClose }: { a: AdoptionProfile
             onSubmit={(e) => {
               e.preventDefault();
               if (!ready) return;
-              store.sendRequest({ id: `rq${Date.now()}`, adoptionId: a.id, from: { id: me.id, name: me.name, avatar: "" }, fromPhone: me.phone, message: msg.trim(), housing, experience: exp, status: "sent", createdAt: new Date().toISOString() });
+              if (apiOn("adoptions")) void adoptionsApi.createRequest(a.id, { message: msg.trim(), housing, experience: exp }).then((r) => store.sendRequest(r)).catch(() => {});
+              else store.sendRequest({ id: `rq${Date.now()}`, adoptionId: a.id, from: { id: me.id, name: me.name, avatar: "" }, fromPhone: me.phone, message: msg.trim(), housing, experience: exp, status: "sent", createdAt: new Date().toISOString() });
               toast.success(t.market.sent, { icon: <Emoji3D src="/3d/love.png" size={22} /> });
               onClose();
             }}

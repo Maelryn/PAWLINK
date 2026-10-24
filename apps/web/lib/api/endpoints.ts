@@ -267,6 +267,8 @@ export const adoptions = {
   create: (a: NewAdoption) => api<AdoptionProfile>("/adoptions", { body: a }),
   update: (id: string, patch: AdoptionPatch) =>
     api<AdoptionProfile>(`/adoptions/${encodeURIComponent(id)}`, { method: "PATCH", body: patch }),
+  setStatus: (id: string, status: "adopted") =>
+    api<AdoptionProfile>(`/adoptions/${encodeURIComponent(id)}/status`, { method: "PATCH", body: { status } }),
   remove: (id: string) => api<void>(`/adoptions/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** Ask to adopt a listing. */
   createRequest: (id: string, r: NewAdoptionRequest) =>
