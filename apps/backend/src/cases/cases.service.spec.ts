@@ -7,6 +7,7 @@ import type { RealtimeGateway } from '../realtime/realtime.gateway';
 import type { NotificationsService } from '../notifications/notifications.service';
 import { ExifService } from '../uploads/exif.service';
 import { TrustService } from './trust.service';
+import { AIService } from '../ai/ai.service';
 import { CasesService } from './cases.service';
 import type { CreateCaseDto } from './dto/create-case.dto';
 
@@ -220,6 +221,7 @@ function service(prisma: unknown, overrides: { geo?: unknown; uploads?: unknown 
       // Phase 3 extracted the notification write + push into a shared service;
       // cases now delegates to it (the row + socket assertion lives there).
       { notify: async () => ({ id: 'notification-1' }) } as unknown as NotificationsService,
+      { analyze: async () => ({ triage: 'stable', confidence: 0.5, summary: 's', observedSigns: [], safetyAdvice: [], possiblyContagious: false, recommendedHelp: [], suggestedServices: [], suggestedHelpers: [], forcedUrgentByRule: false, disclaimer: 'd', model: 'mock' }) } as unknown as AIService,
     ),
   };
 }

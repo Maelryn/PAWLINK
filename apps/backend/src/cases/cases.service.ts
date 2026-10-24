@@ -11,6 +11,7 @@ import { DHashService, DUPLICATE_THRESHOLD } from '../uploads/dhash.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { caseRowToCase, readNextHelp, type CaseRowWithRelations } from './serialize';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AIService } from '../ai/ai.service';
 import { pendingEditAt } from '../shared/pending-edit';
 import type { CreateCaseDto, TriageAnswersDto } from './dto/create-case.dto';
 import type { Paginated, Viewer } from '../shared/pagination';
@@ -89,6 +90,7 @@ export class CasesService {
     private readonly dhash: DHashService,
     private readonly realtime: RealtimeGateway,
     private readonly notifications: NotificationsService,
+    private readonly ai: AIService,
   ) {}
 
   // ───────────────────────────── reads ─────────────────────────────
@@ -245,10 +247,26 @@ export class CasesService {
       inAlgeria: inAlgeria.ok,
     });
 
-    // Until the AI service (apps/Ai/) is delivered, the triage is the caller's
-    // own baseline. The AI's animalDetected/triage/safety rules are wired back
-    // in when that service lands — there is intentionally no backend↔AI link yet.
-    const triage = dto.triage ?? 'stable';
+    // The AI runs server-side and is authoritative: it may raise the triage
+    // (safety rules only escalate) and returns the animalDetected/photo checks.
+    // The caller's baseline is kept only as a fallback if the AI call fails.
+    let aiResult: Awaited<ReturnType<AIService['analyze']>> | undefined;
+    try {
+      aiResult = await this.ai.analyze({
+        photoUrls: photos,
+        description: dto.description,
+        species: dto.species,
+        conditionTags: dto.conditionTags,
+        location: { lat: dto.location.lat, lng: dto.location.lng },
+        count: dto.count,
+        baseline: dto.triage,
+        lang: 'fr',
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('AI analyze failed, keeping caller baseline:', (err as Error).message);
+    }
+    const triage = aiResult?.triage ?? dto.triage ?? 'stable';
 
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.case.create({
@@ -259,6 +277,7 @@ export class CasesService {
           count: dto.count ?? null,
           status: 'open',
           triage,
+          ai: aiResult ? (aiResult as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
           lat: dto.location.lat,
           lng: dto.location.lng,
           address: dto.location.address ?? null,
