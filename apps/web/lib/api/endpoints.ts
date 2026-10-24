@@ -141,6 +141,8 @@ export const cases = {
   create: (c: NewCase) => api<Case>("/cases", { body: c }),
   setStatus: (id: string, status: CaseStatus) => api<Case>(`/cases/${encodeURIComponent(id)}/status`, { method: "PATCH", body: { status } }),
   help: (id: string, helpType: HelpType, message?: string) => api<Case>(`/cases/${encodeURIComponent(id)}/help`, { body: { helpType, message } }),
+  setHelperStage: (id: string, stage: "onway" | "onsite") => api<Case>(`/cases/${encodeURIComponent(id)}/help`, { method: "PATCH", body: { stage } }),
+  requestNextHelp: (id: string, types: HelpType[]) => api<Case>(`/cases/${encodeURIComponent(id)}/next-help`, { body: { types } }),
   /** "Do you see this animal?" — the server checks the ≤ 1 km rule itself and takes one answer per account. */
   confirm: (id: string, answer: { seen: boolean } & GeoPoint) =>
     api<Case>(`/cases/${encodeURIComponent(id)}/confirm`, { body: answer }),
@@ -374,6 +376,7 @@ export interface NewZone {
   type: EmergencyZone["type"];
   polygon?: unknown;
   active?: boolean;
+  radiusKm?: number;
   startedAt?: string;
 }
 
