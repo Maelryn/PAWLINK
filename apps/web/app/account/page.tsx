@@ -17,13 +17,14 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Avatar, Emoji3D, TimeAgo } from "@/components/ui/primitives";
 import { useSession, saveProfile } from "@/lib/auth";
 import { apiOn } from "@/lib/api/client";
+import { notifications as notificationsApi } from "@/lib/api/endpoints";
 import { me as meApi } from "@/lib/api/endpoints";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, proActive, store, useStore } from "@/lib/store";
 import { availabilityOf, type Availability } from "@/lib/people";
 import { openPaywall } from "@/lib/ui";
-import type { HelpType, User, ServiceType } from "@/lib/types";
+import type { AppNotification, HelpType, User, ServiceType } from "@/lib/types";
 import { cn, distanceKm } from "@/lib/utils";
 
 type Tab = "home" | "profile" | "reports" | "adoption" | "pro" | "notifications";
@@ -477,7 +478,25 @@ function MyReports({ me }: { me: User }) {
 
 function Notifications({ me }: { me: User }) {
   const { t } = useI18n();
-  const list = useStore((s) => s.notifications).filter((n) => n.userId === me.id);
+  const [list, setList] = useState<AppNotification[]>(() => store.get().notifications.filter((n) => n.userId === me.id));
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!apiOn("notifications")) return;
+    setLoading(true);
+    notificationsApi
+      .list({ pageSize: 50 })
+      .then((p) => setList(p.items.map((n) => ({ ...n, userId: n.userId ?? me.id }))))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [me.id]);
+  const markAll = async () => {
+    if (apiOn("notifications")) {
+      try { await notificationsApi.readAll(); } catch {}
+    }
+    store.markAllRead(me.id);
+    setList((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+  if (loading) return <section className={cn(card, "py-12 text-center text-label-2")}>…</section>;
   if (!list.length)
     return (
       <section className={cn(card, "flex flex-col items-center gap-3 py-12 text-center text-label-2")}>
@@ -487,7 +506,7 @@ function Notifications({ me }: { me: User }) {
   return (
     <section className="card rounded-[28px] p-2">
       <div className="flex justify-end p-2">
-        <button type="button" onClick={() => store.markAllRead(me.id)} className="h-10 rounded-full px-3 text-[13.5px] font-semibold text-accent transition-colors hover:bg-accent-soft">{t.acct.markRead}</button>
+        <button type="button" onClick={markAll} className="h-10 rounded-full px-3 text-[13.5px] font-semibold text-accent transition-colors hover:bg-accent-soft">{t.acct.markRead}</button>
       </div>
       {list.map((n) => (
         <Link key={n.id} href={n.href} onClick={() => store.markRead(n.id)} className={cn("flex items-center gap-3 rounded-[18px] p-3 hover:bg-surface-2", !n.read && "bg-accent-soft/60")}>

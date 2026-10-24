@@ -4,6 +4,7 @@ import { ApiError, apiOn, refreshAccessToken, setAccessToken } from "./api/clien
 import { auth as authApi, me as meApi, type MePatch, type OtpSent } from "./api/endpoints";
 import { DEMO_PASSWORD } from "./mock/data";
 import { store, useStore } from "./store";
+import { syncNotifications, syncAdoptions, syncServices } from "./sync";
 import type { Role, Service, ServiceType, User } from "./types";
 
 /* Accounts. Two modes, same screens:
@@ -40,8 +41,11 @@ export async function startAuth() {
   store.hydrate({ realAuth: realAuth() });
   if (!realAuth()) return;
   try {
-    if (await refreshAccessToken()) store.upsertUser(await meApi.get(), true);
-    else store.setSession(null);
+    if (await refreshAccessToken()) {
+      const u = await meApi.get();
+      store.upsertUser(u, true);
+      await Promise.all([syncNotifications(u.id), syncAdoptions(), syncServices()]);
+    } else store.setSession(null);
   } catch {
     store.setSession(null);
   } finally {

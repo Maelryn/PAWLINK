@@ -5,11 +5,13 @@ import { useDemoText } from "@/lib/i18n/content";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 
 import { useI18n } from "@/lib/i18n";
 import { reservedRequestOf, store, useStore } from "@/lib/store";
+import { syncAdoptions } from "@/lib/sync";
+import { apiOn } from "@/lib/api/client";
 import { useSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -49,6 +51,7 @@ export default function AdoptPage() {
   const near = useNearMe();
   const requests = useStore((s) => s.requests);
   const [page, setPage] = useState(1);
+  useEffect(() => { if (apiOn("adoptions")) syncAdoptions(); }, []);
   // closest first when we know where you are (device, or the city on your profile), newest first otherwise
   const list = useStore((s) => s.adoptions)
     .filter((a) => a.status === "approved" && matches(filter, a.species) && (filter !== "saved" || favs.includes(a.id)))

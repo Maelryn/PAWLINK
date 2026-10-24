@@ -597,6 +597,15 @@ export const store = {
   markAllRead(userId: string) {
     set({ notifications: state.notifications.map((n) => (n.userId === userId ? { ...n, read: true } : n)) });
   },
+  setNotifications(list: AppNotification[]) {
+    set({ notifications: list });
+  },
+  setAdoptions(list: AdoptionProfile[]) {
+    set({ adoptions: list });
+  },
+  setServices(list: Service[]) {
+    set({ services: list });
+  },
 };
 
 export function useStore<T>(selector: (s: State) => T): T {
