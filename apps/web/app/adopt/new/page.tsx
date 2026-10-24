@@ -14,6 +14,9 @@ import { Button } from "@/components/ui/Button";
 import { Emoji3D, Segmented } from "@/components/ui/primitives";
 import { useSession } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { apiOn } from "@/lib/api/client";
+import { adoptions as adoptionsApi } from "@/lib/api/endpoints";
+import { uploadPhoto } from "@/lib/cases";
 import { SPECIES_EMOJI } from "@/lib/species";
 import { store } from "@/lib/store";
 import type { AdoptionProfile, Species } from "@/lib/types";
@@ -107,9 +110,60 @@ function NewAdoption({ editId }: { editId?: string }) {
     setChecking(false);
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!photos.length) return toast.error(t.market.photosRule);
     const now = new Date().toISOString();
+    if (apiOn("adoptions")) {
+      try {
+        // upload photos (probe + cloudinary) when uploads are on
+        const uploaded: { url: string; probeId?: string }[] = [];
+        for (const p of photos) {
+          try { uploaded.push(await uploadPhoto(p)); } catch { uploaded.push({ url: p }); }
+        }
+        const photoUrls = uploaded.map((u) => u.url).filter(Boolean);
+        const probeIds = uploaded.map((u) => u.probeId).filter(Boolean) as string[];
+        if (editing) {
+          await adoptionsApi.update(editing.id, {
+            name: f.name.trim(),
+            breed: f.breed.trim() || undefined,
+            photos: photoUrls,
+            probeIds,
+            healthStatus: f.health.trim(),
+            vaccinations: list(f.vaccines).map((name) => ({ name, date: now.slice(0, 10) })),
+            behavior: list(f.behavior),
+            careNeeds: list(f.care),
+            story: f.story.trim(),
+            location: { ...editing.location, address: f.city.trim() },
+          });
+          toast.success(editing.status === "approved" ? t.post.sent : t.market.submitted);
+          router.push("/account?tab=adoption");
+          return;
+        }
+        await adoptionsApi.create({
+          name: f.name.trim(),
+          species: f.species,
+          breed: f.breed.trim() || undefined,
+          sex: f.sex,
+          ageMonths: Number(f.age) || 1,
+          photos: photoUrls,
+          probeIds,
+          healthStatus: f.health.trim(),
+          vaccinations: list(f.vaccines).map((name) => ({ name, date: now.slice(0, 10) })),
+          medicalHistory: [],
+          behavior: list(f.behavior),
+          careNeeds: list(f.care),
+          story: f.story.trim(),
+          location: { lat: here?.lat ?? 36.75, lng: here?.lng ?? 3.06, address: f.city.trim() },
+        });
+        toast.success(t.market.submitted);
+        router.push("/account?tab=adoption");
+        return;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Failed");
+        return;
+      }
+    }
+    // demo fallback
     const details = {
       name: f.name.trim(),
       species: f.species,
@@ -124,7 +178,6 @@ function NewAdoption({ editId }: { editId?: string }) {
       ownerPhone: f.phone.trim() || me.phone,
     };
     if (editing) {
-      // a second review: the public version stays until a moderator approves the change
       const old = new Map(editing.vaccinations.map((v) => [v.name, v.date]));
       store.proposeAdoptionEdit(editing.id, {
         ...details,
@@ -165,7 +218,7 @@ function NewAdoption({ editId }: { editId?: string }) {
           e.preventDefault();
           if (!canNext || checking) return;
           if (step < 3) go(step + 1);
-          else submit();
+          else void submit();
         }}
         className="relative z-10 mx-auto max-w-[620px] px-4 pb-10 pt-[max(16px,env(safe-area-inset-top))] md:pb-36 md:pt-28"
       >

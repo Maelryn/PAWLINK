@@ -101,7 +101,7 @@ async function toBlob(photo: string): Promise<Blob> {
 
 /** Uploads one photo the way the backend wants it: the original goes to /uploads/probe first
     (EXIF + duplicate check server-side), then to the storage URL from /uploads/signature. */
-async function uploadPhoto(photo: string): Promise<{ url: string; probeId?: string }> {
+export async function uploadPhoto(photo: string): Promise<{ url: string; probeId?: string }> {
   if (!apiOn("uploads")) return { url: photo };
   const blob = await toBlob(photo);
   const { probeId } = await uploads.probe(blob);
