@@ -14,12 +14,11 @@ field-for-field, because the frontend generates its typed client from this servi
 | 3 ✅ | adoptions, services, reviews, bookings, zones, notifications |
 | 4 ✅ | admin (stats, users/roles, moderation queues) · the refresh-token store · Swagger completeness |
 
-> **The AI.** Katia's branch landed the triage implementation under `src/ai/` (Gemini Flash +
-> safety rules + fallbacks) and the companion service in `apps/Ai/`. It is a library inside the
-> backend, not an HTTP route: there is still no `/ai/analyze` endpoint and no `AI_PROVIDER` env
-> var, and `Case.ai` / `animalDetected` stay `null` until a controller wires `AIService` in
-> (deviation D6). `GEMINI_API_KEY` opts into the real Gemini provider; without it the mock
-> provider answers.
+> **The AI.** Katia's triage implementation lives under `src/ai/` (Gemini Flash + safety rules +
+> fallbacks) and the companion service in `apps/Ai/`. It is exposed at `POST /ai/analyze`
+> (bearer auth) returning `AIAnalysis`, and `GEMINI_API_KEY` opts into the real Gemini provider
+> (without it the mock provider answers). `Case.ai` / `animalDetected` stay `null` until a
+> report actually runs through it. No `AI_PROVIDER` env var (deviation D6: AI is self-contained).
 
 ## Run it
 
