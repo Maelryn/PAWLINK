@@ -137,6 +137,14 @@ export class MeController {
     await this.notifications.readAll(user.sub);
   }
 
+  @Patch('notifications/:id/read')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Mark one notification read', description: 'Only the caller’s own row — never anyone else’s.' })
+  @ApiNoContentResponse({ description: '204 — done.' })
+  async readNotification(@CurrentUser() user: { sub: string }, @Param('id') id: string): Promise<void> {
+    await this.notifications.markRead(user.sub, id);
+  }
+
   // ─────────── the rows the website was missing ───────────
 
   @Get('cases')

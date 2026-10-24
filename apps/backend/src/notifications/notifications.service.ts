@@ -64,4 +64,12 @@ export class NotificationsService {
       data: { read: true },
     });
   }
+
+  /** Marks a single notification read, but only if it belongs to this user. */
+  async markRead(userId: string, id: string): Promise<void> {
+    await this.prisma.notification.updateMany({
+      where: { id, userId, read: false },
+      data: { read: true },
+    });
+  }
 }

@@ -401,6 +401,7 @@ export const emergencyZones = zones;
 export const notifications = {
   list: (q: PageQuery = {}) => api<Page<AppNotification>>("/me/notifications", { query: { ...q } }),
   readAll: () => api<void>("/me/notifications/read-all", { method: "POST" }),
+  readOne: (id: string) => api<void>(`/me/notifications/${encodeURIComponent(id)}/read`, { method: "PATCH" }),
   // aliases
   all: (q: PageQuery = {}) => notifications.list(q),
   markAllRead: () => notifications.readAll(),
