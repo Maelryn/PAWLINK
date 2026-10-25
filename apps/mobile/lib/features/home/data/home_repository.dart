@@ -15,8 +15,6 @@ class FakeHomeRepository implements HomeRepository {
   const FakeHomeRepository();
 
   @override
-  Future<NearbySummary> nearbySummary() async => const NearbySummary(
-        reportCount: 3,
-        updatedAgo: Duration(minutes: 4),
-      );
+  Future<NearbySummary> nearbySummary() async =>
+      const NearbySummary(reportCount: 3, updatedAgo: Duration(minutes: 4));
 }

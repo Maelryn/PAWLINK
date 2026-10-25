@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pawlink/main.dart';
+
 void main() {
-  testWidgets('shell shows tabs and "+" pushes Signaler above it',
-      (WidgetTester tester) async {
+  testWidgets('shell shows tabs and "+" pushes Signaler above it', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const ProviderScope(child: PawLinkApp()));
     await tester.pumpAndSettle();
 
@@ -21,8 +23,9 @@ void main() {
     expect(find.byType(CloseButton), findsOneWidget);
   });
 
-  testWidgets('home shows hero and cards that navigate',
-      (WidgetTester tester) async {
+  testWidgets('home shows hero and cards that navigate', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const ProviderScope(child: PawLinkApp()));
     await tester.pumpAndSettle();
 

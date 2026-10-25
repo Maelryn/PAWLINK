@@ -15,9 +15,10 @@ class PlaceholderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: closable
-          ? AppBar(leading: const CloseButton(), title: Text(title))
-          : null,
+      appBar:
+          closable
+              ? AppBar(leading: const CloseButton(), title: Text(title))
+              : null,
       body: Center(
         child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
       ),

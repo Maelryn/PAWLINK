@@ -26,9 +26,10 @@ class Illustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final shadow = isDark
-        ? Colors.black.withValues(alpha: 0.4)
-        : context.colors.textPrimary.withValues(alpha: 0.16);
+    final shadow =
+        isDark
+            ? Colors.black.withValues(alpha: 0.4)
+            : context.colors.textPrimary.withValues(alpha: 0.16);
 
     return SizedBox(
       width: size,

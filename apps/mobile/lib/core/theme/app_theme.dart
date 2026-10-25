@@ -45,10 +45,9 @@ abstract final class AppTheme {
       inversePrimary: c.primary,
     );
 
-    final textTheme = AppTextStyles.textTheme(arabic: arabic).apply(
-      bodyColor: c.textPrimary,
-      displayColor: c.textPrimary,
-    );
+    final textTheme = AppTextStyles.textTheme(
+      arabic: arabic,
+    ).apply(bodyColor: c.textPrimary, displayColor: c.textPrimary);
     final family = textTheme.bodyMedium!;
 
     return ThemeData(
@@ -122,9 +121,8 @@ abstract final class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStatePropertyAll(c.onPrimary),
         trackColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected)
-              ? c.success
-              : c.outline,
+          (states) =>
+              states.contains(WidgetState.selected) ? c.success : c.outline,
         ),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),

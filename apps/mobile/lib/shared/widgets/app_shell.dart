@@ -24,10 +24,11 @@ class AppShell extends StatelessWidget {
       bottomNavigationBar: AppBottomNav(
         currentIndex: navigationShell.currentIndex,
         // Tapping the active tab returns to its root.
-        onSelect: (index) => navigationShell.goBranch(
-          index,
-          initialLocation: index == navigationShell.currentIndex,
-        ),
+        onSelect:
+            (index) => navigationShell.goBranch(
+              index,
+              initialLocation: index == navigationShell.currentIndex,
+            ),
         onCreate: () => context.push(AppRoutes.report),
       ),
     );
@@ -72,8 +73,10 @@ class AppBottomNav extends StatelessWidget {
   static const double _sideMargin = 12;
   static const double _bottomMargin = 10;
   static const double _blur = 20;
-  static const EdgeInsetsDirectional _padding =
-      EdgeInsetsDirectional.symmetric(horizontal: 7, vertical: 5);
+  static const EdgeInsetsDirectional _padding = EdgeInsetsDirectional.symmetric(
+    horizontal: 7,
+    vertical: 5,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -242,8 +245,10 @@ class _CreateButton extends StatelessWidget {
                   'assets/icons/plus.svg',
                   width: _iconSize,
                   height: _iconSize,
-                  colorFilter:
-                      ColorFilter.mode(colors.onPrimary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.onPrimary,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),

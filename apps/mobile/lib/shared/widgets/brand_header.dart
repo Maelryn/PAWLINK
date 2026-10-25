@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../shared/widgets/gradient_text.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import 'gradient_text.dart';
 
 /// Brand icon asset for the current theme.
 String brandIconAsset(BuildContext context) =>
@@ -12,8 +12,8 @@ String brandIconAsset(BuildContext context) =>
         : 'assets/brand/pawlink-icon-light.svg';
 
 /// Logo and wordmark on the start side, settings button on the end side.
-class HomeHeader extends StatelessWidget {
-  const HomeHeader({super.key, required this.onSettings});
+class BrandHeader extends StatelessWidget {
+  const BrandHeader({super.key, required this.onSettings});
 
   final VoidCallback onSettings;
 
@@ -67,9 +67,9 @@ class HomeHeader extends StatelessWidget {
                     'pawlink',
                     gradient: colors.brandGradient,
                     style: Theme.of(context).textTheme.headlineSmall!.copyWith(
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.8,
-                        ),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.8,
+                    ),
                   ),
                 ],
               ),

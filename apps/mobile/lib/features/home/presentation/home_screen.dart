@@ -8,7 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_background.dart';
 import '../providers.dart';
 import 'widgets/action_card.dart';
-import 'widgets/home_header.dart';
+import '../../../shared/widgets/brand_header.dart';
 import 'widgets/home_hero.dart';
 import 'widgets/nearby_card.dart';
 
@@ -73,7 +73,7 @@ class HomeScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Settings has no destination yet.
-            HomeHeader(onSettings: () {}),
+            BrandHeader(onSettings: () {}),
             HomeHero(onReport: report),
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -98,10 +98,11 @@ class HomeScreen extends ConsumerWidget {
             ],
             const SizedBox(height: AppSpacing.md),
             nearby.maybeWhen(
-              data: (summary) => NearbyCard(
-                summary: summary,
-                onTap: () => context.go(AppRoutes.map),
-              ),
+              data:
+                  (summary) => NearbyCard(
+                    summary: summary,
+                    onTap: () => context.go(AppRoutes.map),
+                  ),
               orElse: () => const SizedBox.shrink(),
             ),
           ],

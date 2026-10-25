@@ -22,8 +22,8 @@ class GradientText extends StatelessWidget {
 
     return ShaderMask(
       blendMode: BlendMode.srcIn,
-      shaderCallback: (bounds) =>
-          gradient.createShader(bounds, textDirection: direction),
+      shaderCallback:
+          (bounds) => gradient.createShader(bounds, textDirection: direction),
       child: Text(
         text,
         textAlign: textAlign,

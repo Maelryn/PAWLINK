@@ -8,7 +8,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/gradient_text.dart';
 import '../../../../shared/widgets/illustration.dart';
 import '../../../../shared/widgets/primary_button.dart';
-import 'home_header.dart';
+import '../../../../shared/widgets/brand_header.dart';
 
 /// Hero: the dog and cat flanking the brand badge, tagline, title with the
 /// brand gradient on its second line, subtitle and the report button.
@@ -81,15 +81,16 @@ class HomeHero extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: colors.glass,
                     borderRadius: BorderRadius.circular(_markRadius),
-                    boxShadow: brightness == Brightness.dark
-                        ? AppShadows.soft(brightness)
-                        : [
-                            BoxShadow(
-                              color: colors.indigo.withValues(alpha: 0.16),
-                              blurRadius: 40,
-                              offset: const Offset(0, 20),
-                            ),
-                          ],
+                    boxShadow:
+                        brightness == Brightness.dark
+                            ? AppShadows.soft(brightness)
+                            : [
+                              BoxShadow(
+                                color: colors.indigo.withValues(alpha: 0.16),
+                                blurRadius: 40,
+                                offset: const Offset(0, 20),
+                              ),
+                            ],
                   ),
                   child: SizedBox(
                     width: _markSize,

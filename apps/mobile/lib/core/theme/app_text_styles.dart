@@ -16,25 +16,26 @@ abstract final class AppTextStyles {
     required bool arabic,
     double height = 1.25,
     double spacing = 0,
-  }) =>
-      TextStyle(
-        fontFamily: arabic ? _arabic : _latin,
-        fontFamilyFallback: [arabic ? _latin : _arabic],
-        fontSize: size,
-        // Plex Arabic ships 400-700 only; heavier weights resolve to Bold.
-        fontWeight: weight,
-        height: height,
-        // Tight tracking suits Latin display type but breaks Arabic joins.
-        letterSpacing: arabic ? 0 : spacing,
-      );
+  }) => TextStyle(
+    fontFamily: arabic ? _arabic : _latin,
+    fontFamilyFallback: [arabic ? _latin : _arabic],
+    fontSize: size,
+    // Plex Arabic ships 400-700 only; heavier weights resolve to Bold.
+    fontWeight: weight,
+    height: height,
+    // Tight tracking suits Latin display type but breaks Arabic joins.
+    letterSpacing: arabic ? 0 : spacing,
+  );
 
   /// Material text theme built from the Make type scale (its ~20 sizes
   /// collapsed to 12). Pass `arabic: true` for the AR locale.
   static TextTheme textTheme({bool arabic = false}) {
-    TextStyle s(double size, FontWeight w,
-            {double height = 1.25, double spacing = 0}) =>
-        _style(size, w,
-            arabic: arabic, height: height, spacing: spacing);
+    TextStyle s(
+      double size,
+      FontWeight w, {
+      double height = 1.25,
+      double spacing = 0,
+    }) => _style(size, w, arabic: arabic, height: height, spacing: spacing);
     return TextTheme(
       displayLarge: s(44, FontWeight.w900, height: 0.98, spacing: -2.2),
       displayMedium: s(36, FontWeight.w900, height: 0.98, spacing: -1.8),
@@ -59,10 +60,6 @@ abstract final class AppTextStyles {
 
   /// Smallest label (badges, "CARTE EN DIRECT" eyebrow). Not part of
   /// Material's scale.
-  static TextStyle micro({bool arabic = false}) => _style(
-        9,
-        FontWeight.w800,
-        arabic: arabic,
-        spacing: 0.7,
-      );
+  static TextStyle micro({bool arabic = false}) =>
+      _style(9, FontWeight.w800, arabic: arabic, spacing: 0.7);
 }
