@@ -361,6 +361,7 @@ export const services = {
 export const bookings = {
   decide: (id: string, status: "confirmed" | "declined") =>
     api<Booking>(`/bookings/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
+  cancel: (id: string) => api<void>(`/bookings/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
 
 /** Emergency zones (`/emergency-zones`). */

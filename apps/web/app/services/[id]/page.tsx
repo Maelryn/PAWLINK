@@ -21,7 +21,7 @@ import { useI18n } from "@/lib/i18n";
 import { SERVICE_COLOR, SERVICE_EMOJI } from "@/lib/species";
 import { ratingOf, store, useStore } from "@/lib/store";
 import { apiOn } from "@/lib/api/client";
-import { services as servicesApi } from "@/lib/api/endpoints";
+import { services as servicesApi, bookings as bookingsApi } from "@/lib/api/endpoints";
 import { gmapsDirections } from "@/lib/trust";
 import type { Service } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -204,7 +204,7 @@ function BookingCard({ s }: { s: Service }) {
           <div className={cn("mt-1 font-semibold", mine.status === "confirmed" ? "text-stable" : mine.status === "declined" ? "text-urgent" : "text-monitor")}>
             {mine.status === "confirmed" ? `${t.biz.confirm} ✓` : mine.status === "declined" ? t.svc.declined : t.market.status.sent}
           </div>
-          <ConfirmButton onConfirm={() => { store.cancelBooking(mine.id); toast(t.life.bookingCancelled); }} className="mt-3 h-10 w-full rounded-full bg-surface text-[13.5px] font-semibold text-urgent">
+          <ConfirmButton onConfirm={() => { if (apiOn("services")) void bookingsApi.cancel(mine.id).catch(() => {}); store.cancelBooking(mine.id); toast(t.life.bookingCancelled); }} className="mt-3 h-10 w-full rounded-full bg-surface text-[13.5px] font-semibold text-urgent">
             {t.life.cancelBooking}
           </ConfirmButton>
         </div>
