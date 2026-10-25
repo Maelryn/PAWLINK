@@ -456,10 +456,10 @@ describe('confirm / flag / status', () => {
     expect(result.moderation).toBe('pending');
   });
 
-  it('refuses a status change from a reporter', async () => {
-    const { prisma } = prismaStub();
+  it('refuses a non-resolving status change from a reporter', async () => {
+    const stub = prismaStub({ rows: [row()] });
     await expect(
-      service(prisma).service.updateStatus('case-1', { status: 'resolved' }, USER),
+      service(stub.prisma).service.updateStatus('case-1', { status: 'in_progress' }, USER),
     ).rejects.toMatchObject({ status: 403 });
   });
 
