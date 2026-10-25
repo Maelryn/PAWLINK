@@ -76,6 +76,12 @@ class Review {
 
 enum BookingStatus { sent, confirmed, declined, cancelled }
 
+/// `yyyy-MM-dd`, the way bookings store their day.
+String bookingDateKey(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
+
 /// An appointment request to a Pro business. No payment involved.
 class Booking {
   const Booking({
@@ -101,4 +107,20 @@ class Booking {
   final String reason;
   final BookingStatus status;
   final DateTime createdAt;
+
+  /// Still waiting for, or holding, a slot (the client can cancel it).
+  bool get isActive =>
+      status == BookingStatus.sent || status == BookingStatus.confirmed;
+
+  Booking withStatus(BookingStatus status) => Booking(
+    id: id,
+    serviceId: serviceId,
+    from: from,
+    date: date,
+    time: time,
+    animal: animal,
+    reason: reason,
+    status: status,
+    createdAt: createdAt,
+  );
 }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/adopt/presentation/adopt_detail_screen.dart';
 import '../../features/adopt/presentation/adopt_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/services/presentation/service_detail_screen.dart';
 import '../../features/services/presentation/services_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 import '../../shared/widgets/placeholder_screen.dart';
@@ -16,6 +17,8 @@ abstract final class AppRoutes {
   static const adoptDetailPattern = '/adopter/:id';
   static String adoptDetail(String id) => '$adopt/$id';
   static const services = '/services';
+  static const serviceDetailPattern = '/services/:id';
+  static String serviceDetail(String id) => '$services/$id';
   static const map = '/carte';
   static const report = '/signaler';
 }
@@ -76,6 +79,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder:
             (context, state) =>
                 AdoptDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.serviceDetailPattern,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder:
+            (context, state) =>
+                ServiceDetailScreen(id: state.pathParameters['id']!),
       ),
       GoRoute(
         path: AppRoutes.report,

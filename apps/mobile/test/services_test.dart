@@ -25,8 +25,8 @@ void main() {
   test(
     'demo places cover vets, shelters and shops in several cities',
     () async {
-      final all = await const FakeServiceRepository().services();
-      expect(all, hasLength(6));
+      final all = await FakeServiceRepository.demo().services();
+      expect(all, hasLength(7));
       expect(
         all.map((s) => s.type),
         containsAll([ServiceType.vet, ServiceType.shelter, ServiceType.store]),
@@ -38,7 +38,7 @@ void main() {
   testWidgets('lists Pro places first with the featured badge', (tester) async {
     await _pumpServices(tester);
 
-    expect(find.text('Mis en avant'), findsNWidgets(3));
+    expect(find.text('Mis en avant'), findsNWidgets(6));
     final firstTop = tester.getTopLeft(find.text('Clinique des Oliviers')).dy;
     final lastProTop = tester.getTopLeft(find.text('Animalerie Didouche')).dy;
     final firstFree = tester.getTopLeft(find.text('Refuge Les Pattes')).dy;

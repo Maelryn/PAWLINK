@@ -1,16 +1,89 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/fake_service_repository.dart';
+import 'data/rating_summary.dart';
 import 'data/service_models.dart';
 import 'data/service_repository.dart';
 
+/// Id of the signed-in user; auth is not wired yet.
+final currentUserIdProvider = Provider<String>((ref) => 'me');
+
 final serviceRepositoryProvider = Provider<ServiceRepository>(
-  (ref) => const FakeServiceRepository(),
+  (ref) =>
+      FakeServiceRepository.demo(viewerId: ref.watch(currentUserIdProvider)),
 );
 
 final servicesProvider = FutureProvider<List<Service>>(
   (ref) => ref.watch(serviceRepositoryProvider).services(),
 );
+
+/// One place for the detail screen; null when it no longer exists.
+final serviceProvider = FutureProvider.family<Service?, String>(
+  (ref, id) => ref.watch(serviceRepositoryProvider).service(id),
+);
+
+final serviceReviewsProvider = FutureProvider.family<List<Review>, String>(
+  (ref, id) => ref.watch(serviceRepositoryProvider).reviews(id),
+);
+
+/// Average and histogram, once both the place and its reviews are loaded.
+final ratingSummaryProvider = Provider.family<RatingSummary?, String>((
+  ref,
+  id,
+) {
+  final service = ref.watch(serviceProvider(id)).value;
+  final reviews = ref.watch(serviceReviewsProvider(id)).value;
+  if (service == null || reviews == null) return null;
+  return RatingSummary.of(service, reviews);
+});
+
+/// The viewer's latest appointment request for a place, null when none.
+final myBookingProvider = FutureProvider.family<Booking?, String>(
+  (ref, id) => ref.watch(serviceRepositoryProvider).myBooking(id),
+);
+
+/// Write side of the detail: review, request an appointment, cancel it.
+/// Each call refreshes what the screen reads back.
+class ServiceActions {
+  ServiceActions(this._ref);
+
+  final Ref _ref;
+
+  ServiceRepository get _repo => _ref.read(serviceRepositoryProvider);
+
+  Future<void> saveReview({
+    required String serviceId,
+    required int rating,
+    required String text,
+  }) async {
+    await _repo.saveReview(serviceId: serviceId, rating: rating, text: text);
+    _ref.invalidate(serviceReviewsProvider(serviceId));
+  }
+
+  Future<void> sendBooking({
+    required String serviceId,
+    required String date,
+    required String time,
+    required String animal,
+    required String reason,
+  }) async {
+    await _repo.sendBooking(
+      serviceId: serviceId,
+      date: date,
+      time: time,
+      animal: animal,
+      reason: reason,
+    );
+    _ref.invalidate(myBookingProvider(serviceId));
+  }
+
+  Future<void> cancelBooking(Booking booking) async {
+    await _repo.cancelBooking(booking.id);
+    _ref.invalidate(myBookingProvider(booking.serviceId));
+  }
+}
+
+final serviceActionsProvider = Provider<ServiceActions>(ServiceActions.new);
 
 /// The round chips of the Services tab. Boarding is grouped with training
 /// under "Éducation".

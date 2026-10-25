@@ -45,7 +45,7 @@ class ServiceCard extends StatelessWidget {
 
   final Service service;
 
-  /// Null until the place detail screen exists.
+  /// Opens the place detail.
   final VoidCallback? onTap;
 
   static const double _visualWidth = 104;
