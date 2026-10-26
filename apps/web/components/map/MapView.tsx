@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import { TRIAGE_ORDER } from "@/lib/species";
 import type { Case, EmergencyZone, GeoPoint, Service, Species, Triage } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import type { Viewport } from "@/lib/bbox";
 import { ALGERIA_VIEW, buildStyle, loadBaseStyle } from "./mapStyle";
 import { CasePin, ClusterPin, FireMarker, ServicePin, UserDot } from "./Pins";
 
@@ -35,7 +36,9 @@ export interface MapViewProps {
   userLocation?: GeoPoint | null;
   showLabels?: boolean;
   onReady?: (map: MapRef) => void;
-  onMoveEnd?: () => void;
+  /** The area the map is showing, every time it changes. The map turns it into the
+      `?bbox=` the API wants, so the list follows the viewport. */
+  onViewportChange?: (viewport: Viewport) => void;
   className?: string;
   children?: React.ReactNode;
 }
@@ -54,7 +57,7 @@ export function MapView({
   userLocation,
   showLabels,
   onReady,
-  onMoveEnd,
+  onViewportChange,
   className,
   children,
 }: MapViewProps) {
@@ -97,6 +100,15 @@ export function MapView({
     const b = m.getBounds();
     setView({ zoom: m.getZoom(), bounds: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()] });
   }, []);
+
+  /** What the map is showing right now. Only on a finished move: a zoom gesture changes the
+      bounds on every frame, and the API must be asked once, at the end. */
+  const emitViewport = useCallback(() => {
+    const m = mapRef.current;
+    if (!m) return;
+    const b = m.getBounds();
+    onViewportChange?.({ west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() });
+  }, [onViewportChange]);
 
   /* ── emergency zone breathing glow ── */
   useEffect(() => {
@@ -154,11 +166,12 @@ export function MapView({
         onLoad={() => {
           setLoaded(true);
           syncView();
+          emitViewport();
           if (mapRef.current) onReady?.(mapRef.current);
         }}
         onMoveEnd={() => {
           syncView();
-          onMoveEnd?.();
+          emitViewport();
         }}
         onZoom={(e) => {
           if (Math.floor(e.viewState.zoom) !== Math.floor(view.zoom)) syncView();

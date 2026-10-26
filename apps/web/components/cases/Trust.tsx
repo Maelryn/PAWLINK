@@ -109,7 +109,7 @@ function NearbyCheck({ c }: { c: Case }) {
       setBusy(null);
       return toast.error(t.verify.tooFar(km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`));
     }
-    const r = await voteOnCase(c, me.id, seen);
+    const r = await voteOnCase(c, me.id, seen, here);
     setBusy(null);
     if (!r.ok) return toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
     if (navigator.vibrate) navigator.vibrate(12);

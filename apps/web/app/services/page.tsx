@@ -5,13 +5,15 @@ import { AnimatePresence, motion } from "motion/react";
 import { BadgeCheck, LayoutGrid, Map as MapIcon, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 import { MapView } from "@/components/map";
 import { Emoji3D, Segmented } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
 import { SERVICE_COLOR, SERVICE_EMOJI } from "@/lib/species";
 import { ratingOf, useStore } from "@/lib/store";
+import { syncServices } from "@/lib/sync";
+import { apiOn } from "@/lib/api/client";
 import type { Service, ServiceType } from "@/lib/types";
 import { cn, distanceKm } from "@/lib/utils";
 import { useNearMe } from "@/lib/useNearMe";
@@ -45,6 +47,7 @@ export default function ServicesPage() {
   const origin = near.origin;
   const locating = near.locating;
   const [page, setPage] = useState(1);
+  useEffect(() => { if (apiOn("services")) syncServices(); }, []);
   const locate = async () => {
     setPage(1);
     if (origin) return near.clear();

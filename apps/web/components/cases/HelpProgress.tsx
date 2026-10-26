@@ -12,6 +12,8 @@ import { withdrawHelp } from "@/lib/cases";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
+import { apiOn } from "@/lib/api/client";
+import { cases as casesApi } from "@/lib/api/endpoints";
 import type { Case, HelpType, User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +59,7 @@ export function HelperPanel({ c, me, helping }: { c: Case; me: User; helping: He
   const [want, setWant] = useState<HelpType[]>([]);
   const advance = () => {
     const next = step === 0 ? "onway" : "onsite";
+    if (apiOn("cases")) void casesApi.setHelperStage(c.id, next).catch(() => {});
     store.setHelperStage(c.id, me.id, next);
     if (navigator.vibrate) navigator.vibrate(12);
     toast.success(next === "onway" ? t.flow.onWayDone : t.flow.onSiteDone);
@@ -145,6 +148,7 @@ export function HelperPanel({ c, me, helping }: { c: Case; me: User; helping: He
               className="mt-3 w-full"
               disabled={!want.length}
               onClick={() => {
+                if (apiOn("cases")) void casesApi.requestNextHelp(c.id, want).catch(() => {});
                 store.requestNextHelp(c.id, me.id, want);
                 setWant([]);
                 toast.success(t.flow.asked);

@@ -15,6 +15,8 @@ import { CreateFab, CreateMenuDesktop } from "@/components/layout/CreateMenu";
 import { Avatar } from "@/components/ui/primitives";
 import { signOut, useSession } from "@/lib/auth";
 import { useStore } from "@/lib/store";
+import { syncNotifications } from "@/lib/sync";
+import { apiOn } from "@/lib/api/client";
 import { useTabBarHidden } from "@/lib/ui";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -69,6 +71,7 @@ export function TopNav({
   const router = useRouter();
   const user = useSession();
   const { scrollY } = useScroll();
+  useEffect(() => { if (user?.id && apiOn("notifications")) syncNotifications(user.id); }, [user?.id]);
   const [scrolled, setScrolled] = useState(false);
   useMotionValueEvent(scrollY, "change", (v) => setScrolled(v > 12));
 

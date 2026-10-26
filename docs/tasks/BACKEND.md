@@ -72,10 +72,7 @@ NEXT_PUBLIC_API_FEATURES=auth,cases,uploads
 
 ### Still needed from the API
 
-1. **Resolving a case:** the reporter and the people helping on that case should be able to set `resolved` (today it's volunteer / vet / admin only, so the website only shows the button to them when the API is on).
-2. **Nearby helpers:** when a public case is created, a `nearbyCase` notification for nearby available volunteers / vets (the website does it in demo mode and the video shows it).
-3. **Demo reports:** when `reporterOnSite: false`, the `onSite` check must be `false` so it can never be "verified".
-4. **Cloudinary credentials** in the API env, otherwise reports have no photo.
+1. **Cloudinary credentials** in the API env, otherwise reports have no photo.
 
 ### Shapes the website added since (please mirror them in `apps/web/lib/types.ts` terms)
 
@@ -88,6 +85,28 @@ NEXT_PUBLIC_API_FEATURES=auth,cases,uploads
 - **Editing listings (second review):** owners can edit their adoption listing and their business listing. On an `approved` listing the change is stored as `pendingEdit` (the changed fields + `at`) and the public version stays until an admin approves it; approve merges it, refuse drops it. A `rejected` adoption that is edited goes back to `pending`. Admin needs a list of listings with a `pendingEdit`. Two more notification kinds: `editApproved`, `editRejected`.
 - **Reports, edit / delete:** the reporter can `DELETE /cases/:id` and `PATCH /cases/:id { description, conditionTags }`. On a public case the change is stored as `pendingEdit` and goes to the same admin review as listings.
 - **Reports, verified by people nearby:** when a public case is created, users within **3 km** get a `confirmAsk` notification ("do you see this animal?"). Only someone within **1 km** of the case can answer, once: `POST /cases/:id/confirm { seen: boolean, lat, lng }` (check the distance server-side). Keep `trust.confirmedBy` / `trust.deniedBy` (user ids). 2 "yes" → `verified`; at least 2 "no" and more "no" than "yes" → `suspicious` + back to `moderation: "pending"`. A "yes" notifies the reporter (`caseConfirmed`). Until this exists the website sends a "no" to `/flag`.
+
+### Delivered (21 Oct 2026)
+
+Everything in *Shapes the website added since* except the two items below is in the API now — see
+`apps/backend/README.md` §"The surface the website needed (Phase 3.5)" for the routes, and
+`apps/web/lib/api/endpoints.ts` for the typed client wrappers (`me.cases`, `me.pro`,
+`me.favorites`, `cases.confirm({ seen, lat, lng })`, `cases.update`, `cases.remove`,
+`admin.pendingEdits`, `admin.decide*Edit`).
+
+- Pro: `pro | plus`, extends `until` keeping the days left, same plan twice → `409`, and the
+  featured flag is **derived from the owner's subscription on every read**, so expiry turns it off.
+- Favourites: `GET/PUT/DELETE /me/favorites[/:adoptionId]` (`favorites` table).
+- Second review: `pendingEdit` on cases, adoptions and services; `GET /admin/pending-edits`;
+  `PATCH /admin/{cases,adoptions,services}/:id/edit { decision }`; `editApproved` / `editRejected`.
+- Reports: `PATCH /cases/:id`, `DELETE /cases/:id`, and `POST /cases/:id/confirm { seen, lat, lng }`
+  with the server-side 1 km rule, one answer per account, 2 yes → `verified`, 2 no →
+  `suspicious` + moderation. New reports send `confirmAsk` to the people within 3 km.
+
+The deferred notification flows are implemented: case resolution, nearby available helper alerts,
+adoption cancellation/completion, booking cancellation, helper arrival stages and next-help requests.
+`reporterOnSite: false` now forces the `onSite` trust check to fail. Booking cancellation adds the
+`cancelled` enum value in migration `20261025100000_booking_cancelled`.
 
 ### Before deploying the API (important for the judges)
 

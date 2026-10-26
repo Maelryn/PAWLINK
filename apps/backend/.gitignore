@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# build
+dist/
+*.tsbuildinfo
+
+# env — never commit real values
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+*.log
+
+# test / coverage
+coverage/
+
+# prisma generated client (if generated into the repo)
+src/generated/
+
+# editors
+.vscode/
+.idea/
+.vercel

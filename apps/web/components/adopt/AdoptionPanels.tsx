@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { reservedRequestOf, store, useStore } from "@/lib/store";
+import { apiOn } from "@/lib/api/client";
+import { adoptions as adoptionsApi, requests as requestsApi } from "@/lib/api/endpoints";
 import type { User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +53,7 @@ export function MyAdoptions({ me }: { me: User }) {
             </span>
           </Link>
           {a.status !== "adopted" && !reservedRequestOf(a, requests) && (
-            <ConfirmButton onConfirm={() => { store.removeAdoption(a.id); toast(t.life.deleted); }} className="flex h-10 shrink-0 items-center justify-center rounded-full bg-surface-2 px-3 text-label-2" armedClassName="bg-urgent text-white text-[12px] font-semibold">
+            <ConfirmButton onConfirm={() => { if (apiOn("adoptions")) void adoptionsApi.remove(a.id).catch(() => {}); store.removeAdoption(a.id); toast(t.life.deleted); }} className="flex h-10 shrink-0 items-center justify-center rounded-full bg-surface-2 px-3 text-label-2" armedClassName="bg-urgent text-white text-[12px] font-semibold">
               <Trash2 className="h-4 w-4" aria-label={t.life.delete} />
             </ConfirmButton>
           )}
@@ -83,8 +85,8 @@ export function MyAdoptions({ me }: { me: User }) {
               <div className="mt-2 text-[12.5px] font-medium text-label-2">{t.life.busy}</div>
             ) : r.status === "sent" ? (
               <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => store.answerRequest(r.id, "accepted")} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-stable text-[13.5px] font-semibold text-white"><Check className="h-4 w-4" /> {t.market.accept}</button>
-                <button type="button" onClick={() => store.answerRequest(r.id, "declined")} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-surface text-[13.5px] font-semibold"><X className="h-4 w-4" /> {t.market.decline}</button>
+                <button type="button" onClick={() => { if (apiOn("adoptions")) void adoptionsApi.decideRequest(r.id, { status: "accepted" }).catch(() => {}); store.answerRequest(r.id, "accepted"); }} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-stable text-[13.5px] font-semibold text-white"><Check className="h-4 w-4" /> {t.market.accept}</button>
+                <button type="button" onClick={() => { if (apiOn("adoptions")) void adoptionsApi.decideRequest(r.id, { status: "declined" }).catch(() => {}); store.answerRequest(r.id, "declined"); }} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-surface text-[13.5px] font-semibold"><X className="h-4 w-4" /> {t.market.decline}</button>
               </div>
             ) : (
               <div className={cn("mt-2 text-[13px] font-semibold", r.status === "accepted" ? "text-stable" : r.status === "cancelled" ? "text-label-2" : "text-urgent")}>{t.market.status[r.status]}</div>
@@ -101,10 +103,10 @@ export function MyAdoptions({ me }: { me: User }) {
                   <div className="mt-1 w-full space-y-2">
                     <p className="text-[12.5px] text-label-2">{t.life.howEnded}</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => { store.markAdopted(a.id); toast.success(t.life.adopted); }} className="flex h-10 items-center justify-center rounded-full bg-stable text-[13.5px] font-semibold text-white">
+                      <button type="button" onClick={() => { if (apiOn("adoptions")) void adoptionsApi.setStatus(a.id, "adopted").catch(() => {}); store.markAdopted(a.id); toast.success(t.life.adopted); }} className="flex h-10 items-center justify-center rounded-full bg-stable text-[13.5px] font-semibold text-white">
                         {t.life.adopted}
                       </button>
-                      <ConfirmButton onConfirm={() => { store.reopenAdoption(a.id); toast(t.life.reopened); }} className="h-10 rounded-full bg-surface text-[13.5px] font-semibold">
+                      <ConfirmButton onConfirm={() => { if (apiOn("adoptions")) void adoptionsApi.update(a.id, {}).catch(() => {}); store.reopenAdoption(a.id); toast(t.life.reopened); }} className="h-10 rounded-full bg-surface text-[13.5px] font-semibold">
                         {t.life.notWorked}
                       </ConfirmButton>
                     </div>
@@ -129,7 +131,7 @@ export function MyAdoptions({ me }: { me: User }) {
               <div className={cn("text-[12.5px] font-medium", r.status === "accepted" ? "text-stable" : r.status === "declined" ? "text-urgent" : "text-monitor")}>{t.market.status[r.status]}</div>
             </Link>
             {(r.status === "sent" || r.status === "accepted") && a.status !== "adopted" && (
-              <ConfirmButton onConfirm={() => { store.cancelRequest(r.id); toast(t.life.cancelled); }} className="h-9 shrink-0 rounded-full bg-surface-2 px-3 text-[12.5px] font-semibold text-label-2">
+              <ConfirmButton onConfirm={() => { if (apiOn("adoptions")) void requestsApi.decide(r.id, "declined").catch(() => {}); store.cancelRequest(r.id); toast(t.life.cancelled); }} className="h-9 shrink-0 rounded-full bg-surface-2 px-3 text-[12.5px] font-semibold text-label-2">
                 {t.verify.cancel}
               </ConfirmButton>
             )}

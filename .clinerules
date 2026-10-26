@@ -1,0 +1,25 @@
+# Cline rules for PAWLINK
+
+Follow the same guidelines that opencode applies (see apps/web/AGENTS.md and apps/mobile/AGENTS.md).
+
+## Web (apps/web)
+- This is NOT the Next.js you know. Read node_modules/next/dist/docs/ before writing code touching Next.js APIs. Heed deprecation notices.
+
+## Mobile (apps/mobile)
+- Expo/React Native mobile-first patterns, performance, cross-platform compatibility.
+- Expo ships breaking changes every SDK. Before touching Expo/EAS/React Native APIs: read expo major version in package.json, fetch matching versioned docs https://docs.expo.dev/versions/v<major>.0.0/, and https://docs.expo.dev/llms.txt. Never answer from memory.
+- Use bunx instead of npx if bun.lock present.
+- Commands: npx expo install <pkg>, npx expo start, npx expo lint, npx tsc --noEmit, npx expo-doctor, npx expo install --fix.
+- Run lint and typecheck before declaring done.
+- Expo Router; routes in src/app/; keep non-route code outside src/app/.
+- EAS for builds/submits/OTA updates.
+- Never create/edit ios/ or android/ by hand (CNG). Configure via app.json and config plugins.
+- After adding native library, needs dev build.
+- Prefer recommended Expo modules; check skills before adding deps.
+
+## General
+- Verify with lint/typecheck before declaring done.
+- Use available MCP tools: filesystem (scoped /home/aymen/Projects), git (cwd /home/aymen/Projects), playwright, tavily, etc.
+
+## Obsidian vault
+- The opencode backup contains an Obsidian vault under `skills/.obsidian/` (appearance, core-plugins, graph, workspace). This is editor/vault metadata only — no coding guidelines to apply. If working with Obsidian notes, preserve that config.

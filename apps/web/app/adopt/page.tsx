@@ -5,11 +5,14 @@ import { useDemoText } from "@/lib/i18n/content";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TopNav } from "@/components/layout/TopNav";
 
 import { useI18n } from "@/lib/i18n";
 import { reservedRequestOf, store, useStore } from "@/lib/store";
+import { syncAdoptions } from "@/lib/sync";
+import { apiOn } from "@/lib/api/client";
+import { me as meApi } from "@/lib/api/endpoints";
 import { useSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -49,6 +52,7 @@ export default function AdoptPage() {
   const near = useNearMe();
   const requests = useStore((s) => s.requests);
   const [page, setPage] = useState(1);
+  useEffect(() => { if (apiOn("adoptions")) syncAdoptions(); }, []);
   // closest first when we know where you are (device, or the city on your profile), newest first otherwise
   const list = useStore((s) => s.adoptions)
     .filter((a) => a.status === "approved" && matches(filter, a.species) && (filter !== "saved" || favs.includes(a.id)))
@@ -64,6 +68,7 @@ export default function AdoptPage() {
       return;
     }
     const on = store.toggleFavorite(user.id, id);
+    if (apiOn("adoptions")) { if (on) void meApi.saveFavorite(id).catch(() => {}); else void meApi.removeFavorite(id).catch(() => {}); }
     if (navigator.vibrate) navigator.vibrate(on ? 12 : 6);
     toast.success(on ? t.adopt.saved : t.adopt.removed);
   };

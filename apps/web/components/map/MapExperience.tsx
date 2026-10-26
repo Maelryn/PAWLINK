@@ -21,6 +21,9 @@ import { TopNav } from "@/components/layout/TopNav";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Avatar, CasePhoto, Chip, Emoji3D, Segmented, Stars, TimeAgo, TriageBadge } from "@/components/ui/primitives";
 import { useCaseAI } from "@/lib/ai/useCaseAI";
+import { cases as casesApi, me as meApi } from "@/lib/api/endpoints";
+import { bboxFromViewport, type Viewport } from "@/lib/bbox";
+import { casesFromApi, setCaseSyncViewport } from "@/lib/cases";
 import { useI18n } from "@/lib/i18n";
 import { LIVESTOCK, SERVICE_EMOJI, SPECIES_EMOJI, TRIAGE_ORDER } from "@/lib/species";
 import { isPublic, store, useStore } from "@/lib/store";
@@ -94,10 +97,67 @@ export function MapExperience() {
   const located = !!userLoc || emergency;
   const listTitle = layer === "mine" ? t.map.show.mine : layer === "services" ? t.map.show.services : located ? t.map.nearby : t.map.latest;
 
+  /* ── the box the API is asked about ──
+     The map never lists the whole country: it tells the sync which area it is showing and
+     the sync asks the API for that box (GET /cases?bbox=). Outside the map, the list is the
+     country again — the landing counters and the dashboards need it. */
+  const [viewport, setViewport] = useState<Viewport | null>(null);
+  const bbox = useMemo(() => (viewport ? bboxFromViewport(viewport) : null), [viewport]);
+
+  useEffect(() => {
+    if (!bbox) return;
+    setCaseSyncViewport(bbox);
+  }, [bbox]);
+
+  // leaving the map puts the list back to the whole country
+  useEffect(() => () => setCaseSyncViewport(null), []);
+
+  /* ── the list the map draws ──
+     "Mine" is the one layer that is not a box: my reports are mine wherever they are, so
+     they come from /me/cases (the ones held for moderation included). */
+  const [myCases, setMyCases] = useState<Case[] | null>(null);
+  const wantMine = layer === "mine" && !!me && casesFromApi();
+  useEffect(() => {
+    if (!wantMine) return;
+    let live = true;
+    meApi
+      .cases({ pageSize: 100 })
+      .then((p) => live && setMyCases(p.items ?? []))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [wantMine, me?.id]);
+
+  /* A shared link (/map?case=…) may point at a report outside the current box: the box only
+     ever answers with what it holds, so that one is asked for by id. */
+  const deepId = params.get("case");
+  const [deepCase, setDeepCase] = useState<Case | null>(null);
+  useEffect(() => {
+    if (!deepId || !casesFromApi()) return;
+    let live = true;
+    casesApi
+      .get(deepId)
+      .then((c) => {
+        // an answer without a place is not a report: the map would draw it nowhere
+        if (live && c?.location) setDeepCase(c);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [deepId]);
+
+  const mapCases = useMemo(() => {
+    const base = wantMine ? myCases ?? [] : allCases;
+    if (deepCase && !base.some((c) => c.id === deepCase.id)) return [deepCase, ...base];
+    return base;
+  }, [wantMine, myCases, allCases, deepCase]);
+
   const cases = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (layer === "services") return [];
-    return allCases
+    return mapCases
       // my reports: also the ones still waiting for a moderator or gone from the public map
       .filter((c) => (layer === "mine" ? c.reporter.id === me?.id && c.moderation !== "hidden" : isPublic(c)))
       .filter((c) => (emergency ? c.emergencyZoneId === zone!.id : true))
@@ -112,9 +172,9 @@ export function MapExperience() {
             ? a.d - b.d
             : TRIAGE_ORDER[a.c.triage] - TRIAGE_ORDER[b.c.triage] || +new Date(b.c.createdAt) - +new Date(a.c.createdAt),
       );
-  }, [allCases, emergency, triage, category, query, ref, ct, located, zone, layer, me?.id]);
+  }, [mapCases, emergency, triage, category, query, ref, ct, located, zone, layer, me?.id]);
 
-  const selected = allCases.find((c) => c.id === selectedId) ?? null;
+  const selected = mapCases.find((c) => c.id === selectedId) ?? null;
   const SERVICES = useStore((s) => s.services).filter((s) => s.status === "approved");
   const service = SERVICES.find((s) => s.id === serviceId) ?? null;
   const serviceList = useMemo(
@@ -148,6 +208,9 @@ export function MapExperience() {
     },
     [desktop],
   );
+
+  /** The map says which area it is showing: that area is what the API is asked about. */
+  const onViewportChange = useCallback((v: Viewport) => setViewport(v), []);
 
   useEffect(() => {
     if (!ready) return;
@@ -189,7 +252,7 @@ export function MapExperience() {
   // A just-reported case drops in on the map.
   useEffect(() => {
     if (!ready || !lastCreatedId) return;
-    const c = allCases.find((x) => x.id === lastCreatedId);
+    const c = mapCases.find((x) => x.id === lastCreatedId);
     if (!c) return;
     setTimeout(() => {
       setDropId(c.id);
@@ -198,19 +261,27 @@ export function MapExperience() {
     }, 400);
     store.clearLastCreated();
     setTimeout(() => setDropId(null), 4500);
-  }, [ready, lastCreatedId, allCases, flyToCase]);
+  }, [ready, lastCreatedId, mapCases, flyToCase]);
 
+  // A shared link opens on its report: the box answers with what it holds, so the report
+  // may only arrive once it is asked for by id — the fly must wait for it.
+  const flewToLink = useRef<string | null>(null);
   useEffect(() => {
-    if (ready && selected && params.get("case") === selected.id) flyToCase(selected, 13);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
+    if (!ready) return;
+    const id = params.get("case");
+    if (!id || flewToLink.current === id) return;
+    if (selected && selected.id === id) {
+      flewToLink.current = id;
+      flyToCase(selected, 13);
+    }
+  }, [ready, selected, params, flyToCase]);
 
   const select = (id: string | null) => {
     setSelectedId(id);
     setHelpOpen(false);
     if (id) {
       setServiceId(null);
-      const c = allCases.find((x) => x.id === id);
+      const c = mapCases.find((x) => x.id === id);
       if (c) flyToCase(c);
     }
   };
@@ -234,7 +305,7 @@ export function MapExperience() {
     } else if (cases[0]) select(cases[0].c.id);
   };
 
-  const zoneLive = zone ? zoneStats(zone, allCases) : { cases: 0, urgent: 0, helpers: 0 };
+  const zoneLive = zone ? zoneStats(zone, mapCases) : { cases: 0, urgent: 0, helpers: 0 };
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-bg">
@@ -254,6 +325,7 @@ export function MapExperience() {
         initialView={desktop ? { zoom: 5.2 } : { longitude: 4.4, latitude: 34.9, zoom: 5.4 }}
         dropInId={dropId}
         userLocation={userLoc}
+        onViewportChange={onViewportChange}
         onReady={(m) => {
           mapRef.current = m;
           // phones: the camera centres in the visible area, not under the top filters, the side buttons or the list bar

@@ -18,9 +18,11 @@ import { CountUp } from "@/components/motion";
 import { Button } from "@/components/ui/Button";
 import { Avatar, CasePhoto, Emoji3D, TimeAgo, TriageBadge } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
-import { suggestZones, zoneStats, ZONE_PLACES } from "@/lib/zones";
+import { circlePolygon, suggestZones, zoneStats, ZONE_PLACES } from "@/lib/zones";
 import { SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
+import { apiOn } from "@/lib/api/client";
+import { zones as zonesApi } from "@/lib/api/endpoints";
 import { TrustBadge } from "@/components/cases/Trust";
 import { AdoptionQueue, EditQueue, ServiceQueue } from "@/components/adopt/AdoptionPanels";
 import type { EmergencyZone, Triage } from "@/lib/types";
@@ -339,6 +341,9 @@ function Zones() {
   const [f, setF] = useState({ type: "wildfire" as EmergencyZone["type"], name: "", place: ZONE_PLACES[1].name, radius: 8 });
   const fmt = (iso: string) => new Date(iso).toLocaleString(locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const declare = (input: { type: EmergencyZone["type"]; name: string; region: string; center: { lat: number; lng: number }; radiusKm: number }) => {
+    if (apiOn("services")) {
+      void zonesApi.create({ name: input.name, region: input.region, type: input.type, polygon: circlePolygon(input.center, input.radiusKm), radiusKm: input.radiusKm, active: true, startedAt: new Date().toISOString() }).catch(() => {});
+    }
     store.declareZone(input);
     toast.success(t.admin.declared, { icon: <Emoji3D src="/3d/fire.png" size={20} /> });
   };
@@ -442,6 +447,7 @@ function Zones() {
                 variant="glass"
                 onClick={() => {
                   if (!confirm(t.admin.endConfirm)) return;
+                  if (apiOn("services")) void zonesApi.update(z.id, { active: false }).catch(() => {});
                   store.endZone(z.id);
                   toast(t.admin.ended);
                 }}

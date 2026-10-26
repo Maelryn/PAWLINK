@@ -1,0 +1,262 @@
+﻿
+> pawlink-backend@0.1.0 test:e2e
+> jest --config ./test/jest-e2e.json --runInBand --forceExit --testPathPatterns=marketplace
+
+npm.cmd : [31m[Nest] 29592  - [39m10/13/2026, 9:57:12 PM [31m  ERROR[39m [38;5;3m[HttpExceptionFilter] 
+[39m[31mUnhandled 501 UPLOADS_NOT_CONFIGURED: Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, 
+CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to enable uploads.[39m
+At line:1 char:317
++ ... URL = $url; npm.cmd run test:e2e -- --forceExit --testPathPatterns=ma ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([31m[Nest] 295...e uploads.[39m:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ApiError: Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to 
+enable uploads.
+    at CloudinaryService.signature (C:\pawLink\PAWLINK\apps\backend\src\uploads\cloudinary.ts:75:13)
+    at UploadsService.signatureFor (C:\pawLink\PAWLINK\apps\backend\src\uploads\uploads.service.ts:72:28)
+    at UploadsController.signature (C:\pawLink\PAWLINK\apps\backend\src\uploads\uploads.controller.ts:71:25)
+    at C:\pawLink\PAWLINK\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:39:29
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at C:\pawLink\PAWLINK\apps\backend\node_modules\@nestjs\core\router\router-execution-context.js:55:62
+    at C:\pawLink\PAWLINK\apps\backend\node_modules\@nestjs\core\router\router-proxy.js:9:17
+(node:29592) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and 
+will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS test/cases.e2e-spec.ts
+PASS test/auth.e2e-spec.ts
+PASS test/health.e2e-spec.ts
+FAIL test/marketplace.e2e-spec.ts
+  ÔùÅ Phase 3 ÔÇö marketplace: adoptions, services, zones, notifications ÔÇ║ 2 ┬À reviews ÔÇ║ accepts one review per 
+user, recomputes rating+count once, and refuses the second
+
+    expected 200 "OK", got 401 "Unauthorized"
+
+    [0m [90m 368 |[39m       expect(first[33m.[39mbody[33m.[39mrating)[33m.[39mtoBe([35m4[39m)[33m;[39m
+     [90m 369 |[39m
+    [31m[1m>[22m[39m[90m 370 |[39m       [36mconst[39m afterFirst [33m=[39m [36mawait[39m request(app[33m.
+[39mgetHttpServer())[33m.[39m[36mget[39m([32m`/services/${serviceId}`[39m)[33m.[39mexpect([35m200[39m)[33m;
+[39m
+     [90m     |[39m                                                                                           
+[31m[1m^[22m[39m
+     [90m 371 |[39m       expect(afterFirst[33m.[39mbody[33m.[39mrating)[33m.[39mtoBe([35m4[39m)[33m;[39m
+     [90m 372 |[39m       
+expect(afterFirst[33m.[39mbody[33m.[39mreviewCount)[33m.[39mtoBe([35m1[39m)[33m;[39m
+     [90m 373 |[39m[0m
+
+      at Object.<anonymous> (marketplace.e2e-spec.ts:370:91)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:404:14)
+      at ../node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:302:23)
+      at localAssert (../node_modules/supertest/lib/test.js:220:38)
+      at finish (../node_modules/supertest/lib/test.js:233:7)
+      at Test.fn [as callback] (../node_modules/superagent/src/node/index.js:1196:3)
+      at callback (../node_modules/superagent/src/node/index.js:1552:18)
+      at IncomingMessage.fn (../node_modules/superagent/src/node/parsers/json.js:24:7)
+
+  ÔùÅ Phase 3 ÔÇö marketplace: adoptions, services, zones, notifications ÔÇ║ 2 ┬À reviews ÔÇ║ refuses a review on your 
+own service and a reply from anyone else
+
+    expected 200 "OK", got 401 "Unauthorized"
+
+    [0m [90m 419 |[39m       [36mconst[39m reviews [33m=[39m [36mawait[39m 
+request(app[33m.[39mgetHttpServer())
+     [90m 420 |[39m         [33m.[39m[36mget[39m([32m`/services/${serviceId}/reviews`[39m)
+    [31m[1m>[22m[39m[90m 421 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m     |[39m          [31m[1m^[22m[39m
+     [90m 422 |[39m       [36mconst[39m reviewId [33m=[39m 
+reviews[33m.[39mbody[33m.[39mitems[[35m0[39m][33m.[39mid [36mas[39m string[33m;[39m
+     [90m 423 |[39m
+     [90m 424 |[39m       [36mconst[39m notOwner [33m=[39m [36mawait[39m 
+request(app[33m.[39mgetHttpServer())[0m
+
+      at Object.<anonymous> (marketplace.e2e-spec.ts:421:10)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:404:14)
+      at ../node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:302:23)
+      at localAssert (../node_modules/supertest/lib/test.js:220:38)
+      at finish (../node_modules/supertest/lib/test.js:233:7)
+      at Test.fn [as callback] (../node_modules/superagent/src/node/index.js:1196:3)
+      at callback (../node_modules/superagent/src/node/index.js:1552:18)
+      at IncomingMessage.fn (../node_modules/superagent/src/node/parsers/json.js:24:7)
+
+  ÔùÅ Phase 3 ÔÇö marketplace: adoptions, services, zones, notifications ÔÇ║ 6 ┬À GET /emergency-zones ÔÇ║ returns the 
+seeded zone with a GeoJSON polygon, a centroid and live stats
+
+    expected 200 "OK", got 401 "Unauthorized"
+
+    [0m [90m 650 |[39m       [36mconst[39m response [33m=[39m [36mawait[39m 
+request(app[33m.[39mgetHttpServer())
+     [90m 651 |[39m         [33m.[39m[36mget[39m([32m'/emergency-zones?active=true'[39m)
+    [31m[1m>[22m[39m[90m 652 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m     |[39m          [31m[1m^[22m[39m
+     [90m 653 |[39m
+     [90m 654 |[39m       [36mconst[39m z1 [33m=[39m 
+response[33m.[39mbody[33m.[39mitems[33m.[39mfind((z[33m:[39m { id[33m:[39m string }) [33m=>[39m 
+z[33m.[39mid [33m===[39m [32m'z1'[39m)[33m;[39m
+     [90m 655 |[39m       expect(z1)[33m.[39mtoBeDefined()[33m;[39m[0m
+
+      at Object.<anonymous> (marketplace.e2e-spec.ts:652:10)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:404:14)
+      at ../node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:302:23)
+      at localAssert (../node_modules/supertest/lib/test.js:220:38)
+      at finish (../node_modules/supertest/lib/test.js:233:7)
+      at Test.fn [as callback] (../node_modules/superagent/src/node/index.js:1196:3)
+      at callback (../node_modules/superagent/src/node/index.js:1552:18)
+      at IncomingMessage.fn (../node_modules/superagent/src/node/parsers/json.js:24:7)
+
+  ÔùÅ Phase 3 ÔÇö marketplace: adoptions, services, zones, notifications ÔÇ║ 6 ┬À GET /emergency-zones ÔÇ║ POST is 
+admin-only, validates the polygon, and computes the centroid
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "ZONE_INVALID_POLYGON"
+    Received: "VALIDATION_ERROR"
+
+    [0m [90m 696 |[39m         })
+     [90m 697 |[39m         [33m.[39mexpect([35m400[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 698 |[39m       
+expect(bad[33m.[39mbody[33m.[39mcode)[33m.[39mtoBe([32m'ZONE_INVALID_POLYGON'[39m)[33m;[39m
+     [90m     |[39m                             [31m[1m^[22m[39m
+     [90m 699 |[39m
+     [90m 700 |[39m       [36mconst[39m created [33m=[39m [36mawait[39m request(app[33m.[39mgetHttpServer())
+     [90m 701 |[39m         [33m.[39mpost([32m'/emergency-zones'[39m)[0m
+
+      at Object.<anonymous> (marketplace.e2e-spec.ts:698:29)
+
+  ÔùÅ Phase 3 ÔÇö marketplace: adoptions, services, zones, notifications ÔÇ║ 7 ┬À GET /services?lat&lng&radiusKm ÔÇ║ 
+excludes a far-away service and orders `pro` ahead of distance
+
+    expected 200 "OK", got 401 "Unauthorized"
+
+    [0m [90m 750 |[39m       [36mconst[39m response [33m=[39m [36mawait[39m 
+request(app[33m.[39mgetHttpServer())
+     [90m 751 |[39m         [33m.[39m[36mget[39m([32m'/services?lat=36.632&lng=4.205&radiusKm=50'[39m)
+    [31m[1m>[22m[39m[90m 752 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m     |[39m          [31m[1m^[22m[39m
+     [90m 753 |[39m       [36mconst[39m ids [33m=[39m 
+response[33m.[39mbody[33m.[39mitems[33m.[39mmap((s[33m:[39m { id[33m:[39m string }) [33m=>[39m 
+s[33m.[39mid)[33m;[39m
+     [90m 754 |[39m       expect(ids)[33m.[39mtoContain(pro[33m.[39mid)[33m;[39m
+     [90m 755 |[39m       expect(ids)[33m.[39mtoContain(near[33m.[39mid)[33m;[39m[0m
+
+      at Object.<anonymous> (marketplace.e2e-spec.ts:752:10)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:404:14)
+      at ../node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:302:23)
+      at localAssert (../node_modules/supertest/lib/test.js:220:38)
+      at finish (../node_modules/supertest/lib/test.js:233:7)
+      at Test.fn [as callback] (../node_modules/superagent/src/node/index.js:1196:3)
+      at callback (../node_modules/superagent/src/node/index.js:1552:18)
+      at IncomingMessage.fn (../node_modules/superagent/src/node/parsers/json.js:24:7)
+
+  ÔùÅ Phase 3 ÔÇö marketplace: adoptions, services, zones, notifications ÔÇ║ 8 ┬À a socket receives the notification 
+event ÔÇ║ emits `notification` when a request lands on the ownerÔÇÖs listing
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 409
+    Received array: [200, 201]
+
+    [0m [90m 150 |[39m         location[33m:[39m { [33m...[39mlocation[33m,[39m address[33m:[39m [32m'Tizi 
+Ouzou'[39m }[33m,[39m
+     [90m 151 |[39m       })[33m;[39m
+    [31m[1m>[22m[39m[90m 152 |[39m     expect([[35m200[39m[33m,[39m 
+[35m201[39m])[33m.[39mtoContain(response[33m.[39mstatus)[33m;[39m
+     [90m     |[39m                        [31m[1m^[22m[39m
+     [90m 153 |[39m     [36mreturn[39m response[33m.[39mbody [36mas[39m { id[33m:[39m string[33m;[39m 
+status[33m:[39m string }[33m;[39m
+     [90m 154 |[39m   }
+     [90m 155 |[39m[0m
+
+      at createAdoption (marketplace.e2e-spec.ts:152:24)
+      at approvedAdoption (marketplace.e2e-spec.ts:158:21)
+      at Object.<anonymous> (marketplace.e2e-spec.ts:776:23)
+
+  ÔùÅ Phase 3 ÔÇö marketplace: adoptions, services, zones, notifications ÔÇ║ 9 ┬À write gates ÔÇ║ enforces the photo 
+rules: 3 max, camera EXIF, never used before
+
+    expected 201 "Created", got 409 "Conflict"
+
+    [0m [90m 885 |[39m           location[33m:[39m { [33m...[39m[33mKABYLIE[39m[33m,[39m address[33m:[39m 
+[32m'Tizi Ouzou'[39m }[33m,[39m
+     [90m 886 |[39m         })
+    [31m[1m>[22m[39m[90m 887 |[39m         [33m.[39mexpect([35m201[39m)[33m;[39m
+     [90m     |[39m          [31m[1m^[22m[39m
+     [90m 888 |[39m       expect(used[33m.[39mbody[33m.[39mstatus)[33m.[39mtoBe([32m'pending'[39m)[33m;[39m
+     [90m 889 |[39m
+     [90m 890 |[39m       [36mconst[39m reused [33m=[39m [36mawait[39m photo(owner[33m.[39mtoken[33m,[39m 
+[33mNumber[39m(first[33m.[39murl[33m.[39mmatch([35m/-(\d+)\.jpg$/[39m)[33m?[39m[33m.[39m[[35m1[39m] 
+[33m?[39m[33m?[39m [35m0[39m))[33m;[39m[0m
+
+      at Object.<anonymous> (marketplace.e2e-spec.ts:887:10)
+      ----
+      at Test._assertStatus (../node_modules/supertest/lib/test.js:404:14)
+      at ../node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (../node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (../node_modules/supertest/lib/test.js:302:23)
+      at localAssert (../node_modules/supertest/lib/test.js:220:38)
+      at finish (../node_modules/supertest/lib/test.js:233:7)
+      at Test.fn [as callback] (../node_modules/superagent/src/node/index.js:1196:3)
+      at callback (../node_modules/superagent/src/node/index.js:1552:18)
+      at IncomingMessage.fn (../node_modules/superagent/src/node/parsers/json.js:24:7)
+
+  ÔùÅ Phase 3 ÔÇö marketplace: adoptions, services, zones, notifications ÔÇ║ 9 ┬À write gates ÔÇ║ runs the request 
+state machine: one per user, owner-only decisions, terminal
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 409
+    Received array: [200, 201]
+
+    [0m [90m 150 |[39m         location[33m:[39m { [33m...[39mlocation[33m,[39m address[33m:[39m [32m'Tizi 
+Ouzou'[39m }[33m,[39m
+     [90m 151 |[39m       })[33m;[39m
+    [31m[1m>[22m[39m[90m 152 |[39m     expect([[35m200[39m[33m,[39m 
+[35m201[39m])[33m.[39mtoContain(response[33m.[39mstatus)[33m;[39m
+     [90m     |[39m                        [31m[1m^[22m[39m
+     [90m 153 |[39m     [36mreturn[39m response[33m.[39mbody [36mas[39m { id[33m:[39m string[33m;[39m 
+status[33m:[39m string }[33m;[39m
+     [90m 154 |[39m   }
+     [90m 155 |[39m[0m
+
+      at createAdoption (marketplace.e2e-spec.ts:152:24)
+      at approvedAdoption (marketplace.e2e-spec.ts:158:21)
+      at Object.<anonymous> (marketplace.e2e-spec.ts:910:23)
+
+  ÔùÅ Phase 3 ÔÇö marketplace: adoptions, services, zones, notifications ÔÇ║ 9 ┬À write gates ÔÇ║ keeps /me views 
+consistent: my adoptions, my requests, my requests received
+
+    TypeError: Cannot read properties of undefined (reading 'id')
+
+    [0m [90m 959 |[39m         [33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m 960 |[39m       
+expect(mine[33m.[39mbody[33m.[39mtotal)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 961 |[39m       [36mfor[39m ([36mconst[39m item [36mof[39m 
+mine[33m.[39mbody[33m.[39mitems) 
+expect(item[33m.[39mowner[33m.[39mid)[33m.[39mtoBe(owner[33m.[39mid)[33m;[39m
+     [90m     |[39m                                                             [31m[1m^[22m[39m
+     [90m 962 |[39m
+     [90m 963 |[39m       [36mconst[39m received [33m=[39m [36mawait[39m request(app[33m.[39mgetHttpServer())
+     [90m 964 |[39m         [33m.[39m[36mget[39m([32m'/me/requests/received?pageSize=100'[39m)[0m
+
+      at Object.<anonymous> (marketplace.e2e-spec.ts:961:61)
+
+Test Suites: 1 failed, 3 passed, 4 total
+Tests:       9 failed, 56 passed, 65 total
+Snapshots:   0 total
+Time:        9.643 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after 
+all tests finished?
+exit=1
+

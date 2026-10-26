@@ -1,0 +1,96 @@
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { HELP_TYPES, SIGNABLE_ROLES } from '../../shared/enums';
+import { PHONE_ERROR_MESSAGE, PHONE_MAX_LENGTH, PHONE_PATTERN } from '../../shared/phone';
+
+/**
+ * `POST /auth/register` (docs/BACKEND_PROMPT.md §3.2).
+ *
+ * `role` is validated by the **service**, not here: a request for `admin` (or
+ * any typo) must come back as `AUTH_ROLE_NOT_ALLOWED`, a stable machine code the
+ * client can switch on — not as a generic `VALIDATION_ERROR`.
+ */
+@ApiSchema({
+  description:
+    'Creates an unverified account and texts it an SMS code. The account cannot sign in until ' +
+    '`POST /auth/verify-phone` succeeds.',
+})
+export class RegisterDto {
+  @ApiProperty({
+    example: 'Nour Benali',
+    minLength: 2,
+    maxLength: 80,
+    description: 'The display name shown on reports and helper offers.',
+  })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(80)
+  name!: string;
+
+  @ApiProperty({
+    example: 'nour@pawlink.dz',
+    maxLength: 160,
+    description: 'The sign-in email. Unique across accounts.',
+  })
+  @IsEmail()
+  @MaxLength(160)
+  email!: string;
+
+  @ApiProperty({
+    example: 'pawlink2026',
+    minLength: 8,
+    maxLength: 72,
+    description: 'The sign-in password, in plaintext. Hashed with argon2 server-side.',
+  })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  password!: string;
+
+  @ApiProperty({
+    example: '+213 26 00 00 07',
+    maxLength: PHONE_MAX_LENGTH,
+    description:
+      'Also the SMS OTP destination. The same rule applies to ' +
+      '`POST /auth/verify-phone` and `POST /auth/resend-code`.',
+  })
+  @IsString()
+  @Matches(PHONE_PATTERN, { message: PHONE_ERROR_MESSAGE })
+  phone!: string;
+
+  @ApiProperty({
+    enum: SIGNABLE_ROLES,
+    example: 'reporter',
+    description: '`admin` is never allowed here — see AUTH_ROLE_NOT_ALLOWED.',
+  })
+  @IsString()
+  @MaxLength(20)
+  role!: string;
+
+  @ApiPropertyOptional({ example: 'Tizi Ouzou', maxLength: 80, description: 'The city, for proximity hints.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  city?: string;
+
+  @ApiPropertyOptional({
+    enum: HELP_TYPES,
+    isArray: true,
+    description: 'Volunteers only; ignored for other roles.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(HELP_TYPES.length)
+  @IsIn(HELP_TYPES, { each: true })
+  helpTypes?: string[];
+}

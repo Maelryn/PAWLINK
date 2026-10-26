@@ -261,6 +261,22 @@ export interface AdoptionProfile {
 
 export type AdoptionEdit = Partial<Omit<AdoptionProfile, "id" | "status" | "ownerId" | "shelter" | "createdAt" | "pendingEdit">> & { at: string };
 
+/**
+ * One row of the moderation queue for the second review (`GET /admin/pending-edits`).
+ * The three kinds share one shape so the admin screen can show them in one list.
+ */
+export interface PendingEdit {
+  kind: "case" | "adoption" | "service";
+  id: string;
+  /** The title of the thing that was edited (case title, animal name, listing name). */
+  title: string;
+  ownerId: string;
+  ownerName: string;
+  /** When the owner proposed the change. */
+  at: string;
+  edit: CaseEdit | ServiceEdit | AdoptionEdit;
+}
+
 export interface AdoptionRequest {
   id: string;
   adoptionId: string;

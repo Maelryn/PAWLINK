@@ -1,9 +1,10 @@
 "use client";
 
 import { ApiError, apiOn, refreshAccessToken, setAccessToken } from "./api/client";
-import { auth as authApi, me as meApi, type MePatch, type OtpSent } from "./api/endpoints";
+import { auth as authApi, me as meApi, services as servicesApi, type MePatch, type OtpSent } from "./api/endpoints";
 import { DEMO_PASSWORD } from "./mock/data";
 import { store, useStore } from "./store";
+import { syncNotifications, syncAdoptions, syncServices } from "./sync";
 import type { Role, Service, ServiceType, User } from "./types";
 
 /* Accounts. Two modes, same screens:
@@ -40,8 +41,11 @@ export async function startAuth() {
   store.hydrate({ realAuth: realAuth() });
   if (!realAuth()) return;
   try {
-    if (await refreshAccessToken()) store.upsertUser(await meApi.get(), true);
-    else store.setSession(null);
+    if (await refreshAccessToken()) {
+      const u = await meApi.get();
+      store.upsertUser(u, true);
+      await Promise.all([syncNotifications(u.id), syncAdoptions(), syncServices()]);
+    } else store.setSession(null);
   } catch {
     store.setSession(null);
   } finally {
@@ -102,7 +106,7 @@ export async function finishSignUp(input: SignUpInput, code: string): Promise<Au
     const s = await authApi.verifyPhone({ code, phone: input.phone.trim() });
     setAccessToken(s.accessToken);
     store.upsertUser(s.user, true);
-    if (input.role === "pro" || input.role === "vet") createLocalListing(s.user, input);
+    if (input.role === "pro" || input.role === "vet") void createLocalListing(s.user, input);
     return { user: s.user };
   } catch (e) {
     return fail(e);
@@ -163,13 +167,30 @@ export function can(user: User | null | undefined, area: "report" | "help" | "da
 
 /* ─────────────── demo mode helpers ─────────────── */
 
-/** Business listing. Real API: POST /services (backend Phase 3); until then it stays in this browser. */
-function createLocalListing(owner: User, input: SignUpInput): string {
+/** Business listing. Real API: POST /services (backend Phase 3); falls back to the browser store in demo mode. */
+async function createLocalListing(owner: User, input: SignUpInput): Promise<string> {
+  const type = input.role === "vet" ? "vet" : (input.business?.type ?? "store");
+  const name = input.business?.name || input.name;
+  if (apiOn("services")) {
+    try {
+      const s = await servicesApi.create({
+        type,
+        name,
+        lat: 36.7538,
+        lng: 3.0588,
+        address: input.city,
+        phone: input.phone,
+      });
+      store.addService(s);
+      store.updateUser(owner.id, { serviceId: s.id });
+      return s.id;
+    } catch {}
+  }
   const serviceId = `s${Date.now().toString(36)}`;
   const s: Service = {
     id: serviceId,
-    type: input.role === "vet" ? "vet" : (input.business?.type ?? "store"),
-    name: input.business?.name || input.name,
+    type,
+    name,
     location: { lat: 36.7538, lng: 3.0588, address: input.city },
     phone: input.phone,
     rating: 0,
