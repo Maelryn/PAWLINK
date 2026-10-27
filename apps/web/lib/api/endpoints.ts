@@ -161,6 +161,8 @@ export const cases = {
 export type EditDecision = "approve" | "reject";
 
 export const admin = {
+  /** Every case, the held ones included: the moderation queue (the public list never has them). */
+  cases: (q: PageQuery = {}) => api<Page<Case>>("/admin/cases", { query: { ...q } }),
   /** Every proposed change waiting for a moderator: cases, adoptions and services in one list. */
   pendingEdits: () => api<{ items: PendingEdit[]; total: number }>("/admin/pending-edits"),
   decideCaseEdit: (id: string, decision: EditDecision) =>

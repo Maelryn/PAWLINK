@@ -10,7 +10,7 @@ import { RequireAuth } from "@/components/layout/RequireAuth";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, EyeOff, LayoutGrid, ListChecks, Map as MapIcon, Plus, Users, Phone } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { TopNav } from "@/components/layout/TopNav";
 import { MapView } from "@/components/map";
@@ -25,7 +25,7 @@ import { apiOn } from "@/lib/api/client";
 import { admin as adminApi, zones as zonesApi } from "@/lib/api/endpoints";
 import { TrustBadge } from "@/components/cases/Trust";
 import { AdoptionQueue, EditQueue, ServiceQueue } from "@/components/adopt/AdoptionPanels";
-import type { EmergencyZone, Triage } from "@/lib/types";
+import type { Case, EmergencyZone, Triage } from "@/lib/types";
 import { cn, minutesSince } from "@/lib/utils";
 
 type Tab = "overview" | "cases" | "zones" | "users";
@@ -255,8 +255,23 @@ function BarChart({ data }: { data: { label: string; v: number }[] }) {
 function Moderation() {
   const ct = useCaseText();
   const { t } = useI18n();
-  const cases = useStore((s) => s.cases);
+  const shown = useStore((s) => s.cases);
   const users = useStore((s) => s.users);
+  // the public list never has the reports held for review: on the API, the admin queue asks for them
+  const [held, setHeld] = useState<Case[]>([]);
+  useEffect(() => {
+    if (!apiOn("admin")) return;
+    adminApi
+      .cases({ pageSize: 200 })
+      .then((p) => setHeld(p.items.filter((c) => c.moderation === "pending" || c.moderation === "hidden")))
+      .catch(() => {});
+  }, []);
+  const cases = [...held.filter((h) => !shown.some((c) => c.id === h.id)), ...shown];
+  const decide = async (c: Case, decision: "approved" | "hidden") => {
+    const r = await moderateCase(c, decision);
+    if (!r.ok) return toast.error(t.auth.errors[r.code] ?? r.message ?? t.auth.errors.UNKNOWN);
+    setHeld((h) => h.map((x) => (x.id === c.id ? { ...x, moderation: decision } : x)));
+  };
   const phoneOf = (id: string) => users.find((u) => u.id === id)?.phone;
   const queue = [...cases].sort((a, b) => (a.moderation === "pending" ? -1 : 0) - (b.moderation === "pending" ? -1 : 0) || (a.trust?.score ?? 1) - (b.trust?.score ?? 1));
   return (
@@ -311,10 +326,10 @@ function Moderation() {
                       </span>
                     ) : (
                       <>
-                        <button type="button" onClick={() => moderateCase(c, "approved")} className="flex h-10 w-10 items-center justify-center rounded-full bg-stable-soft text-stable" title={t.admin.approve}>
+                        <button type="button" onClick={() => decide(c, "approved")} className="flex h-10 w-10 items-center justify-center rounded-full bg-stable-soft text-stable" title={t.admin.approve}>
                           <Check className="h-4 w-4" strokeWidth={2.6} />
                         </button>
-                        <button type="button" onClick={() => moderateCase(c, "hidden")} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-label-2" title={t.admin.reject}>
+                        <button type="button" onClick={() => decide(c, "hidden")} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-label-2" title={t.admin.reject}>
                           <EyeOff className="h-4 w-4" />
                         </button>
                       </>
