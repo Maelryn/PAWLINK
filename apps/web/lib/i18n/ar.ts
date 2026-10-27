@@ -27,6 +27,7 @@ const ar: Dict = {
       vet: "بياطرة", shelter: "ملاجئ", transport: "نقل", boarding: "فنادق حيوانات", training: "تدريب", store: "متاجر",
     },
     tags: {
+      "swelling": "انتفاخ", "pain": "ألم", "diarrhea": "إسهال", "weakness": "ضعيف جدًا", "vomiting": "تقيؤ", "drooling": "سيلان اللعاب", "seizures": "نوبات تشنج", "thirst": "يشرب كثيرًا", "birth": "ولادة متعسرة", "hair-loss": "تساقط الشعر", "orphaned": "يتيم",
       trapped: "محاصر", smoke: "دخان", fire: "حريق", burned: "حروق", injured: "مصاب", bleeding: "نزيف",
       stressed: "متوتر", lost: "تائه", breathing: "صعوبة في التنفس", abandoned: "متروك", young: "صغير جدًا",
       evacuated: "تم إجلاؤه", "needs-food": "يحتاج طعامًا", "needs-shelter": "يحتاج مأوى", thin: "نحيف",

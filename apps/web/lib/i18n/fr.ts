@@ -27,6 +27,7 @@ const fr: Dict = {
       vet: "Vétérinaires", shelter: "Refuges", transport: "Transport", boarding: "Pensions", training: "Éducation", store: "Animaleries",
     },
     tags: {
+      "swelling": "Gonflement", "pain": "Douleur", "diarrhea": "Diarrhée", "weakness": "Très faible", "vomiting": "Vomissements", "drooling": "Bave", "seizures": "Convulsions", "thirst": "Boit beaucoup", "birth": "Mise bas difficile", "hair-loss": "Perte de poils", "orphaned": "Orphelin",
       trapped: "Piégé", smoke: "Fumée", fire: "Feu", burned: "Brûlures", injured: "Blessé", bleeding: "Saignement",
       stressed: "Stressé", lost: "Perdu", breathing: "Respire mal", abandoned: "Abandonné", young: "Très jeune",
       evacuated: "Évacué", "needs-food": "Besoin de nourriture", "needs-shelter": "Besoin d'abri", thin: "Maigre",

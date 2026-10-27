@@ -1,6 +1,6 @@
 # Interviews
 
-Thirduni gives top marks for "evidence you talked to somebody who actually has the problem". Every team member interviews **1 real person** (rescuer, vet, shelter, pet owner, farmer) and adds a section below. Questions are in `docs/tasks/DATA.md`. Ask permission before quoting anyone. First name and city only, never a phone number or full name.
+Thirduni gives top marks for "evidence you talked to somebody who actually has the problem". This file holds the answers of **pet owners, volunteers and rescuers**; the vets answered a questionnaire, kept in [`vets-survey.md`](vets-survey.md). Every team member interviews **1 real person** (rescuer, vet, shelter, pet owner, farmer) and adds a section below. Questions are in `docs/tasks/DATA.md`. Ask permission before quoting anyone. First name and city only, never a phone number or full name.
 
 ## Template (copy it)
 

@@ -25,6 +25,7 @@ const en = {
       vet: "Vets", shelter: "Shelters", transport: "Transport", boarding: "Boarding", training: "Training", store: "Stores",
     },
     tags: {
+      "swelling": "Swelling", "pain": "In pain", "diarrhea": "Diarrhea", "weakness": "Very weak", "vomiting": "Vomiting", "drooling": "Drooling", "seizures": "Seizures", "thirst": "Drinks a lot", "birth": "Difficult birth", "hair-loss": "Hair loss", "orphaned": "Orphaned",
       trapped: "Trapped", smoke: "Smoke", fire: "Fire", burned: "Burns", injured: "Injured", bleeding: "Bleeding",
       stressed: "Stressed", lost: "Lost", breathing: "Breathing trouble", abandoned: "Abandoned", young: "Very young",
       evacuated: "Evacuated", "needs-food": "Needs food", "needs-shelter": "Needs shelter", thin: "Underweight",
