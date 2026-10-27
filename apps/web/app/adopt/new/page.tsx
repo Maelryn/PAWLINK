@@ -16,6 +16,7 @@ import { useSession } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { apiOn } from "@/lib/api/client";
 import { adoptions as adoptionsApi } from "@/lib/api/endpoints";
+import { syncAdoptions } from "@/lib/sync";
 import { uploadPhoto } from "@/lib/cases";
 import { SPECIES_EMOJI } from "@/lib/species";
 import { store } from "@/lib/store";
@@ -135,6 +136,7 @@ function NewAdoption({ editId }: { editId?: string }) {
             story: f.story.trim(),
             location: { ...editing.location, address: f.city.trim() },
           });
+          await syncAdoptions();
           toast.success(editing.status === "approved" ? t.post.sent : t.market.submitted);
           router.push("/account?tab=adoption");
           return;
@@ -155,6 +157,7 @@ function NewAdoption({ editId }: { editId?: string }) {
           story: f.story.trim(),
           location: { lat: here?.lat ?? 36.75, lng: here?.lng ?? 3.06, address: f.city.trim() },
         });
+        await syncAdoptions();
         toast.success(t.market.submitted);
         router.push("/account?tab=adoption");
         return;

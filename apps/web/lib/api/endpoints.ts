@@ -175,6 +175,9 @@ export const admin = {
   /** Admin moderation: approve / reject a pending service listing. */
   moderateService: (id: string, status: "approved" | "rejected") =>
     api<Service>(`/admin/services/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
+  /** Admin: change an account's role. */
+  setRole: (id: string, role: "reporter" | "volunteer" | "vet") =>
+    api<User>(`/admin/users/${encodeURIComponent(id)}/role`, { method: "PATCH", body: { role } }),
 };
 
 export const uploads = {

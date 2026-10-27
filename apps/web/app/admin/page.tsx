@@ -22,7 +22,7 @@ import { circlePolygon, suggestZones, zoneStats, ZONE_PLACES } from "@/lib/zones
 import { SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
 import { apiOn } from "@/lib/api/client";
-import { zones as zonesApi } from "@/lib/api/endpoints";
+import { admin as adminApi, zones as zonesApi } from "@/lib/api/endpoints";
 import { TrustBadge } from "@/components/cases/Trust";
 import { AdoptionQueue, EditQueue, ServiceQueue } from "@/components/adopt/AdoptionPanels";
 import type { EmergencyZone, Triage } from "@/lib/types";
@@ -508,7 +508,9 @@ function UsersTable() {
                 value={u.role}
                 aria-label={t.dashboard.roles[u.role]}
                 onChange={(e) => {
-                  store.setRole(u.id, e.target.value as "reporter" | "volunteer" | "vet");
+                  const role = e.target.value as "reporter" | "volunteer" | "vet";
+                  if (apiOn("admin")) void adminApi.setRole(u.id, role).catch(() => toast.error(t.auth.errors.UNKNOWN));
+                  store.setRole(u.id, role);
                   toast.success(`${u.name} · ${t.dashboard.roles[e.target.value as "reporter"]}`);
                 }}
                 className="h-9 shrink-0 cursor-pointer appearance-none rounded-full px-3 text-[12.5px] font-semibold outline-none"

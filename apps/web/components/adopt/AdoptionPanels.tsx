@@ -12,7 +12,7 @@ import { Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { reservedRequestOf, store, useStore } from "@/lib/store";
 import { apiOn } from "@/lib/api/client";
-import { adoptions as adoptionsApi, requests as requestsApi } from "@/lib/api/endpoints";
+import { admin as adminApi, adoptions as adoptionsApi, requests as requestsApi } from "@/lib/api/endpoints";
 import type { User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -166,8 +166,8 @@ export function AdoptionQueue() {
             <div className="font-semibold">{a.name} · {t.common.species[a.species]}</div>
             <div className="truncate text-[12.5px] text-label-2">{a.shelter.name} · {a.location.address}{a.ownerPhone && <> · <a href={`tel:${a.ownerPhone.replace(/\s/g, "")}`} className="font-semibold text-accent" dir="ltr">{a.ownerPhone}</a></>}</div>
           </div>
-          <button type="button" onClick={() => store.moderateAdoption(a.id, "approved")} className="flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13px] font-semibold text-stable"><Check className="h-4 w-4" /> {t.admin.approve}</button>
-          <button type="button" onClick={() => store.moderateAdoption(a.id, "rejected")} className="flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-label-2"><X className="h-4 w-4" /> {t.market.decline}</button>
+          <button type="button" onClick={() => { if (apiOn("admin")) void adminApi.moderateAdoption(a.id, "approved").catch(() => toast.error(t.auth.errors.UNKNOWN)); store.moderateAdoption(a.id, "approved"); }} className="flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13px] font-semibold text-stable"><Check className="h-4 w-4" /> {t.admin.approve}</button>
+          <button type="button" onClick={() => { if (apiOn("admin")) void adminApi.moderateAdoption(a.id, "rejected").catch(() => toast.error(t.auth.errors.UNKNOWN)); store.moderateAdoption(a.id, "rejected"); }} className="flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-label-2"><X className="h-4 w-4" /> {t.market.decline}</button>
         </div>
       ))}
     </section>
@@ -207,9 +207,9 @@ export function EditQueue() {
       </div>
       {total === 0 && <div className="px-5 pb-5 text-[14px] text-label-2">{t.market.none}</div>}
       {[
-        ...adoptions.map((a) => ({ id: a.id, name: a.name, kind: t.nav.adopt, cur: a as unknown as Record<string, unknown>, next: a.pendingEdit as Record<string, unknown>, ok: (v: boolean) => store.reviewAdoptionEdit(a.id, v) })),
-        ...cases.map((c) => ({ id: c.id, name: c.title, kind: t.nav.report, cur: c as unknown as Record<string, unknown>, next: c.pendingEdit as Record<string, unknown>, ok: (v: boolean) => store.reviewCaseEdit(c.id, v) })),
-        ...services.map((s) => ({ id: s.id, name: s.name, kind: t.common.service[s.type], cur: s as unknown as Record<string, unknown>, next: s.pendingEdit as Record<string, unknown>, ok: (v: boolean) => store.reviewServiceEdit(s.id, v) })),
+        ...adoptions.map((a) => ({ id: a.id, name: a.name, kind: t.nav.adopt, cur: a as unknown as Record<string, unknown>, next: a.pendingEdit as Record<string, unknown>, ok: (v: boolean) => { if (apiOn("admin")) void adminApi.decideAdoptionEdit(a.id, v ? "approve" : "reject").catch(() => toast.error(t.auth.errors.UNKNOWN)); store.reviewAdoptionEdit(a.id, v); } })),
+        ...cases.map((c) => ({ id: c.id, name: c.title, kind: t.nav.report, cur: c as unknown as Record<string, unknown>, next: c.pendingEdit as Record<string, unknown>, ok: (v: boolean) => { if (apiOn("admin")) void adminApi.decideCaseEdit(c.id, v ? "approve" : "reject").catch(() => toast.error(t.auth.errors.UNKNOWN)); store.reviewCaseEdit(c.id, v); } })),
+        ...services.map((s) => ({ id: s.id, name: s.name, kind: t.common.service[s.type], cur: s as unknown as Record<string, unknown>, next: s.pendingEdit as Record<string, unknown>, ok: (v: boolean) => { if (apiOn("admin")) void adminApi.decideServiceEdit(s.id, v ? "approve" : "reject").catch(() => toast.error(t.auth.errors.UNKNOWN)); store.reviewServiceEdit(s.id, v); } })),
       ].map((x) => (
         <div key={x.id} className="space-y-2 border-t border-separator px-5 py-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -241,8 +241,8 @@ export function ServiceQueue() {
             <div className="font-semibold">{s.name} · {t.common.service[s.type]}</div>
             <div className="truncate text-[12.5px] text-label-2">{s.location.address}{s.phone && <> · <a href={`tel:${s.phone.replace(/\s/g, "")}`} className="font-semibold text-accent" dir="ltr">{s.phone}</a></>}</div>
           </div>
-          <button type="button" onClick={() => store.moderateService(s.id, true)} className="flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13px] font-semibold text-stable"><Check className="h-4 w-4" /> {t.admin.approve}</button>
-          <button type="button" onClick={() => store.moderateService(s.id, false)} className="flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-label-2"><X className="h-4 w-4" /> {t.market.decline}</button>
+          <button type="button" onClick={() => { if (apiOn("admin")) void adminApi.moderateService(s.id, "approved").catch(() => toast.error(t.auth.errors.UNKNOWN)); store.moderateService(s.id, true); }} className="flex h-9 items-center gap-1.5 rounded-full bg-stable-soft px-3.5 text-[13px] font-semibold text-stable"><Check className="h-4 w-4" /> {t.admin.approve}</button>
+          <button type="button" onClick={() => { if (apiOn("admin")) void adminApi.moderateService(s.id, "rejected").catch(() => toast.error(t.auth.errors.UNKNOWN)); store.moderateService(s.id, false); }} className="flex h-9 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[13px] font-semibold text-label-2"><X className="h-4 w-4" /> {t.market.decline}</button>
         </div>
       ))}
     </section>
