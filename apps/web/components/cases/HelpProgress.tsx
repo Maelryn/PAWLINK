@@ -8,7 +8,7 @@ import { ProfileLink } from "@/components/account/ProfileLink";
 import { Button } from "@/components/ui/Button";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { Avatar, Emoji3D } from "@/components/ui/primitives";
-import { withdrawHelp } from "@/lib/cases";
+import { casesFromApi, withdrawHelp } from "@/lib/cases";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI } from "@/lib/species";
 import { store, useStore } from "@/lib/store";
@@ -160,9 +160,12 @@ export function HelperPanel({ c, me, helping }: { c: Case; me: User; helping: He
         )}
       </AnimatePresence>
 
-      <ConfirmButton onConfirm={() => { withdrawHelp(c, me); toast(t.life.stopped); }} className="h-10 w-full rounded-full text-[13.5px] font-semibold text-label-2">
-        {t.life.stopHelp}
-      </ConfirmButton>
+      {/* the API has no route to step back yet: offered on the demo data only */}
+      {!casesFromApi() && (
+        <ConfirmButton onConfirm={() => { withdrawHelp(c, me); toast(t.life.stopped); }} className="h-10 w-full rounded-full text-[13.5px] font-semibold text-label-2">
+          {t.life.stopHelp}
+        </ConfirmButton>
+      )}
     </div>
   );
 }

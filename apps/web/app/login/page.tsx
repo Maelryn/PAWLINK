@@ -6,7 +6,8 @@ import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { wakeApi } from "@/lib/api/client";
 import { toast } from "sonner";
 import { AppIcon } from "@/components/brand/Logo";
 import { Aurora } from "@/components/ui/Aurora";
@@ -47,6 +48,9 @@ function Login() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // still waiting after 8 s: the free API server is waking up, say so instead of spinning silently
+  const [slow, setSlow] = useState(false);
+  useEffect(() => wakeApi(), []);
   /** SMS code returned by the API outside production (console SMS provider), shown so testers can sign up */
   const [devCode, setDevCode] = useState<string | null>(null);
   const errText = (code: string, message?: string) => t.auth.errors[code] ?? (code === "RATE_LIMITED" ? t.auth.errors.TOO_MANY : message || t.auth.errors.UNKNOWN);
@@ -68,6 +72,7 @@ function Login() {
     if (busy) return;
     setError("");
     setBusy(true);
+    const late = setTimeout(() => setSlow(true), 8000);
     try {
       if (mode === "in") {
         const r = await signIn(f.email, f.password);
@@ -91,6 +96,8 @@ function Login() {
       toast.success(t.account.welcome(r.user.name));
       router.push(role === "pro" || role === "vet" ? "/account?tab=pro" : next);
     } finally {
+      clearTimeout(late);
+      setSlow(false);
       setBusy(false);
     }
   };
@@ -231,6 +238,7 @@ function Login() {
               {busy && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />}
               {mode === "in" ? t.account.signIn : otpStep ? t.common.next : t.account.signUp}
             </Button>
+            {busy && slow && <p className="text-center text-[13px] text-label-2">{t.report.slowServer}</p>}
           </form>
 
           {/* Demo helper (jury demo only, remove once the real API is plugged in) */}
