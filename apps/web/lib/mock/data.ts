@@ -184,6 +184,17 @@ export const CASES: Case[] = [
     reporter: lite("u4"), helpers: [],
     createdAt: ago(7), updatedAt: ago(7),
   },
+   {
+    id: id(), title: "Vache exposée à la fumée", species: "cow", category: "livestock",
+    status: "open", triage: "monitoring", emergencyZoneId: "z1",
+    location: { lat: 36.6613, lng: 4.1496, address: "Irdjen, Tizi Ouzou" },
+    photos: ["/mock/cow-2.jpg"],
+    description: "La vache a été exposée à la fumée pendant l'incendie. Pour le moment, elle mange et se déplace normalement, sans signe inhabituel visible.",
+    conditionTags: ["smoke"],
+    reporter: lite("u5"), helpers: [],
+    createdAt: ago(15), updatedAt: ago(15),
+  },
+
 
   // ── Alger ──
   {
