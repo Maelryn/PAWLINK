@@ -2,48 +2,73 @@
 
 **In Algeria, people who find an injured or lost animal don't know who to call. PawLink connects them in minutes with nearby volunteers and vets.**
 
-Report an animal with a photo and its position. An AI triage says how urgent it is and what to do right now (never a diagnosis, always "see a vet"). The case appears on a live map of Algeria, nearby volunteers and vets are told, someone taps "I can help", and the case goes from open to in progress to resolved. Around that core: wildfire/flood emergency mode, anti-fake-report checks, pet adoption and a directory of vets and shelters.
+You report the animal with a photo and its position. An AI triage says how urgent it is and what to do right now (never a diagnosis, always "see a vet"). The case appears on a live map of Algeria, the nearest available helpers are told, one of them taps "I can help", goes on the way, reaches the animal and can ask for more help (a vet, transport, a foster family) until the animal is safe.
 
-Built by a team of six students in Algeria during the Thirduni programme (October 2026).
+Built in Algeria by a team of seven students during the Thirduni programme (October 2026).
+
+| | |
+|---|---|
+| **Live app** | https://pawlink-dz.vercel.app |
+| **API** (+ Swagger docs) | https://pawlink-backend.onrender.com · [/docs](https://pawlink-backend.onrender.com/docs) · [/health](https://pawlink-backend.onrender.com/health) |
+| **Demo video** (3 min) | https://drive.google.com/file/d/1JANE4jCT9YgheHL4IAcskFwOXm4EmO8z/view |
+| **Pitch deck** (PDF) | https://drive.google.com/file/d/1WC53C9OgbtyxWyT-iHZMfOamC5YnKotO/view |
 
 ---
 
-## What works today
+## Try it in 2 minutes
 
-| Feature | Status |
+Open the live app and sign in with a demo account (password `pawlink2026` for all of them):
+
+| Account | Role | Try this |
+|---|---|---|
+| `yasmine@pawlink.dz` | reporter | Hold the **+** button → "Report an animal", answer the AI's question, see your case on the map |
+| `amine@pawlink.dz` | volunteer | Open a case → "I can help" → "I'm on the way" → "I'm with the animal" → "Need more help?" |
+| `dr.taleb@pawlink.dz` | vet with PawLink Pro | Home shows the Pro card; the Pro tab has appointments and reviews |
+| `ines@pawlink.dz` | admin | Admin: moderation queues, emergency zones, users |
+
+Reporting needs your location in Algeria. If location is blocked, use "Use the demo position": the report is then marked "not on site" and can't count as verified. The live API runs on a free server; the very first request after a quiet period can take a few seconds.
+
+## What it does
+
+| Area | What works |
 |---|---|
-| Website, phone + desktop, French / Arabic (right-to-left) / English, light + dark | ✅ |
-| Accounts (reporter, volunteer, vet, business) and a hidden admin | ✅ website (demo data) · ✅ API Phase 1 on branch `backend1` |
-| Report flow: photo, position (must be in Algeria and within 2 km of the animal), animal, situation | ✅ |
-| AI triage with safety rules (danger words always force "urgent", never a diagnosis) | ✅ rule layer + demo model in the website · 🟡 Gemini integration in progress |
-| Live map of Algeria: photo pins, clustering, filters, 3D, emergency mode | ✅ |
-| "I can help" → in progress → "Mark as resolved", notifications | ✅ |
-| Trust checks against fake reports: Algeria only, 2 km rule, real camera photo (EXIF), duplicate photo, rate limit, admin moderation | ✅ website · 🟡 server-side versions in Phase 2 |
-| Adoption (max 3 real photos, admin approval, request → phone shown only if accepted, saved favourites) | ✅ |
-| Vets, shelters and shops: reviews and replies, appointment requests, PawLink Pro listing | ✅ (payment is a demo, no real money) |
-| Shared real database for everyone (NestJS + Supabase) | 🟡 Phase 1 done, Phase 2 (cases, map, AI) in progress |
-| Native mobile app (Expo) | 🟡 screens built on branch `aymen-mobile`; the website already works on phones |
+| **Report** | Photo, position (in Algeria, within 2 km of the animal), animal, situation. Works on phone and desktop |
+| **AI triage** | Gemini Flash Lite rates the case urgent / to watch / stable, gives first-aid tips and the help needed, and asks a quick question when something important is missing. Understands French, English, Arabic and Algerian Darija. Safety rules can only raise the urgency. A fallback answers if the model is slow or down |
+| **Live map** | Every case of Algeria with filters, 3D, a layers bar (all cases / my reports / services) and an **emergency mode** for wildfires and floods |
+| **Rescue workflow** | Nearby available helpers are notified → "I can help" → on the way → with the animal → ask for the next help → resolved. The reporter follows it live; only the reporter and the helpers see each other's phone number |
+| **Trust** | Algeria only, 2 km rule, real camera photo (EXIF), duplicate photo check, rate limit, people within 1 km confirm "Do you see this animal?" (two yes = verified), admin moderation |
+| **Adoption** | Listings with real photos and admin approval, requests, phone numbers shared only after "yes", "It's adopted" |
+| **Vets & services** | Directory near you, reviews, appointment requests, PawLink Pro listing for businesses |
+| **Community** | Public profiles with earned badges (trusted helper, verified vet), 3-level availability |
+| **For Algeria** | العربية (right to left) · Français · English, light and dark mode |
 
-**Honest note:** until the API is connected, the website runs on a demo database saved in your browser (`apps/web/lib/store.ts`). Everything works, but what you create is only visible in your own browser. Each store action names the API endpoint that replaces it.
+## How it's built
 
-## Try it
+```mermaid
+flowchart LR
+  U["Phone or desktop browser"] --> W["Website<br/>Next.js on Vercel"]
+  W -->|REST + JWT| A["API<br/>NestJS on Render"]
+  A --> D[("PostgreSQL + PostGIS<br/>Supabase")]
+  A --> G["AI triage<br/>Gemini Flash Lite + safety rules"]
+  A --> C["Photos<br/>Cloudinary"]
+  A -. Socket.IO .-> W
+```
 
-Live demo: the link is in our Thirduni submission.
+| Part | Folder | Stack |
+|---|---|---|
+| Website | [`apps/web`](apps/web) | Next.js 16, React 19, TypeScript, Tailwind CSS v4, Motion, MapLibre GL + OpenFreeMap / OpenStreetMap, exifr |
+| API | [`apps/backend`](apps/backend) | NestJS 11, Prisma 7, PostgreSQL + PostGIS (Supabase), JWT + refresh tokens, argon2, Socket.IO, Swagger, Jest |
+| AI triage | [`apps/backend/src/ai`](apps/backend/src/ai) (in the API) · [`apps/Ai`](apps/Ai) (standalone module + 35-case test suite) | Google Gemini Flash Lite (`@google/genai`), Zod, keyword safety rules in 4 languages, cached fallbacks |
+| Mobile app | branch [`flutter-mobile`](https://github.com/Maelryn/PAWLINK/tree/flutter-mobile) (in progress) | Flutter, designed in Figma. The website already works on phones |
+| Hosting | | Vercel (website), Render (API, kept awake by a [GitHub Action](.github/workflows)), Supabase (database), Cloudinary (photos) |
 
-Demo accounts, password `pawlink2026`:
-
-| Account | Role |
-|---|---|
-| `yasmine@pawlink.dz` | reporter |
-| `amine@pawlink.dz` | volunteer |
-| `dr.taleb@pawlink.dz` | vet with a Pro business |
-| `ines@pawlink.dz` | admin |
-
-Reporting needs your location in Algeria. If location is blocked, use "Use the demo position": the report is then marked "not on site" and can't count as verified.
+**AI tools used to build PawLink:** Claude Code (Anthropic) for code, design, docs, the demo video and the pitch deck; ChatGPT for brainstorming and prompt drafts; Devin for verifying the AI module. Everything AI-made was reviewed and tested by the team.
 
 ## Run it locally
 
-Website (Node 20+):
+You need Node 20+.
+
+**Website** (works on its own with built-in demo data):
 
 ```bash
 cd apps/web
@@ -51,44 +76,55 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. `npm install` also copies the map worker into `public/maplibre/`.
+Open http://localhost:3000. To use a local API instead of the demo data, copy `apps/web/.env.example` to `.env.local` and set `NEXT_PUBLIC_API_URL=http://localhost:4000` and `NEXT_PUBLIC_API_FEATURES=auth,cases,uploads,ai,adoptions,services,notifications,admin`.
 
-API (branch `backend1`, see `apps/backend/README.md` there):
+**API** (needs a PostgreSQL + PostGIS database, e.g. a free Supabase project):
 
 ```bash
-git checkout backend1
 cd apps/backend
 npm install
-cp .env.example .env      # add your own Supabase / Postgres connection strings
-npm run prisma:migrate
+cp .env.example .env      # your database URLs; GEMINI_API_KEY is optional (without it the AI uses its fallback)
+npm run prisma:deploy
 npm run seed
 npm run dev               # http://localhost:4000, Swagger at /docs
 ```
 
-No secrets are committed. `.env*` files are git-ignored.
+Tests: `npm test` (unit) and `npm run test:e2e` (needs the database). Details in [`apps/backend/README.md`](apps/backend/README.md).
 
-## How it's built
+No secrets are committed: every `.env*` file is git-ignored, and each app has a `.env.example`.
 
-| Part | Stack |
-|---|---|
-| Website `apps/web` | Next.js 16, React 19, TypeScript, Tailwind CSS v4, Motion, MapLibre GL + OpenFreeMap / OpenStreetMap, exifr |
-| API `apps/backend` (branch `backend1`) | NestJS 11, Prisma 7, PostgreSQL + PostGIS (Supabase), JWT + refresh cookie, argon2, Swagger, Jest |
-| AI | Google Gemini Flash behind a provider interface, plus a safety-rule layer that runs after the model |
-| Mobile `apps/mobile` (branch `aymen-mobile`) | Expo + React Native |
-| Hosting | Vercel (website), Supabase (database + photos) |
-| AI tools used to build it | Claude Code (Anthropic) for code, design and docs. AI-made code was reviewed and tested by the team |
+## Repository map
 
 ```
 apps/
-  web/        website (Next.js)
-  backend/    API (NestJS) – on branch backend1
-  mobile/     native app (Expo) – on branch aymen-mobile
+  web/        website (Next.js): every screen, the demo data layer, the API client
+  backend/    API (NestJS): accounts, cases, trust checks, AI triage, adoption, services, zones, admin
+  Ai/         AI triage module and its 35-case evaluation, as built and tested on its own
+  mobile/     early Expo starter; the Flutter app lives on the flutter-mobile branch
 brand/        logo and app icon, light and dark
 docs/
-  tasks/      who does what, with dates (backend, AI, data)
   research/   facts with sources, interviews
+  tasks/      how the work was split, per person
+  *.md        the backend and mobile plans, prompts and audits written while building
+.github/      the GitHub Action that keeps the API awake
 ```
+
+## Who built what
+
+| Person | What they built |
+|---|---|
+| **Mehdi** ([@Maelryn](https://github.com/Maelryn)) | The website: every screen and flow, the live map, the rescue workflow, adoption, services and admin screens, three languages, the demo video and the pitch deck |
+| **Aymen Belkadi** | The API: accounts and security, cases with the trust pipeline and realtime, admin; connected the website, the API and the AI; deployment |
+| **Mohamed Temim Lemdaoui** | The API foundation (NestJS, PostGIS database schema, seed) and the marketplace: adoption, services, reviews, bookings, emergency zones, notifications |
+| **Katia Amirat** | The AI triage: Gemini integration, safety rules in French, English, Arabic and Darija, fallbacks, schema validation and the 35-case test suite; the video's voice-over |
+| **Sabrine** | Veterinary research (vet student), the sourced facts and realistic demo cases in Arabic and Darija |
+| **Naila Lamia Betouche** | The mobile app design in Figma |
+| **Moundhir Bachene** | The Flutter mobile app (in progress, branch `flutter-mobile`) |
 
 ## What's next
 
-See `docs/tasks/README.md` for the October plan. After October: launch in Algiers and Tizi Ouzou with local rescue associations, open the real backend and AI to the public, and bring the first vets and pet shops onto PawLink Pro.
+In the next three months: launch in Algiers and Tizi Ouzou with local rescue associations, publish the Android app, and bring the first vets and pet shops onto PawLink Pro (2,900 DA a month) to cover the servers. Rescuers will always use PawLink for free. We will measure how quickly a reported animal gets help, and improve the AI with real cases reviewed by vets.
+
+## Sources
+
+Every number we use is listed with its source in [`docs/research/facts.md`](docs/research/facts.md).
