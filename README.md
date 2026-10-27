@@ -1,4 +1,23 @@
-# PawLink
+<p align="center">
+  <img src="brand/pawlink-icon-light.png" alt="PawLink app icon" width="112">
+</p>
+
+<h1 align="center">PawLink</h1>
+
+<p align="center"><b>Every animal, one link away.</b><br>A rescue platform for Algeria: report a hurt or lost animal, get an AI triage, and reach the nearest volunteers and vets in minutes.</p>
+
+<p align="center">
+  <a href="https://pawlink-dz.vercel.app"><b>Live app</b></a> ·
+  <a href="https://drive.google.com/file/d/1JANE4jCT9YgheHL4IAcskFwOXm4EmO8z/view"><b>Demo video</b></a> ·
+  <a href="https://drive.google.com/file/d/1WC53C9OgbtyxWyT-iHZMfOamC5YnKotO/view"><b>Pitch deck</b></a> ·
+  <a href="https://pawlink-backend.onrender.com/docs"><b>API docs</b></a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/report.jpg" alt="Reporting an animal in four steps while PawLink AI analyses it" width="32%">
+  <img src="docs/screenshots/live-map.jpg" alt="The case on the live map of Algeria, nearby helpers notified" width="32%">
+  <img src="docs/screenshots/helper-steps.jpg" alt="A helper on the way and with the animal, the reporter following live" width="32%">
+</p>
 
 **In Algeria, people who find an injured or lost animal don't know who to call. PawLink connects them in minutes with nearby volunteers and vets.**
 
@@ -51,7 +70,7 @@ flowchart LR
   A --> D[("PostgreSQL + PostGIS<br/>Supabase")]
   A --> G["AI triage<br/>Gemini Flash Lite + safety rules"]
   A --> C["Photos<br/>Cloudinary"]
-  A -. Socket.IO .-> W
+  A -.->|"live updates (Socket.IO)"| W
 ```
 
 | Part | Folder | Stack |
