@@ -149,6 +149,7 @@ const en = {
     canReach: "I can stay near the animal",
     submit: "Analyze & send",
     analyzing: "PawLink AI is analyzing…",
+    slowServer: "The server is waking up, this can take up to a minute. Keep this page open.",
     analyzeSteps: ["Reading the photo", "Understanding the situation", "Checking safety rules", "Finding nearby help"],
     sent: "Case sent",
     sentBody: "Nearby helpers have been notified.",

@@ -151,6 +151,7 @@ const fr: Dict = {
     canReach: "Je peux rester près de l'animal",
     submit: "Analyser et envoyer",
     analyzing: "L'IA PawLink analyse…",
+    slowServer: "Le serveur se réveille, ça peut prendre jusqu'à une minute. Gardez cette page ouverte.",
     analyzeSteps: ["Lecture de la photo", "Compréhension de la situation", "Vérification des règles de sécurité", "Recherche d'aide à proximité"],
     sent: "Cas envoyé",
     sentBody: "Les aidants à proximité ont été prévenus.",

@@ -99,8 +99,28 @@ async function toBlob(photo: string): Promise<Blob> {
   return (await fetch(photo)).blob(); // works for data: URLs and same-origin demo photos
 }
 
+/** A phone photo is often 3-8 MB: storage gets a copy of at most 1600 px (a few hundred KB),
+    which is plenty for the app and much faster on mobile data. Any failure keeps the original. */
+async function smaller(blob: Blob, max = 1600): Promise<Blob> {
+  if (blob.size < 700_000 || typeof createImageBitmap === "undefined") return blob;
+  try {
+    const img = await createImageBitmap(blob);
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * k);
+    canvas.height = Math.round(img.height * k);
+    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    img.close();
+    const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.85));
+    return out && out.size < blob.size ? out : blob;
+  } catch {
+    return blob;
+  }
+}
+
 /** Uploads one photo the way the backend wants it: the original goes to /uploads/probe first
-    (EXIF + duplicate check server-side), then to the storage URL from /uploads/signature. */
+    (EXIF + duplicate check server-side need the untouched file), then a lighter copy goes to the
+    storage URL from /uploads/signature. */
 export async function uploadPhoto(photo: string): Promise<{ url: string; probeId?: string }> {
   if (!apiOn("uploads")) return { url: photo };
   const blob = await toBlob(photo);
@@ -114,7 +134,7 @@ export async function uploadPhoto(photo: string): Promise<{ url: string; probeId
     throw e;
   }
   const form = new FormData();
-  form.append("file", blob);
+  form.append("file", await smaller(blob));
   form.append("api_key", sig.apiKey);
   form.append("timestamp", String(sig.timestamp));
   form.append("signature", sig.signature);

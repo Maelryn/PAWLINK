@@ -19,6 +19,7 @@ import { computeTrust, inAlgeria } from "@/lib/trust";
 import { useDemoPosition, useDevicePosition } from "@/components/layout/GeoGate";
 import { analyze, analyzeAsync, type AnalyzeInput } from "@/lib/ai/analyze";
 import { casesFromApi, createCaseRemote } from "@/lib/cases";
+import { wakeApi } from "@/lib/api/client";
 import { activeZoneAt } from "@/lib/zones";
 import { useI18n } from "@/lib/i18n";
 import { ALL_SPECIES, LIVESTOCK, SPECIES_EMOJI, TRIAGE_COLOR } from "@/lib/species";
@@ -72,6 +73,11 @@ export function ReportFlow() {
   // the triage's quick questions: asked after the analysis, before the case is published
   const [pending, setPending] = useState<null | { input: AnalyzeInput; base: Omit<Case, "triage" | "ai" | "answers">; questions: FollowUpId[] }>(null);
   const [answers, setAnswers] = useState<Partial<Record<FollowUpId, boolean>>>({});
+
+  // wake the API now: by the time the report is sent it has had a minute to start
+  useEffect(() => {
+    if (casesFromApi()) wakeApi();
+  }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -621,10 +627,16 @@ function SituationStep({ tags, setTags, desc, setDesc }: { tags: string[]; setTa
 function Analyzing({ photo, species }: { photo: string | null; species: Species }) {
   const { t } = useI18n();
   const [i, setI] = useState(0);
+  // still here after 12 s: the API is waking up, say so instead of spinning silently
+  const [slow, setSlow] = useState(false);
   const steps = [...t.report.analyzeSteps.slice(0, 2), t.trust.checking, ...t.report.analyzeSteps.slice(2)];
   useEffect(() => {
     const id = setInterval(() => setI((x) => Math.min(x + 1, steps.length - 1)), 700);
-    return () => clearInterval(id);
+    const late = setTimeout(() => setSlow(true), 12_000);
+    return () => {
+      clearInterval(id);
+      clearTimeout(late);
+    };
   }, [steps.length]);
   return (
     <div className="flex flex-col items-center pt-6 text-center">
@@ -693,6 +705,11 @@ function Analyzing({ photo, species }: { photo: string | null; species: Species 
           </motion.div>
         ))}
       </div>
+      {slow && (
+        <motion.p initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-6 max-w-[340px] text-[14px] text-label-2">
+          {t.report.slowServer}
+        </motion.p>
+      )}
     </div>
   );
 }

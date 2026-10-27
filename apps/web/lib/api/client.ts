@@ -24,6 +24,12 @@ export type ApiFeature = "auth" | "cases" | "uploads" | "ai" | "adoptions" | "se
 /** True when this part of the app talks to the real API instead of the demo database. */
 export const apiOn = (feature: ApiFeature) => !!API_URL && FEATURES.has(feature);
 
+/** The free API server sleeps when nobody uses it and takes up to a minute to wake up:
+    screens that will need it soon (the report flow) call this first, so it wakes while people type. */
+export const wakeApi = () => {
+  if (API_URL) fetch(API_URL + "/health").catch(() => {});
+};
+
 /** Error envelope of the API: { statusCode, message, code }. */
 export class ApiError extends Error {
   constructor(
