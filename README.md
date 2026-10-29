@@ -28,7 +28,8 @@ Built in Algeria by a team of seven students during the Thirduni programme (Octo
 
 | | |
 |---|---|
-| **Live app** | https://pawlink-iota.vercel.app |
+| **Live app** (demo data) | https://pawlink-iota.vercel.app |
+| **Live app** (real API + AI) | https://pawlink-dz.vercel.app |
 | **Android app** (APK) | https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk |
 | **API** (+ Swagger docs) | https://pawlink-backend.onrender.com · [/docs](https://pawlink-backend.onrender.com/docs) · [/health](https://pawlink-backend.onrender.com/health) |
 | **Demo video** (3 min) | https://drive.google.com/file/d/1JANE4jCT9YgheHL4IAcskFwOXm4EmO8z/view |
@@ -47,7 +48,7 @@ Open the live app and sign in with a demo account (password `pawlink2026` for al
 | `dr.taleb@pawlink.dz` | vet with PawLink Pro | Home shows the Pro card; the Pro tab has appointments and reviews |
 | `ines@pawlink.dz` | admin | Admin: moderation queues, emergency zones, users |
 
-Reporting needs your location in Algeria. If location is blocked, use "Use the demo position": the report is then marked "not on site" and can't count as verified. The live app runs on the website's built-in demo data, so every role can be tried instantly and nothing you do reaches other people. The API runs separately on Render: its endpoints can be tried in the [Swagger docs](https://pawlink-backend.onrender.com/docs).
+Reporting needs your location in Algeria. If location is blocked, use "Use the demo position": the report is then marked "not on site" and can't count as verified.
 
 ## What it does
 
