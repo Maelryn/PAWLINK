@@ -4,6 +4,21 @@ The native Android/iOS app of **PawLink**: report an injured or lost animal in A
 
 This folder contains only the mobile app. For the full project (website, API, AI) see the [main README](../../README.md).
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/home.jpg" width="240" alt="Accueil"><br><b>Accueil</b></td>
+    <td align="center"><img src="docs/screenshots/adopt.jpg" width="240" alt="Adopter"><br><b>Adopter</b></td>
+    <td align="center"><img src="docs/screenshots/services.jpg" width="240" alt="Services"><br><b>Services</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/map.jpg" width="240" alt="Carte"><br><b>Carte</b></td>
+    <td align="center"><img src="docs/screenshots/create-sheet.jpg" width="240" alt="Menu +"><br><b>Menu « + »</b></td>
+    <td align="center"><img src="docs/screenshots/report.jpg" width="240" alt="Signaler"><br><b>Signaler</b></td>
+  </tr>
+</table>
+
 ## What works today
 
 | Screen | Status |
@@ -11,12 +26,14 @@ This folder contains only the mobile app. For the full project (website, API, AI
 | **Accueil**: hero, quick actions, live cases nearby | ✅ |
 | **Adopter**: list with filters (Tous, Favoris, Chien, Chat, Bétail), favourites, animal detail with photo gallery, adoption request (phone shown only once the owner accepts) | ✅ |
 | **Services**: directory of vets, shelters, transport, training and pet shops with search and filters; place detail with reviews and appointment requests (Pro places) | ✅ |
-| **Carte**: live map of cases (OpenStreetMap, clustering, urgency colors) | [✅ / 🟡 in progress] |
-| **Signaler**: report with photo, GPS position, animal and situation | [✅ / 🟡 in progress] |
+| **Carte**: live map of cases (OpenStreetMap, clustering, urgency colors), emergency mode, search, case preview with "Je peux aider" | ✅ |
+| **Signaler**: "+" sheet, report in 4 steps (photo, position in Algeria, animal, situation), follow-up questions, triage result; the new case appears on the map | ✅ |
 | Light and dark mode (follows the phone) | ✅ |
 | French interface | ✅ · Arabic (right-to-left) and English planned |
 
 **Honest note:** the app currently runs on **sample data** stored in the app (fake repositories in `lib/features/*/data/`). Each repository sits behind an interface that mirrors the website's data types (`apps/web/lib/types.ts`), so connecting the real API (`apps/backend`) means replacing the fake repository, not the screens.
+
+**Triage on mobile** uses the website's safety-rule layer only (danger words always force "urgent", never a diagnosis, always "see a vet"). The Gemini model runs on the website and backend; mobile will call it once the API is connected.
 
 ## Run it
 
@@ -78,14 +95,15 @@ flutter test
 
 ```
 lib/
-  core/       theme (colors, text styles, spacing), router, network
-  shared/     reusable widgets (bottom nav, buttons, cards, background)
+  core/       theme (colors, text styles, spacing), router, map settings
+  shared/     reusable widgets (bottom nav, "+" sheet, buttons, cards, background)
   features/
     home/       Accueil
     adopt/      Adopter: list, detail, request
     services/   Services: directory, detail, reviews, appointments
+    cases/      shared case data, used by Carte, Signaler and Accueil
     map/        Carte
-    report/     Signaler
+    report/     Signaler: steps, triage rules, result
 ```
 
 Each feature has `data/` (models, repository interface, fake repository), `presentation/` (screens and widgets) and `providers.dart`.
@@ -94,5 +112,6 @@ Each feature has `data/` (models, repository interface, fake repository), `prese
 
 - Fonts: [Inter](https://rsms.me/inter/) and [IBM Plex Sans Arabic](https://github.com/IBM/plex), SIL Open Font License (`assets/fonts/`)
 - Icons: Make design icons, plus [Lucide](https://lucide.dev) icons under the ISC license (`assets/icons/LICENSE-lucide.txt`)
+- Map data: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors
 - Illustrations: [source, to confirm with the design team]
 - Sample animal photos: from the website's demo data (`apps/web/public/mock`)
