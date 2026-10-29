@@ -60,6 +60,19 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# Launcher icon sources live in assets/launcher/ (not bundled in the app).
+# icon.png is the brand light app icon rendered full-bleed (no rounded corners):
+# iOS masks it itself and remove_alpha_ios would turn transparent corners black.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/launcher/icon.png
+  remove_alpha_ios: true
+  # Adaptive icon: white paw-pin kept inside the ~66% safe zone over the brand gradient.
+  adaptive_icon_background: assets/launcher/icon_background.png
+  adaptive_icon_foreground: assets/launcher/icon_foreground.png
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
