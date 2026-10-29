@@ -8,6 +8,7 @@
 
 <p align="center">
   <a href="https://pawlink-dz.vercel.app"><b>Live app</b></a> ·
+  <a href="https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk"><b>Android app</b></a> ·
   <a href="https://drive.google.com/file/d/1JANE4jCT9YgheHL4IAcskFwOXm4EmO8z/view"><b>Demo video</b></a> ·
   <a href="https://drive.google.com/file/d/1WC53C9OgbtyxWyT-iHZMfOamC5YnKotO/view"><b>Pitch deck</b></a> ·
   <a href="https://pawlink-backend.onrender.com/docs"><b>API docs</b></a>
@@ -28,6 +29,7 @@ Built in Algeria by a team of seven students during the Thirduni programme (Octo
 | | |
 |---|---|
 | **Live app** | https://pawlink-dz.vercel.app |
+| **Android app** (APK) | https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk |
 | **API** (+ Swagger docs) | https://pawlink-backend.onrender.com · [/docs](https://pawlink-backend.onrender.com/docs) · [/health](https://pawlink-backend.onrender.com/health) |
 | **Demo video** (3 min) | https://drive.google.com/file/d/1JANE4jCT9YgheHL4IAcskFwOXm4EmO8z/view |
 | **Pitch deck** (PDF) | https://drive.google.com/file/d/1WC53C9OgbtyxWyT-iHZMfOamC5YnKotO/view |
@@ -78,7 +80,7 @@ flowchart LR
 | Website | [`apps/web`](apps/web) | Next.js 16, React 19, TypeScript, Tailwind CSS v4, Motion, MapLibre GL + OpenFreeMap / OpenStreetMap, exifr |
 | API | [`apps/backend`](apps/backend) | NestJS 11, Prisma 7, PostgreSQL + PostGIS (Supabase), JWT + refresh tokens, argon2, Socket.IO, Swagger, Jest |
 | AI triage | [`apps/backend/src/ai`](apps/backend/src/ai) (in the API) · [`apps/Ai`](apps/Ai) (standalone module + 35-case test suite) | Google Gemini Flash Lite (`@google/genai`), Zod, keyword safety rules in 4 languages, cached fallbacks |
-| Mobile app | branch [`flutter-mobile`](https://github.com/Maelryn/PAWLINK/tree/flutter-mobile) (in progress) | Flutter, designed in Figma. The website already works on phones |
+| Mobile app | branch [`flutter-mobile`](https://github.com/Maelryn/PAWLINK/tree/flutter-mobile) · [download the APK](https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk) | Flutter, designed in Figma: home, adoption, services, live map and the report flow. Runs on sample data for now; the API connection is next |
 | Hosting | | Vercel (website), Render (API, kept awake by a [GitHub Action](.github/workflows)), Supabase (database), Cloudinary (photos) |
 
 **AI tools used to build PawLink:** Claude Code (Anthropic) for code, design, docs, the demo video and the pitch deck; ChatGPT for brainstorming and prompt drafts; Devin for verifying the AI module. Everything AI-made was reviewed and tested by the team.
@@ -119,7 +121,7 @@ apps/
   web/        website (Next.js): every screen, the demo data layer, the API client
   backend/    API (NestJS): accounts, cases, trust checks, AI triage, adoption, services, zones, admin
   Ai/         AI triage module and its 35-case evaluation, as built and tested on its own
-  mobile/     early Expo starter; the Flutter app lives on the flutter-mobile branch
+  mobile/     early Expo starter; the Flutter app (v1.0, APK released) lives on the flutter-mobile branch
 brand/        logo and app icon, light and dark
 docs/
   research/   facts with sources, interviews
@@ -128,21 +130,9 @@ docs/
 .github/      the GitHub Action that keeps the API awake
 ```
 
-## Who built what
-
-| Person | What they built |
-|---|---|
-| **Mehdi** ([@Maelryn](https://github.com/Maelryn)) | The website: every screen and flow, the live map, the rescue workflow, adoption, services and admin screens, three languages, the demo video and the pitch deck |
-| **Aymen Belkadi** | The API: accounts and security, cases with the trust pipeline and realtime, admin; connected the website, the API and the AI; deployment |
-| **Mohamed Temim Lemdaoui** | The API foundation (NestJS, PostGIS database schema, seed) and the marketplace: adoption, services, reviews, bookings, emergency zones, notifications |
-| **Katia Amirat** | The AI triage: Gemini integration, safety rules in French, English, Arabic and Darija, fallbacks, schema validation and the 35-case test suite; the video's voice-over |
-| **Sabrine** | Veterinary research (vet student), the sourced facts and realistic demo cases in Arabic and Darija |
-| **Naila Lamia Betouche** | The mobile app design in Figma |
-| **Moundhir Bachene** | The Flutter mobile app (in progress, branch `flutter-mobile`) |
-
 ## What's next
 
-In the next three months: launch in Algiers and Tizi Ouzou with local rescue associations, publish the Android app, and bring the first vets and pet shops onto PawLink Pro (2,900 DA a month) to cover the servers. Rescuers will always use PawLink for free. We will measure how quickly a reported animal gets help, and improve the AI with real cases reviewed by vets.
+In the next three months: launch in Algiers and Tizi Ouzou with local rescue associations, connect the Android app to the API and publish it on Google Play, and bring the first vets and pet shops onto PawLink Pro (2,900 DA a month) to cover the servers. Rescuers will always use PawLink for free. We will measure how quickly a reported animal gets help, and improve the AI with real cases reviewed by vets.
 
 ## Sources
 

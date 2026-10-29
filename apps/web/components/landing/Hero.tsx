@@ -58,18 +58,19 @@ function GlassTile() {
           <g fill={`url(#g${uid})`}>
             <path d={MARK_PATH} fillRule="evenodd" />
             {TOES.map((t, i) => (
-              <motion.ellipse
-                key={i}
-                cx={t.cx}
-                cy={t.cy}
-                rx={t.rx}
-                ry={t.ry}
-                transform={`rotate(${t.rot} ${t.cx} ${t.cy})`}
-                initial={{ opacity: 0, scale: 0.3 }}
-                animate={{ opacity: 1, scale: 1 }}
-                style={{ transformBox: "fill-box", transformOrigin: "center" }}
-                transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.5 + i * 0.08 }}
-              />
+              // the rotation lives on the group: on iOS Safari the pop-in's CSS transform would replace it
+              <g key={i} transform={`rotate(${t.rot} ${t.cx} ${t.cy})`}>
+                <motion.ellipse
+                  cx={t.cx}
+                  cy={t.cy}
+                  rx={t.rx}
+                  ry={t.ry}
+                  initial={{ opacity: 0, scale: 0.3 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  style={{ transformBox: "fill-box", transformOrigin: "center" }}
+                  transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.5 + i * 0.08 }}
+                />
+              </g>
             ))}
           </g>
         </svg>
