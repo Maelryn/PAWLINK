@@ -7,7 +7,7 @@
 <p align="center"><b>Every animal, one link away.</b><br>A rescue platform for Algeria: report a hurt or lost animal, get an AI triage, and reach the nearest volunteers and vets in minutes.</p>
 
 <p align="center">
-  <a href="https://pawlink-dz.vercel.app"><b>Live app</b></a> ·
+  <a href="https://pawlink-iota.vercel.app"><b>Live app</b></a> ·
   <a href="https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk"><b>Android app</b></a> ·
   <a href="https://drive.google.com/file/d/1JANE4jCT9YgheHL4IAcskFwOXm4EmO8z/view"><b>Demo video</b></a> ·
   <a href="https://drive.google.com/file/d/1WC53C9OgbtyxWyT-iHZMfOamC5YnKotO/view"><b>Pitch deck</b></a> ·
@@ -28,7 +28,7 @@ Built in Algeria by a team of seven students during the Thirduni programme (Octo
 
 | | |
 |---|---|
-| **Live app** | https://pawlink-dz.vercel.app |
+| **Live app** | https://pawlink-iota.vercel.app |
 | **Android app** (APK) | https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk |
 | **API** (+ Swagger docs) | https://pawlink-backend.onrender.com · [/docs](https://pawlink-backend.onrender.com/docs) · [/health](https://pawlink-backend.onrender.com/health) |
 | **Demo video** (3 min) | https://drive.google.com/file/d/1JANE4jCT9YgheHL4IAcskFwOXm4EmO8z/view |
@@ -47,7 +47,7 @@ Open the live app and sign in with a demo account (password `pawlink2026` for al
 | `dr.taleb@pawlink.dz` | vet with PawLink Pro | Home shows the Pro card; the Pro tab has appointments and reviews |
 | `ines@pawlink.dz` | admin | Admin: moderation queues, emergency zones, users |
 
-Reporting needs your location in Algeria. If location is blocked, use "Use the demo position": the report is then marked "not on site" and can't count as verified. The live API runs on a free server; the very first request after a quiet period can take a few seconds.
+Reporting needs your location in Algeria. If location is blocked, use "Use the demo position": the report is then marked "not on site" and can't count as verified. The live app runs on the website's built-in demo data, so every role can be tried instantly and nothing you do reaches other people. The API runs separately on Render: its endpoints can be tried in the [Swagger docs](https://pawlink-backend.onrender.com/docs).
 
 ## What it does
 
