@@ -12,10 +12,10 @@ This folder contains only the mobile app. For the full project (website, API, AI
     <td align="center"><img src="docs/screenshots/adopt.jpg" width="240" alt="Adopter"><br><b>Adopter</b></td>
     <td align="center"><img src="docs/screenshots/services.jpg" width="240" alt="Services"><br><b>Services</b></td>
   </tr>
-  <tr>
+    <tr>
     <td align="center"><img src="docs/screenshots/map.jpg" width="240" alt="Carte"><br><b>Carte</b></td>
+    <td align="center"><img src="docs/screenshots/case.jpg" width="240" alt="Cas urgent"><br><b>Cas · « Je peux aider »</b></td>
     <td align="center"><img src="docs/screenshots/create-sheet.jpg" width="240" alt="Menu +"><br><b>Menu « + »</b></td>
-    <td align="center"><img src="docs/screenshots/report.jpg" width="240" alt="Signaler"><br><b>Signaler</b></td>
   </tr>
 </table>
 
