@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/adopt/presentation/adopt_detail_screen.dart';
 import '../../features/adopt/presentation/adopt_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/map/presentation/map_screen.dart';
 import '../../features/services/presentation/service_detail_screen.dart';
 import '../../features/services/presentation/services_screen.dart';
 import '../../shared/widgets/app_shell.dart';
@@ -65,8 +66,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.map,
-                builder:
-                    (context, state) => const PlaceholderScreen(title: 'Carte'),
+                builder: (context, state) => const MapScreen(),
               ),
             ],
           ),
