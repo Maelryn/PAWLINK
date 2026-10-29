@@ -36,10 +36,23 @@ class _MapPanelState extends ConsumerState<MapPanel> {
   /// Null until the user toggles it: then it follows the screen height.
   bool? _listOpen;
 
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final brightness = Theme.of(context).brightness;
+    // The query can also be cleared from elsewhere (a new report opens the
+    // map on its case): the field follows.
+    ref.listen(mapQueryProvider, (previous, next) {
+      if (_search.text != next) _search.text = next;
+    });
     final collapsed = ref.watch(selectedCaseProvider) != null;
     final listOpen =
         _listOpen ?? MediaQuery.sizeOf(context).height >= _compactHeight;
@@ -67,6 +80,7 @@ class _MapPanelState extends ConsumerState<MapPanel> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _SearchField(
+                    controller: _search,
                     onChanged: ref.read(mapQueryProvider.notifier).set,
                   ),
                   _Collapsible(
@@ -116,8 +130,9 @@ class _Collapsible extends StatelessWidget {
 
 /// Make `.map-search`: 48px, radius 18, tinted fill.
 class _SearchField extends StatelessWidget {
-  const _SearchField({required this.onChanged});
+  const _SearchField({required this.controller, required this.onChanged});
 
+  final TextEditingController controller;
   final ValueChanged<String> onChanged;
 
   static const double _height = 48;
@@ -146,6 +161,7 @@ class _SearchField extends StatelessWidget {
           const SizedBox(width: 9),
           Expanded(
             child: TextField(
+              controller: controller,
               onChanged: onChanged,
               textInputAction: TextInputAction.search,
               style: textTheme.bodyMedium!.copyWith(color: colors.textPrimary),

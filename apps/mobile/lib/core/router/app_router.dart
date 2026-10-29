@@ -6,10 +6,10 @@ import '../../features/adopt/presentation/adopt_detail_screen.dart';
 import '../../features/adopt/presentation/adopt_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/map/presentation/map_screen.dart';
+import '../../features/report/presentation/report_screen.dart';
 import '../../features/services/presentation/service_detail_screen.dart';
 import '../../features/services/presentation/services_screen.dart';
 import '../../shared/widgets/app_shell.dart';
-import '../../shared/widgets/placeholder_screen.dart';
 
 /// Route paths, so screens never spell them out.
 abstract final class AppRoutes {
@@ -90,9 +90,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.report,
         parentNavigatorKey: _rootNavigatorKey,
-        builder:
-            (context, state) =>
-                const PlaceholderScreen(title: 'Signaler', closable: true),
+        builder: (context, state) => const ReportScreen(),
       ),
     ],
   );

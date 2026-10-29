@@ -25,6 +25,14 @@ class CaseActions {
 
   Future<void> addCase(Case newCase) => _repo.addCase(newCase);
 
+  /// Asks the Carte tab to open [caseId]: centered, with its preview card.
+  /// The tab and the search are reset so the case cannot be filtered out.
+  void showOnMap(String caseId) {
+    _ref.read(mapStatusFilterProvider.notifier).select(MapStatusFilter.all);
+    _ref.read(mapQueryProvider.notifier).set('');
+    _ref.read(focusCaseIdProvider.notifier).request(caseId);
+  }
+
   /// "Je peux aider": the case moves to in progress. The map has no way to
   /// pick what kind of help, so it follows the triage's first suggestion.
   Future<void> offerHelp(Case target) => _repo.offerHelp(
@@ -103,6 +111,31 @@ final selectedCaseIdProvider =
     NotifierProvider<SelectedCaseIdNotifier, String?>(
       SelectedCaseIdNotifier.new,
     );
+
+/// The case the map was asked to show (see [CaseActions.showOnMap]), until the
+/// map has moved to it.
+class FocusCaseIdNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void request(String id) => state = id;
+
+  void clear() => state = null;
+}
+
+final focusCaseIdProvider = NotifierProvider<FocusCaseIdNotifier, String?>(
+  FocusCaseIdNotifier.new,
+);
+
+/// The requested case once it is in the visible list. A case just added
+/// reaches the list a moment after the request, so the map waits on this
+/// rather than on the id.
+final focusCaseProvider = Provider<Case?>((ref) {
+  final id = ref.watch(focusCaseIdProvider);
+  if (id == null) return null;
+  final visible = ref.watch(visibleCasesProvider).value ?? const [];
+  return visible.where((c) => c.id == id).firstOrNull;
+});
 
 /// The case whose preview is open. Read from the live list so the card
 /// follows changes (help offered); null once it is filtered out or gone.

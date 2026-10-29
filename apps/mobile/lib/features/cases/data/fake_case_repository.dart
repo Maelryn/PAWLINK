@@ -354,11 +354,14 @@ class FakeCaseRepository implements CaseRepository {
 
   void _emit() => _changes.add(_snapshot());
 
+  /// The snapshot and the subscription to changes happen in the same step, so
+  /// a case added right after someone starts watching is never missed.
   @override
-  Stream<List<Case>> watchCases() async* {
-    yield _snapshot();
-    yield* _changes.stream;
-  }
+  Stream<List<Case>> watchCases() => Stream.multi((listener) {
+    listener.add(_snapshot());
+    final changes = _changes.stream.listen(listener.add);
+    listener.onCancel = changes.cancel;
+  });
 
   @override
   Future<Case> addCase(Case newCase) async {

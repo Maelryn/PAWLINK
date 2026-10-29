@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -23,6 +25,15 @@ class CasePhoto extends StatelessWidget {
         fit: BoxFit.cover,
         placeholder: (context, url) => _Placeholder(),
         errorWidget: (context, url, error) => _Placeholder(),
+      );
+    }
+    // A photo taken in the report flow is a file on the phone.
+    if (!path.startsWith('assets/')) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        excludeFromSemantics: true,
+        errorBuilder: (context, error, stack) => _Placeholder(),
       );
     }
     return Image.asset(

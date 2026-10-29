@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pawlink/main.dart';
 
 void main() {
-  testWidgets('shell shows tabs and "+" pushes Signaler above it', (
+  testWidgets('shell shows tabs and "+" opens the create sheet', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ProviderScope(child: PawLinkApp()));
@@ -19,8 +19,21 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('nav-create')));
     await tester.pumpAndSettle();
-    expect(find.text('Signaler'), findsWidgets);
-    expect(find.byType(CloseButton), findsOneWidget);
+    expect(find.text('Que voulez-vous faire ?'), findsOneWidget);
+    expect(find.text('Signaler un animal'), findsOneWidget);
+
+    // Adoption is not built yet.
+    await tester.tap(find.byKey(const ValueKey('create-adopt')));
+    await tester.pumpAndSettle();
+    expect(find.text('Bientôt disponible'), findsOneWidget);
+
+    // Reporting opens the flow above the tab bar.
+    await tester.tap(find.byKey(const ValueKey('nav-create')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('create-report')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ajoutez une photo'), findsOneWidget);
+    expect(find.text('Accueil'), findsNothing);
   });
 
   testWidgets('home shows hero and cards that navigate', (
@@ -45,6 +58,6 @@ void main() {
     await tester.ensureVisible(report);
     await tester.tap(report);
     await tester.pumpAndSettle();
-    expect(find.byType(CloseButton), findsOneWidget);
+    expect(find.text('Ajoutez une photo'), findsOneWidget);
   });
 }

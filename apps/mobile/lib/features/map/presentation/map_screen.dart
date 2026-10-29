@@ -39,6 +39,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// that it only moves when the user asks.
   bool _centeredOnUser = false;
 
+  bool _mapReady = false;
+
   /// "Signaler ici" and the attribution float this far above the bottom nav.
   /// The shell uses `extendBody`, so the map fills the screen and the body's
   /// bottom padding already equals the nav's full height (bar, its margin and
@@ -70,6 +72,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void _deselect() => ref.read(selectedCaseIdProvider.notifier).select(null);
 
+  /// A case was asked for (a report just made): go to it and open its card.
+  /// Waits for the map and for the case to be in the list. The camera stays
+  /// there; it no longer jumps to the user when the position arrives.
+  void _showRequested(Case? item) {
+    if (item == null || !_mapReady) return;
+    _centeredOnUser = true;
+    _select(item);
+    // Not in the listener itself: changing what it listens to, in the same
+    // update, would rebuild the provider twice in one frame.
+    Future.microtask(() {
+      if (mounted) ref.read(focusCaseIdProvider.notifier).clear();
+    });
+  }
+
   Future<void> _locate() async {
     final position = await ref.refresh(userLocationProvider.future);
     if (!mounted) return;
@@ -96,6 +112,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final position = next.value;
       if (position != null && !_centeredOnUser) _centerOnUser(position);
     });
+    ref.listen(focusCaseProvider, (previous, next) => _showRequested(next));
 
     return Stack(
       fit: StackFit.expand,
@@ -112,6 +129,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
             ),
             onMapReady: () {
+              _mapReady = true;
+              // A report may have asked for this tab before the map existed.
+              _showRequested(ref.read(focusCaseProvider));
               // The position may have arrived before the map was ready.
               final position = ref.read(userLocationProvider).value;
               if (position != null && !_centeredOnUser) {

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
+import 'create_sheet.dart';
 
 /// Scaffold around the tab branches. The nav floats over the content, so
 /// each screen scrolls underneath it.
@@ -29,7 +29,7 @@ class AppShell extends StatelessWidget {
               index,
               initialLocation: index == navigationShell.currentIndex,
             ),
-        onCreate: () => context.push(AppRoutes.report),
+        onCreate: () => showCreateSheet(context),
       ),
     );
   }
