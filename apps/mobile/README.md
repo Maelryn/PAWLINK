@@ -37,6 +37,14 @@ This folder contains only the mobile app. For the full project (website, API, AI
 
 ## Run it
 
+### Install the app (Android)
+
+**[⬇ Download pawlink.apk](https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk)**
+
+Open the file on an Android phone (6.0 or newer) and allow "Install unknown apps" when asked. The app runs on sample data, so no account is needed.
+
+To build it yourself instead, follow the steps below.
+
 ### Requirements
 
 - Flutter **3.29+** (stable channel), Dart 3
