@@ -13,11 +13,11 @@ Thirduni gives top marks for "evidence you talked to somebody who actually has t
 
 **Quote we can use (with permission):** "In my opinion, this kind of platform can encourage more people to help animals. As volunteers, we need a more organized system."
 
-### Rescuer & Animal Rescue Page Admin · 27/10/2026 · Interviewed by Sabrine
+### Rescuer and Animal Rescue Page Admin · 27/10/2026 · Interviewed by Sabrine
 1. Recent experience with an animal in need of help: someone contacted her about a sick animal and asked her to share a post about it on her page.
 2. Who they contacted: she shared the case on her Facebook page to seek help
 3. Hardest part: finding people willing to take responsibility for the animal's treatment and adopt it afterward.
-4. Fake or exaggerated posts: she is concerned about the possibility of fake posts.
+4. Fake or exaggerated posts: 
 5. Would they use PawLink? What would stop them?: she is unsure whether she would receive the help needed through PawLink.
 
 ### Khadidja · Shelter owner · 28/10/2026 · Interviewed by Sabrine
