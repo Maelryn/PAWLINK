@@ -28,8 +28,7 @@ Built in Algeria by a team of seven students during the Thirduni programme (Octo
 
 | | |
 |---|---|
-| **Live app** (demo data) | https://pawlink-iota.vercel.app |
-| **Live app** (real API + AI) | https://pawlink-dz.vercel.app |
+| **Live app** | https://pawlink-iota.vercel.app |
 | **Android app** (APK) | https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk |
 | **API** (+ Swagger docs) | https://pawlink-backend.onrender.com · [/docs](https://pawlink-backend.onrender.com/docs) · [/health](https://pawlink-backend.onrender.com/health) |
 | **Demo video** (3 min) | https://drive.google.com/file/d/1JANE4jCT9YgheHL4IAcskFwOXm4EmO8z/view |
@@ -130,6 +129,18 @@ docs/
   *.md        the backend and mobile plans, prompts and audits written while building
 .github/      the GitHub Action that keeps the API awake
 ```
+
+## Who built what
+
+| Person | What they did |
+|---|---|
+| **Mehdi** | Built the whole website (every screen, the report flow, live map, rescue workflow, adoption, services, admin, 3 languages) and made the demo video, pitch deck and README |
+| **Aymen Belkadi** | Built the API accounts and security, the reports with the trust checks and live updates, connected the website, API and AI, and deployed everything |
+| **Mohamed Temim Lemdaoui** | Set up the API and the PostGIS database, and built the adoption, services, reviews, bookings, emergency zones and notifications endpoints |
+| **Katia Amirat** | Implemented the AI triage system with Gemini Flash, multilingual support for Algerian users (English, French, Arabic, Darija) and the emergency detection rules |
+| **Sabrine** | Researched the problem with sources, wrote 25 realistic cases in Darija, Arabic and French, the impact page and the vet questionnaire |
+| **Naila Lamia Betouche** | Designed the mobile app screens in Figma |
+| **Moundhir Bachene** | Built the Android app in Flutter (home, adoption, services, map and report flow) and released it as an APK |
 
 ## What's next
 
