@@ -81,7 +81,7 @@ flowchart LR
 | Website | [`apps/web`](apps/web) | Next.js 16, React 19, TypeScript, Tailwind CSS v4, Motion, MapLibre GL + OpenFreeMap / OpenStreetMap, exifr |
 | API | [`apps/backend`](apps/backend) | NestJS 11, Prisma 7, PostgreSQL + PostGIS (Supabase), JWT + refresh tokens, argon2, Socket.IO, Swagger, Jest |
 | AI triage | [`apps/backend/src/ai`](apps/backend/src/ai) (in the API) · [`apps/Ai`](apps/Ai) (standalone module + 35-case test suite) | Google Gemini Flash Lite (`@google/genai`), Zod, keyword safety rules in 4 languages, cached fallbacks |
-| Mobile app | branch [`flutter-mobile`](https://github.com/Maelryn/PAWLINK/tree/flutter-mobile) · [download the APK](https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk) | Flutter, designed in Figma: home, adoption, services, live map and the report flow. Runs on sample data for now; the API connection is next |
+| Mobile app | [`apps/mobile`](apps/mobile) · branch [`flutter-mobile`](https://github.com/Maelryn/PAWLINK/tree/flutter-mobile) · [download the APK](https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk) | Flutter, designed in Figma: home, adoption, services, live map and the report flow. Runs on sample data for now; the API connection is next |
 | Hosting | | Vercel (website), Render (API, kept awake by a [GitHub Action](.github/workflows)), Supabase (database), Cloudinary (photos) |
 
 **AI tools used to build PawLink:** Claude Code (Anthropic) for code, design, docs, the demo video and the pitch deck; ChatGPT for brainstorming and prompt drafts; Devin for verifying the AI module. Everything AI-made was reviewed and tested by the team.
@@ -122,7 +122,7 @@ apps/
   web/        website (Next.js): every screen, the demo data layer, the API client
   backend/    API (NestJS): accounts, cases, trust checks, AI triage, adoption, services, zones, admin
   Ai/         AI triage module and its 35-case evaluation, as built and tested on its own
-  mobile/     early Expo starter; the Flutter app (v1.0, APK released) lives on the flutter-mobile branch
+  mobile/     Flutter app (v1.0, APK released): home, adoption, services, live map, report flow
 brand/        logo and app icon, light and dark
 docs/
   research/   facts with sources, interviews
