@@ -20,7 +20,7 @@ Thirduni gives top marks for "evidence you talked to somebody who actually has t
 4. Fake or exaggerated posts: She is concerned about the possibility of fake posts.
 5. Would they use PawLink? What would stop them?: She is unsure whether she would receive the help needed through PawLink.
 
-### shelter owner · 28/10/2026 · Interviewed by Sabrine
+### Shelter owner · 28/10/2026 · Interviewed by Sabrine
 1. Last time they found an injured or lost animal: 
 2. Who they contacted: a veterinarian.
 3. Hardest part: The shelter often ends up taking care of the animals, making it difficult to find people willing to adopt them.
