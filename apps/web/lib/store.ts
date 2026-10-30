@@ -55,7 +55,9 @@ interface State extends DB {
   authChecked: boolean;
 }
 
-const KEY = "pawlink.db.v2";
+/** Bump when the demo data changes: browsers that saved an older copy start again from the new one. */
+const KEY = "pawlink.db.v3";
+const OLD_KEYS = ["pawlink.db.v2"];
 const seed = (): DB => ({
   users: USERS,
   sessionId: null,
@@ -140,7 +142,10 @@ export const store = {
     let saved: Partial<DB> = {};
     try {
       saved = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+      for (const k of OLD_KEYS) localStorage.removeItem(k);
     } catch {}
+    // an empty saved list would leave the map blank: the demo cases come back instead
+    if (!saved.cases?.length) delete saved.cases;
     state = { ...state, ...saved, hydrated: true, authChecked: !opts.realAuth };
     state = { ...state, services: syncFeatured(state.services, state.users) };
     emit();
