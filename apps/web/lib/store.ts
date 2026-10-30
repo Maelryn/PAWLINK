@@ -144,8 +144,8 @@ export const store = {
       saved = JSON.parse(localStorage.getItem(KEY) ?? "{}");
       for (const k of OLD_KEYS) localStorage.removeItem(k);
     } catch {}
-    // an empty saved list would leave the map blank: the demo cases come back instead
-    if (!saved.cases?.length) delete saved.cases;
+    // an empty saved list would leave a screen blank (map, adoption, services): the demo data comes back instead
+    for (const k of ["cases", "adoptions", "services", "users", "zones"] as const) if (!saved[k]?.length) delete saved[k];
     state = { ...state, ...saved, hydrated: true, authChecked: !opts.realAuth };
     state = { ...state, services: syncFeatured(state.services, state.users) };
     emit();
