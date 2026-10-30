@@ -169,14 +169,16 @@ export class AuthController {
   }
 
   /**
-   * httpOnly, path-scoped to `/auth`, `secure` in production, `sameSite: lax`.
-   * A script can never read it; only the browser sends it back to `/auth/*`.
+   * httpOnly, path-scoped to `/auth`. `secure` in production.
+   * Cross-site (Vercel → Render): browser only sends the cookie when
+   * `sameSite: 'none'` AND `secure: true` in production; use `lax` locally.
    */
   private refreshCookieOptions(): CookieOptions {
+    const prod = isProduction();
     return {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: isProduction(),
+      sameSite: prod ? 'none' : 'lax',
+      secure: prod,
       path: '/auth',
       maxAge: parseDuration(process.env.JWT_REFRESH_TTL, REFRESH_TTL_FALLBACK_SECONDS) * 1000,
     };
