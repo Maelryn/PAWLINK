@@ -22,6 +22,8 @@ const item = {
 export function AICard({ ai, compact, reveal, hideTriage, className }: { ai: AIAnalysis; compact?: boolean; reveal?: boolean; hideTriage?: boolean; className?: string }) {
   const { t } = useI18n();
   const color = TRIAGE_COLOR[ai.triage];
+  // the API backup answer can carry empty lines: never show a blank numbered step
+  const advice = ai.safetyAdvice.filter((a) => a?.trim());
 
   return (
     <motion.div
@@ -102,17 +104,19 @@ export function AICard({ ai, compact, reveal, hideTriage, className }: { ai: AIA
         </motion.div>
       )}
 
-      <motion.div variants={item} className="relative mt-5">
-        <div className="mb-2 text-[13px] font-semibold text-label-2">{t.ai.safety}</div>
-        <ol className="space-y-2">
-          {(compact ? ai.safetyAdvice.slice(0, 3) : ai.safetyAdvice).map((a, i) => (
-            <li key={a} className="flex gap-3 text-[14px] leading-snug">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] font-bold text-accent">{i + 1}</span>
-              <span>{a}</span>
-            </li>
-          ))}
-        </ol>
-      </motion.div>
+      {advice.length > 0 && (
+        <motion.div variants={item} className="relative mt-5">
+          <div className="mb-2 text-[13px] font-semibold text-label-2">{t.ai.safety}</div>
+          <ol className="space-y-2">
+            {(compact ? advice.slice(0, 3) : advice).map((a, i) => (
+              <li key={a} className="flex gap-3 text-[14px] leading-snug">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] font-bold text-accent">{i + 1}</span>
+                <span>{a}</span>
+              </li>
+            ))}
+          </ol>
+        </motion.div>
+      )}
 
       {!compact && (
         <>
