@@ -5,47 +5,47 @@ Thirduni gives top marks for "evidence you talked to somebody who actually has t
 ## Template (copy it)
 
 ### Abdel · Rescuer · 26/10/2026 · Interviewed by Sabrine
-1. Last time they found an injured or lost animal: During the previous wildfires in Jijel.
-2. Who they contacted: Veterinarians involved in the animal rescue efforts. he also participated as a volunteer.
-3. Hardest part: Difficulty locating the animals, especially those in remote and isolated areas.
-4. Fake or exaggerated posts: There are concerns about sharing animal rescue cases without sufficient information about the person reporting them, such as their phone number and exact location. There are also concerns about the responsibility involved in sharing unverified cases.
-5. Would they use PawLink? What would stop them? He seems willing to use PawLink, as it could make animal rescue efforts easier and more organized.
+1. Recent experience with an animal in need of help: during the previous wildfires in Jijel.
+2. Who they contacted: veterinarians involved in the animal rescue efforts. he also participated as a volunteer.
+3. Hardest part: difficulty locating the animals, especially those in remote and isolated areas.
+4. Fake or exaggerated posts: there are concerns about sharing animal rescue cases without sufficient information about the person reporting them, such as their phone number and exact location. There are also concerns about the responsibility involved in sharing unverified cases.
+5. Would they use PawLink? What would stop them? he seems willing to use PawLink, as it could make animal rescue efforts easier and more organized.
 
 **Quote we can use (with permission):** "In my opinion, this kind of platform can encourage more people to help animals. As volunteers, we need a more organized system."
 
 ### Rescuer & Animal Rescue Page Admin · 27/10/2026 · Interviewed by Sabrine
-1. Last time they found an injured or lost animal: Someone contacted her about a sick animal and asked her to share a post about it on her page.
-2. Who they contacted: She shared the case on her Facebook page to seek help
-3. Hardest part: Finding people willing to take responsibility for the animal's treatment and adopt it afterward.
-4. Fake or exaggerated posts: She is concerned about the possibility of fake posts.
-5. Would they use PawLink? What would stop them?: She is unsure whether she would receive the help needed through PawLink.
+1. Recent experience with an animal in need of help: someone contacted her about a sick animal and asked her to share a post about it on her page.
+2. Who they contacted: she shared the case on her Facebook page to seek help
+3. Hardest part: finding people willing to take responsibility for the animal's treatment and adopt it afterward.
+4. Fake or exaggerated posts: she is concerned about the possibility of fake posts.
+5. Would they use PawLink? What would stop them?: she is unsure whether she would receive the help needed through PawLink.
 
-### Shelter owner · 28/10/2026 · Interviewed by Sabrine
-1. Last time they found an injured or lost animal: 
+### Khadidja · Shelter owner · 28/10/2026 · Interviewed by Sabrine
+1. Recent experience with an animal in need of help: 
 2. Who they contacted: a veterinarian.
-3. Hardest part: The shelter often ends up taking care of the animals, making it difficult to find people willing to adopt them.
+3. Hardest part: difficulty finding adopters for cats with special needs, and financial assistance to cover veterinary treatment and food expenses.
 4. Fake or exaggerated posts: she hasn't come across any fake or exaggerated posts before.
 5. Would they use PawLink? What would stop them?: 
 
-**Quote we can use (with permission):** "We need more people to get involved in animal rescue, volunteer, and adopt cats after their treatment, especially those with paralysis.People shouldn't rely only on shelters."
+**Quote we can use (with permission):** "We need more people to get involved in animal rescue, volunteer, and adopt cats after their treatment, especially those with paralysis. People shouldn't rely only on shelters."
 
 ### Benamar · Pet owner · 30/10/2026 · Interviewed by Sabrine
-1. Last time they found an injured or lost animal: He found a sick cat outside in the cold that needed food and medical care.
-2. Who they contacted: A veterinarian.
-3. Hardest part: Difficulty finding someone willing to adopt the cat and nearby services that could help.
+1. Recent experience with an animal in need of help: he found a sick cat outside in the cold that needed food and medical care.
+2. Who they contacted: a veterinarian.
+3. Hardest part: difficulty finding someone willing to adopt the cat and nearby services that could help.
 4. Fake or exaggerated posts: he hasn't come across any fake or exaggerated posts before.
-5. Would they use PawLink? What would stop them?: Yes, he seems willing to use PawLink to report animals in distress.
+5. Would they use PawLink? What would stop them?: yes, he seems willing to use PawLink to report animals in distress.
 6. Suggestions for improving support for animal owners in Algeria: offering online veterinary consultations and appointment booking.
 
    
 **Quote we can use (with permission):** "Adoption is often the hardest part after finding a stray animal, so I think the platform could help make this process easier."
 
 ### Pet owner and rescuer · 30/10/2026 · Interviewed by Sabrine
-1. Last time they found an injured or lost animal: She found a pregnant cat outside in the cold and rain, in an isolated place.
-2. Who they contacted: She took the cat in and cared for her because she wasn't sick; she simply needed a safe place to live and give birth.
-3. Hardest part: Finding someone willing to adopt the cat through social media groups.
+1. Recent experience with an animal in need of help: she found a pregnant cat outside in the cold and rain, in an isolated place.
+2. Who they contacted: she took the cat in and cared for her because she wasn't sick; she simply needed a safe place to live and give birth.
+3. Hardest part: finding someone willing to adopt the cat through social media groups.
 4. Fake or exaggerated posts: she hasn't come across any fake or exaggerated posts before.
-5. Would they use PawLink? What would stop them?: She might be willing to use PawLink.
+5. Would they use PawLink? What would stop them?: she might be willing to use PawLink.
 
 ---
 
