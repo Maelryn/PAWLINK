@@ -30,7 +30,7 @@ Built in Algeria by a team of seven students during the Thirduni programme (Octo
 |---|---|
 | **Live app** | https://pawlink-iota.vercel.app |
 | **Android app** (APK) | https://github.com/Maelryn/PAWLINK/releases/latest/download/pawlink.apk |
-| **API** (+ Swagger docs) | https://pawlink-backend.onrender.com · [/docs](https://pawlink-backend.onrender.com/docs) · [/health](https://pawlink-backend.onrender.com/health) |
+| **API** (+ Swagger docs) | [pawlink-backend.onrender.com/docs](https://pawlink-backend.onrender.com/docs) · [health check](https://pawlink-backend.onrender.com/health) |
 | **Demo video** (3 min) | https://drive.google.com/file/d/1JANE4jCT9YgheHL4IAcskFwOXm4EmO8z/view |
 | **Pitch deck** (PDF) | https://drive.google.com/file/d/1WC53C9OgbtyxWyT-iHZMfOamC5YnKotO/view |
 
