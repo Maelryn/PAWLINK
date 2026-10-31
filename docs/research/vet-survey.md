@@ -130,12 +130,29 @@ Questions and responses are documented in this file. The names of all participat
 4. Have you encountered fake, exaggerated or incomplete reports about animals in distress?
 - Often.
 
+**Name / Clinic name:** Dr. Baadache.     
+**Type of practice:** Companion animals.
+1. How often do you receive stray, injured or lost animals at your clinic?
+- Several times a month.
+2. How do you usually receive information about animals in need?
+- Facebook and other social media platforms.
+- People bringing animals directly to the clinic.
+3. What are the main difficulties you face when dealing with animals in distress?
+- Late arrival of animals.
+- Lack of payment.
+- Unknown ownership.
+- Complicated situations involving animals with a poor prognosis.
+- Lack of emergency medications.
+4. Have you encountered fake, exaggerated or incomplete reports about animals in distress?
+- Rarely.
+
 ---
 
 ## Key Findings
-1. **Veterinary clinics receive animals in need regularly:** one clinic reported receiving stray, injured or lost animals several times a month, while the other reported receiving them every day.
-2. **Information reaches clinics through different channels:** these include direct visits, phone calls, social media, and contact with volunteers or animal welfare associations.
-3. **Financial and communication challenges affect animal rescue:** lack of payment was reported by both clinics. Other difficulties included late arrival of animals, unknown ownership, and the presence of fake, exaggerated or incomplete reports.
+1. **Veterinary clinics receive animals in need regularly:** two clinics reported receiving them several times a month, while the third reported receiving them every day.
+2. **Clinics receive information through different channels:** including direct visits, phone calls, social media, and contact with volunteers or animal welfare associations.
+3. **Financial and practical challenges affect animal care:** these include lack of payment, late arrival, unknown ownership, lack of emergency medications, and complicated cases involving animals with poor prognoses.
+4. **The reliability of online reports varies:** Responses ranged from never encountering fake or exaggerated posts to encountering them often.
 
 
 
