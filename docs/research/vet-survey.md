@@ -4,9 +4,9 @@
 
 
 
+## Answers
 
-
-**Questionnaire 1: Veterinary Perspectives on Animal Distress and Rescue**
+### Questionnaire 1: Veterinary Perspectives on Animal Distress and Rescue
 
 
 **Name / Clinic name:** Dr. Cherif F.
@@ -93,7 +93,7 @@
 - Lack of public knowledge and awareness about animals.
 
 
-**Questionnaire 2: Veterinary Clinic Experiences with Animal Rescue**
+### Questionnaire 2: Veterinary Clinic Experiences with Animal Rescue
 
 
 **Name / Clinic name:** Clinique veterinaire khemis miliana.
