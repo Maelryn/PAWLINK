@@ -142,10 +142,8 @@ docs/
 | **Naila Lamia Betouche** | Designed the mobile app screens in Figma |
 | **Moundhir Bachene** | Built the Android app in Flutter (home, adoption, services, map and report flow) and released it as an APK |
 
-## What's next
+## Research
 
-In the next three months: launch in Algiers and Tizi Ouzou with local rescue associations, connect the Android app to the API and publish it on Google Play, and bring the first vets and pet shops onto PawLink Pro (2,900 DA a month) to cover the servers. Rescuers will always use PawLink for free. We will measure how quickly a reported animal gets help, and improve the AI with real cases reviewed by vets.
-
-## Sources
-
-Every number we use is listed with its source in [`docs/research/facts.md`](docs/research/facts.md).
+- [What rescuers, a shelter owner and pet owners told us](docs/research/interviews.md): 5 interviews in Algeria, October 2026
+- [Who PawLink helps and how it pays for itself](docs/research/impact.md)
+- [Every number we use, with its source](docs/research/facts.md)
