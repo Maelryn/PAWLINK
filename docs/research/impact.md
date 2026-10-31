@@ -8,6 +8,18 @@ Every number here comes from [`facts.md`](facts.md) (with its source) or is a ta
 - **Disasters hit animals and the families who live from them.** The August 2022 wildfires cost more than 400 head of livestock and affected the livelihoods of over 6,000 people ([facts #3](facts.md)).
 - **Rescue already exists, but it is small and scattered.** One Algerian association reported 73 rescue operations and 32 volunteers for the whole of 2023 ([facts #8](facts.md)). Help depends on who happens to see a Facebook post.
 
+## What the people who rescue animals told us
+
+Sabrine interviewed 5 people in October 2026: rescuers (one during the Jijel wildfires), a rescue page admin, a shelter owner and pet owners ([interviews](interviews.md)). What came up the most:
+
+- **Finding help nearby is hard:** animals in remote places are hard to locate, and people don't know which vet or volunteer is close.
+- **Rescue is scattered:** cases are shared on Facebook pages without the place or a way to reach the reporter, so nobody can check them.
+- **After the rescue, adoption is the hardest part.**
+
+> "As volunteers, we need a more organized system." (Abdel, rescuer)
+
+This is what PawLink is built around: one report with the exact position and the reporter's contact for the helpers, a map of who is close, and adoption in the same app.
+
 ## Who PawLink helps
 
 | Who | What PawLink gives them |
@@ -37,7 +49,7 @@ Start where the team lives and where the 2022 fires hit, then grow city by city:
 ## What happens after October
 
 1. **Month 1:** launch in Algiers and Tizi Ouzou with the partner associations; collect feedback in the app.
-2. **Month 2:** publish the Android app (Flutter, in progress); bring the first vets and pet shops onto PawLink Pro.
+2. **Month 2:** connect the Android app (Flutter, v1.0 already released as an APK) to the API and publish it on Google Play; bring the first vets and pet shops onto PawLink Pro.
 3. **Month 3:** improve the AI with real cases reviewed by vets; open the next cities.
 
 We intend to keep PawLink running after the programme.
