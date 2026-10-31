@@ -18,7 +18,7 @@ Sabrine interviewed 5 people in October 2026: rescuers (one during the Jijel wil
 
 > "As volunteers, we need a more organized system." (Abdel, rescuer)
 
-6 vets and clinics also answered a questionnaire ([vet survey](vet-survey.md)). Injuries and road accidents are what they see most; some clinics receive a stray or injured animal every day, often with no one to pay. To judge urgency from a distance they ask whether the animal is eating, can stand, is active, and for how long: the same questions PawLink's triage asks the reporter.
+7 vets and clinics also answered a questionnaire ([vet survey](vet-survey.md)). Injuries and road accidents are what they see most; some clinics receive a stray or injured animal every day, often with no one to pay. To judge urgency from a distance they ask whether the animal is eating, can stand, is active, and for how long: the same questions PawLink's triage asks the reporter.
 
 This is what PawLink is built around: one report with the exact position and the reporter's contact for the helpers, a map of who is close, and adoption in the same app.
 

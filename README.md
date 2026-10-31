@@ -138,13 +138,13 @@ docs/
 | **Aymen Belkadi** | Built the API accounts and security, the reports with the trust checks and live updates, connected the website, API and AI, and deployed everything |
 | **Mohamed Temim Lemdaoui** | Set up the API and the PostGIS database, and built the adoption, services, reviews, bookings, emergency zones and notifications endpoints |
 | **Katia Amirat** | Implemented the AI triage system with Gemini Flash, multilingual support for Algerian users (English, French, Arabic, Darija) and the emergency detection rules |
-| **Sabrine** | Researched the problem with sources, interviewed rescuers, a shelter owner and pet owners, collected questionnaires from 6 vets and clinics, wrote 25 realistic cases in Darija, Arabic and French and the impact page |
+| **Sabrine** | Researched the problem with sources, interviewed rescuers, a shelter owner and pet owners, collected questionnaires from 7 vets and clinics, wrote 25 realistic cases in Darija, Arabic and French and the impact page |
 | **Naila Lamia Betouche** | Designed the mobile app screens in Figma |
 | **Moundhir Bachene** | Built the Android app in Flutter (home, adoption, services, map and report flow) and released it as an APK |
 
 ## Research
 
 - [What rescuers, a shelter owner and pet owners told us](docs/research/interviews.md): 5 interviews in Algeria, October 2026
-- [What vets and clinics told us](docs/research/vet-survey.md): questionnaires answered by 6 vets and clinics
+- [What vets and clinics told us](docs/research/vet-survey.md): questionnaires answered by 7 vets and clinics
 - [Who PawLink helps and how it pays for itself](docs/research/impact.md)
 - [Every number we use, with its source](docs/research/facts.md)
