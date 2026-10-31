@@ -90,6 +90,13 @@ Questions and responses are documented in this file. The names of all participat
 6. In your opinion, what are the main challenges delaying animal rescue efforts in Algeria?
 - Lack of public knowledge and awareness about animals.
 
+---
+
+## Key Findings
+1. Injuries and road accidents are among the most common cases. All four veterinarians reported encountering animals with injuries or significant bleeding and animals involved in road accidents.
+2. Veterinarians rely on observable signs to assess urgency. The responses highlighted the importance of checking whether an animal is eating, active, able to stand, and the duration and frequency of its symptoms.
+3. Animal rescue operations face several challenges. These include difficulties locating and reaching injured animals, particularly in mountainous areas, risks such as electrical cables, lack of resources and organization, and limited public awareness of animal welfare.
+
 
 ### Questionnaire 2: Veterinary Clinic Experiences with Animal Rescue
 
@@ -122,6 +129,13 @@ Questions and responses are documented in this file. The names of all participat
 - Lack of payment.
 4. Have you encountered fake, exaggerated or incomplete reports about animals in distress?
 - Often.
+
+---
+
+## Key Findings
+1. Veterinary clinics receive animals in need regularly. One clinic reported receiving stray, injured or lost animals several times a month, while the other reported receiving them every day.
+2. Information reaches clinics through different channels. These include direct visits, phone calls, social media, and contact with volunteers or animal welfare associations.
+3. Financial and communication challenges affect animal rescue. Lack of payment was reported by both clinics. Other difficulties included late arrival of animals, unknown ownership, and the presence of fake, exaggerated or incomplete reports.
 
 
 
