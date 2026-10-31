@@ -1,6 +1,6 @@
 # Interviews
 
-What people who rescue animals in Algeria told us: **rescuers, a rescue page admin, a shelter owner and pet owners**, interviewed by Sabrine in October 2026. Questions are in `docs/tasks/DATA.md`. Ask permission before quoting anyone. First name and city only, never a phone number or full name.
+What people who rescue animals in Algeria told us: **rescuers, a rescue page admin, a shelter owner and pet owners**, interviewed by Sabrine in October 2026. Vets and clinics answered a questionnaire: see [`vet-survey.md`](vet-survey.md). Questions are in `docs/tasks/DATA.md`. Ask permission before quoting anyone. First name and city only, never a phone number or full name.
 
 ## Answers
 
