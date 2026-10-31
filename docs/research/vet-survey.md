@@ -1,15 +1,17 @@
+# Veterinary Questionnaires
 
+What veterinarians in Algeria shared with us about animal distress cases, rescue operations, and the challenges they face in their daily practice. The questionnaires covered two areas: veterinary perspectives on animal distress and rescue, and veterinary clinic experiences with animal rescue.
 
+Not all veterinarians answered every question, the responses included below reflect only the questions each participant answered.
 
-
-
+Questions and responses are documented in this file. The names of all participating veterinary clinics are included in this document.
 
 ## Answers
 
 ### Questionnaire 1: Veterinary Perspectives on Animal Distress and Rescue
 
 
-**Name / Clinic name:** Dr. Cherif F.
+**Name / Clinic name:** Dr. Cherif F.  
 **Type of practice:** Companion animals and farm animals.
 1. Have you ever participated in emergency interventions or animal rescue operations, particularly during natural disasters such as wildfires or floods?
 - Yes.
@@ -18,9 +20,8 @@
 - Road accidents.
 - Suspected diseases or infections.
 - Abandoned or severely weakened animals.
-
-  
-**Name / Clinic name:** Familyvet.
+ 
+**Name / Clinic name:** Familyvet.   
 **Type of practice:** Companion animals and farm animals.
 1. What types of animal distress cases do you encounter most often?
 - Injuries or significant bleeding.
@@ -38,8 +39,7 @@
 4. What tools, services or resources would help you improve your daily veterinary practice and the care of animals in distress?
 - Laboratory tests and diagnostic analyses.
 
-
-**Name / Clinic name:** Diaavet.
+**Name / Clinic name:** Diaavet.   
 **Type of practice:** Companion animals.
 1. What types of animal distress cases do you encounter most often?
 - Injuries or significant bleeding.
@@ -66,9 +66,7 @@
 6. In your opinion, what are the main challenges delaying animal rescue efforts in Algeria?
 - Lack of organization.
 
-
-
-**Name / Clinic name:** AlphaVet.
+**Name / Clinic name:** AlphaVet.   
 **Type of practice:** Companion animals and farm animals.
 1. What types of animal distress cases do you encounter most often?
 - Injuries or significant bleeding.
@@ -96,7 +94,7 @@
 ### Questionnaire 2: Veterinary Clinic Experiences with Animal Rescue
 
 
-**Name / Clinic name:** Clinique veterinaire khemis miliana.
+**Name / Clinic name:** Clinique veterinaire khemis miliana.   
 **Type of practice:** Companion animals.
 1. How often do you receive stray, injured or lost animals at your clinic?
 - Several times a month.
@@ -114,8 +112,7 @@
 5. Would you use a platform like PawLink to view and follow up on urgent animal cases near your clinic? What might prevent you from using it?
 - Lack of time.
 
-
-**Name / Clinic name:** Ksouri Vétérinaire.
+**Name / Clinic name:** Ksouri Vétérinaire.    
 **Type of practice:** Companion animals.
 1. How often do you receive stray, injured or lost animals at your clinic?
 - Every day.
