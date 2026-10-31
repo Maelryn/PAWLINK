@@ -138,7 +138,7 @@ docs/
 | **Aymen Belkadi** | Built the API accounts and security, the reports with the trust checks and live updates, connected the website, API and AI, and deployed everything |
 | **Mohamed Temim Lemdaoui** | Set up the API and the PostGIS database, and built the adoption, services, reviews, bookings, emergency zones and notifications endpoints |
 | **Katia Amirat** | Implemented the AI triage system with Gemini Flash, multilingual support for Algerian users (English, French, Arabic, Darija) and the emergency detection rules |
-| **Sabrine** | Researched the problem with sources, wrote 25 realistic cases in Darija, Arabic and French, the impact page and the vet questionnaire |
+| **Sabrine** | Researched the problem with sources, interviewed rescuers, a shelter owner and pet owners, wrote 25 realistic cases in Darija, Arabic and French and the impact page |
 | **Naila Lamia Betouche** | Designed the mobile app screens in Figma |
 | **Moundhir Bachene** | Built the Android app in Flutter (home, adoption, services, map and report flow) and released it as an APK |
 

@@ -1,8 +1,8 @@
 # Interviews
 
-Thirduni gives top marks for "evidence you talked to somebody who actually has the problem". This file holds the answers of **pet owners, volunteers and rescuers**; the vets answered a questionnaire, kept in [`vets-survey.md`](vets-survey.md).  Questions are in `docs/tasks/DATA.md`. Ask permission before quoting anyone. First name and city only, never a phone number or full name.
+What people who rescue animals in Algeria told us: **rescuers, a rescue page admin, a shelter owner and pet owners**, interviewed by Sabrine in October 2026. Questions are in `docs/tasks/DATA.md`. Ask permission before quoting anyone. First name and city only, never a phone number or full name.
 
-## Template (copy it)
+## Answers
 
 ### Abdel · Rescuer · 26/10/2026 · Interviewed by Sabrine
 1. Recent experience with an animal in need of help: during the previous wildfires in Jijel.
