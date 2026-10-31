@@ -9,7 +9,7 @@
 **Questionnaire 1: Veterinary Perspectives on Animal Distress and Rescue**
 
 
-**Name / Clinic name:** Dr. Cherif F
+**Name / Clinic name:** Dr. Cherif F.
 **Type of practice:** Companion animals and farm animals.
 1. Have you ever participated in emergency interventions or animal rescue operations, particularly during natural disasters such as wildfires or floods?
 - Yes.
@@ -20,7 +20,7 @@
 - Abandoned or severely weakened animals.
 
   
-**Name / Clinic name:** Familyvet
+**Name / Clinic name:** Familyvet.
 **Type of practice:** Companion animals and farm animals.
 1. What types of animal distress cases do you encounter most often?
 - Injuries or significant bleeding.
@@ -39,7 +39,7 @@
 - Laboratory tests and diagnostic analyses.
 
 
-**Name / Clinic name:** Diaavet
+**Name / Clinic name:** Diaavet.
 **Type of practice:** Companion animals.
 1. What types of animal distress cases do you encounter most often?
 - Injuries or significant bleeding.
@@ -68,7 +68,7 @@
 
 
 
-**Name / Clinic name:** AlphaVet
+**Name / Clinic name:** AlphaVet.
 **Type of practice:** Companion animals and farm animals.
 1. What types of animal distress cases do you encounter most often?
 - Injuries or significant bleeding.
@@ -96,7 +96,7 @@
 **Questionnaire 2: Veterinary Clinic Experiences with Animal Rescue**
 
 
-**Name / Clinic name:** Clinique veterinaire khemis miliana
+**Name / Clinic name:** Clinique veterinaire khemis miliana.
 **Type of practice:** Companion animals.
 1. How often do you receive stray, injured or lost animals at your clinic?
 - Several times a month.
@@ -115,7 +115,7 @@
 - Lack of time.
 
 
-**Name / Clinic name:** Ksouri Vétérinaire
+**Name / Clinic name:** Ksouri Vétérinaire.
 **Type of practice:** Companion animals.
 1. How often do you receive stray, injured or lost animals at your clinic?
 - Every day.
