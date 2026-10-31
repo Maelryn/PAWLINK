@@ -231,6 +231,7 @@ const en = {
     description: "Description",
     helpTitle: "How can you help?",
     yourReport: "You reported this case",
+    mineBadge: "Your report",
     yourReportBody: "Nearby volunteers and vets have been told. You'll get a notification as soon as someone offers help.",
     openMine: "Follow my report",
     lifeLeft: (ms: number) => (ms < 3_600_000 ? "On the map for less than an hour" : ms < 86_400_000 ? `On the map for ${Math.round(ms / 3_600_000)} more h` : `On the map for ${Math.round(ms / 86_400_000)} more days`),

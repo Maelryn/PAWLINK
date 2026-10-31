@@ -233,6 +233,7 @@ const fr: Dict = {
     description: "Description",
     helpTitle: "Comment pouvez-vous aider ?",
     yourReport: "Vous avez signalé ce cas",
+    mineBadge: "Votre signalement",
     yourReportBody: "Les bénévoles et vétérinaires proches sont prévenus. Vous recevez une notification dès que quelqu'un propose son aide.",
     openMine: "Suivre mon signalement",
     lifeLeft: (ms: number) => (ms < 3_600_000 ? "Sur la carte encore moins d'une heure" : ms < 86_400_000 ? `Sur la carte encore ${Math.round(ms / 3_600_000)} h` : `Sur la carte encore ${Math.round(ms / 86_400_000)} j`),

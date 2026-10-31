@@ -106,6 +106,7 @@ export default function CasePage() {
               <motion.span key={c.status} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} className={cn("rounded-full px-3 py-1.5 text-[13px] font-semibold", c.status === "resolved" ? "bg-stable-soft text-stable" : c.status === "in_progress" ? "bg-accent-soft text-accent" : "bg-surface-2 text-label-2")}>{c.status === "resolved" && "✓ "}{t.common.status[c.status]}</motion.span>
               {zone && <span className="rounded-full bg-urgent-soft px-3 py-1.5 text-[13px] font-semibold text-urgent">🔥 {t.case.inZone}</span>}
               {c.trust && <TrustBadge level={c.trust.level} />}
+              {user?.id === c.reporter.id && <span className="rounded-full bg-accent-soft px-3 py-1.5 text-[13px] font-semibold text-accent">{t.case.mineBadge}</span>}
             </div>
             <h1 className="mt-3 text-[28px] font-extrabold leading-[1.1] sm:text-[40px]">{ct(c).title}</h1>
             <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3">
