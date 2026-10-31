@@ -7,6 +7,7 @@ import { Avatar, Emoji3D } from "@/components/ui/primitives";
 import { useI18n } from "@/lib/i18n";
 import { HELP_EMOJI, SERVICE_EMOJI, TRIAGE_COLOR } from "@/lib/species";
 import type { AIAnalysis } from "@/lib/types";
+import { adviceText } from "@/lib/ai/guidance";
 import { cn } from "@/lib/utils";
 
 const container = {
@@ -20,10 +21,10 @@ const item = {
 
 /** Structured AI triage output. `reveal` plays the staggered entrance (report flow). */
 export function AICard({ ai, compact, reveal, hideTriage, className }: { ai: AIAnalysis; compact?: boolean; reveal?: boolean; hideTriage?: boolean; className?: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const color = TRIAGE_COLOR[ai.triage];
   // the API backup answer can carry empty lines: never show a blank numbered step
-  const advice = ai.safetyAdvice.filter((a) => a?.trim());
+  const advice = ai.safetyAdvice.filter((a) => a?.trim()).map((a) => adviceText(a, locale));
 
   return (
     <motion.div
